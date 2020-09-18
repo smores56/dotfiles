@@ -86,10 +86,10 @@ set termguicolors
 
 colorscheme selenized
 if strftime("%H") >= 8 && strftime("%H") < 20
-    let g:lightline = { 'colorscheme': 'selenized_dark' }
+    let g:lightline = { 'colorscheme': 'selenized-dark' }
     set background=dark
 else
-    let g:lightline = { 'colorscheme': 'selenized_light' }
+    let g:lightline = { 'colorscheme': 'selenized-light' }
     set background=light
 endif
 
