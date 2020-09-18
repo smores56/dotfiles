@@ -1,0 +1,13 @@
+jq
+vim-gtk3
+tmux
+cmus
+crystal
+python3.8
+python3-pip
+nnn
+gh
+zig
+build-essential
+libssl-dev
+neofetch

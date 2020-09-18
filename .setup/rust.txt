@@ -1,0 +1,10 @@
+exa
+bat
+ripgrep
+fd
+sd
+typeracer
+alacritty
+dua
+tokei
+watchexec

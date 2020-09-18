@@ -1,0 +1,57 @@
+[submodule ".vim/pack/plugins/start/ale"]
+	path = .vim/pack/plugins/start/ale
+	url = https://github.com/dense-analysis/ale.git
+[submodule ".vim/pack/plugins/start/surround"]
+	path = .vim/pack/plugins/start/surround
+	url = https://github.com/tpope/vim-surround.git
+[submodule ".vim/pack/themes/start/palenight"]
+	path = .vim/pack/themes/start/palenight
+	url = https://github.com/drewtempelmeyer/palenight.vim.git
+[submodule ".vim/pack/plugins/start/lightline"]
+	path = .vim/pack/plugins/start/lightline
+	url = https://github.com/itchyny/lightline.vim.git
+[submodule ".vim/pack/plugins/start/gitgutter"]
+	path = .vim/pack/plugins/start/gitgutter
+	url = https://github.com/airblade/vim-gitgutter.git
+[submodule ".vim/pack/plugins/start/nerdtree"]
+	path = .vim/pack/plugins/start/nerdtree
+	url = https://github.com/preservim/nerdtree.git
+[submodule ".vim/pack/plugins/start/nerdtree-git"]
+	path = .vim/pack/plugins/start/nerdtree-git
+	url = https://github.com/Xuyuanp/nerdtree-git-plugin.git
+[submodule ".vim/pack/plugins/start/polyglot"]
+	path = .vim/pack/plugins/start/polyglot
+	url = https://github.com/sheerun/vim-polyglot.git
+[submodule ".vim/pack/plugins/start/css-color"]
+	path = .vim/pack/plugins/start/css-color
+	url = https://github.com/ap/vim-css-color.git
+[submodule ".vim/pack/plugins/start/editorconfig"]
+	path = .vim/pack/plugins/start/editorconfig
+	url = https://github.com/editorconfig/editorconfig-vim.git
+[submodule ".vim/pack/plugins/start/visual-multi"]
+	path = .vim/pack/plugins/start/visual-multi
+	url = https://github.com/mg979/vim-visual-multi.git
+[submodule ".vim/pack/plugins/start/tmux"]
+	path = .vim/pack/plugins/start/tmux
+	url = https://github.com/tmux-plugins/vim-tmux.git
+[submodule ".vim/pack/plugins/start/obsession"]
+	path = .vim/pack/plugins/start/obsession
+	url = https://github.com/tpope/vim-obsession.git
+[submodule ".vim/pack/plugins/start/cmus"]
+	path = .vim/pack/plugins/start/cmus
+	url = https://github.com/azadkuh/vim-cmus.git
+[submodule ".vim/pack/plugins/start/ctrlp"]
+	path = .vim/pack/plugins/start/ctrlp
+	url = https://github.com/ctrlpvim/ctrlp.vim.git
+[submodule ".vim/pack/plugins/start/nerdcommenter"]
+	path = .vim/pack/plugins/start/nerdcommenter
+	url = https://github.com/preservim/nerdcommenter.git
+[submodule ".nvm"]
+	path = .nvm
+	url = https://github.com/nvm-sh/nvm.git
+[submodule ".vim/pack/plugins/start/nnn"]
+	path = .vim/pack/plugins/start/nnn
+	url = https://github.com/mcchrish/nnn.vim
+[submodule ".crystal/ameba"]
+	path = .crystal/ameba
+	url = https://github.com/crystal-ameba/ameba.git
