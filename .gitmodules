@@ -64,3 +64,6 @@
 [submodule ".vim/pack/plugins/start/lightline-ale"]
 	path = .vim/pack/plugins/start/lightline-ale
 	url = https://github.com/maximbaz/lightline-ale.git
+[submodule ".pfetch"]
+	path = .pfetch
+	url = https://github.com/dylanaraps/pfetch.git

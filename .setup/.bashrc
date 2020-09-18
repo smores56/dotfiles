@@ -8,7 +8,7 @@ export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || pr
 
 # set aliases
 alias erg="ssh sam@erglabs.org"
-alias hostwinds="ssh root@dev.mohr.codes"
+alias hwd="ssh root@dev.mohr.codes"
 alias port_forward_hostwinds="ssh -fNR 80:127.0.0.1:3000 root@dev.mohr.codes"
 alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 
@@ -17,13 +17,11 @@ command -v setxkbmap &>/dev/null && setxkbmap -option caps:swapescape
 
 # startup splashes
 if [ -z "$TMUX" ]; then
-    # outside of tmux, large name and system info
     echo ""
-    command -v figlet &>/dev/null && figlet -c -w 80 -d ~/.figlet/fonts/ -f colossal "S'mores"
-    command -v neofetch &>/dev/null && neofetch --music-player cmus
+    command -v figlet &>/dev/null && figlet -w 45 -c -d ~/.figlet/fonts/ -f big "S'mores"
+    [ -d "$HOME/.pfetch" ] && sh "$HOME/.pfetch/pfetch"
 else
-    # inside tmux, just a small name
-    command -v figlet &>/dev/null && figlet -f small "S'mores"
+    command -v figlet &>/dev/null && figlet -d ~/.figlet/fonts/ -f rounded "S'mux"
 fi
 
 # better cd
