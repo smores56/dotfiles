@@ -11,3 +11,6 @@ zig
 build-essential
 libssl-dev
 neofetch
+libsqlite3-dev
+figlet
+fzf

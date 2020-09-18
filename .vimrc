@@ -46,18 +46,6 @@ let mapleader = ","
 nnoremap ; :
 vnoremap ; :
 
-" So we don't have to reach for escape to leave insert mode.
-inoremap jf <esc>
-
-" create new vsplit, and switch to it.
-noremap <leader>v <C-w>v
-
-" bindings for easy split nav
-nnoremap <C-h> <C-w>h
-nnoremap <C-j> <C-w>j
-nnoremap <C-k> <C-w>k
-nnoremap <C-l> <C-w>l
-
 " Use sane regex's when searching
 nnoremap / /\v
 vnoremap / /\v
@@ -94,7 +82,39 @@ let g:ctrlp_max_height = 30
 
 " Finally the color scheme. Choose whichever you want from the list in the
 " link above (back up where we included the bundle of a ton of themes.)
-let g:lightline = { 'colorscheme': 'palenight' }
-set background=dark
-colorscheme palenight
+set termguicolors
+
+colorscheme selenized
+if strftime("%H") >= 8 && strftime("%H") < 20
+    let g:lightline = { 'colorscheme': 'selenized_dark' }
+    set background=dark
+else
+    let g:lightline = { 'colorscheme': 'selenized_light' }
+    set background=light
+endif
+
 syntax on " Syntax highlighting
+
+let g:lightline.component_expand = {
+      \  'linter_checking': 'lightline#ale#checking',
+      \  'linter_infos': 'lightline#ale#infos',
+      \  'linter_warnings': 'lightline#ale#warnings',
+      \  'linter_errors': 'lightline#ale#errors',
+      \  'linter_ok': 'lightline#ale#ok',
+      \ }
+
+let g:lightline.component_type = {
+      \     'linter_checking': 'right',
+      \     'linter_infos': 'right',
+      \     'linter_warnings': 'warning',
+      \     'linter_errors': 'error',
+      \     'linter_ok': 'right',
+      \ }
+
+let g:lightline.active = { 'right': [[
+      \     'linter_checking',
+      \     'linter_errors',
+      \     'linter_warnings',
+      \     'linter_infos',
+      \     'linter_ok',
+      \ ]] }

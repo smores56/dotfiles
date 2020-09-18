@@ -1,10 +1,11 @@
 exa
 bat
 ripgrep
-fd
+fd-find
 sd
 typeracer
-alacritty
 dua
 tokei
 watchexec
+starship
+zoxide
