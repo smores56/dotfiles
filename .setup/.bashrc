@@ -7,10 +7,18 @@ export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || pr
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" 
 
 # set aliases
-alias erg="ssh sam@erglabs.org"
 alias hwd="ssh root@dev.mohr.codes"
 alias port_forward_hostwinds="ssh -fNR 80:127.0.0.1:3000 root@dev.mohr.codes"
 alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
+
+# define functions
+erg() {
+    if [ -z "$TMUX" ]; then
+        ssh sam@erglabs.org -t tmux new-session -A -s main
+    else
+        echo "$(tput setaf 1)Don't SSH into tmux from tmux!$(tput sgr0)"
+    fi
+}
 
 # switch escape and caps lock
 command -v setxkbmap &>/dev/null && setxkbmap -option caps:swapescape
