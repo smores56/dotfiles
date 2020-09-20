@@ -70,30 +70,7 @@ noremap k gk
 " Map the key for toggling comments with vim-commentary
 nnoremap <leader>c <Plug>CommentaryLine
 
-map <C-o> :NERDTreeToggle<CR>
-
-" Remap ctrlp to ctrl-t -- map it however you like, or stick with the
-" defaults. Additionally, in my OS, I remap caps lock to control. I never use
-" caps lock. This is highly recommended.
-let g:ctrlp_map = '<c-t>'
-
-" Let ctrlp have up to 30 results.
-let g:ctrlp_max_height = 30
-
-" Finally the color scheme. Choose whichever you want from the list in the
-" link above (back up where we included the bundle of a ton of themes.)
-set termguicolors
-
-colorscheme selenized
-if strftime("%H") >= 8 && strftime("%H") < 20
-    let g:lightline = { 'colorscheme': 'selenized-dark' }
-    set background=dark
-else
-    let g:lightline = { 'colorscheme': 'selenized-light' }
-    set background=light
-endif
-
-syntax on " Syntax highlighting
+let g:lightline = {}
 
 let g:lightline.component_expand = {
       \  'linter_checking': 'lightline#ale#checking',
@@ -118,3 +95,19 @@ let g:lightline.active = { 'right': [[
       \     'linter_infos',
       \     'linter_ok',
       \ ]] }
+
+" Finally the color scheme. Choose whichever you want from the list in the
+" link above (back up where we included the bundle of a ton of themes.)
+set termguicolors
+
+if strftime("%H") >= 8 && strftime("%H") < 20
+    let g:lightline = { 'colorscheme': 'selenized_dark' }
+    set background=dark
+else
+    let g:lightline = { 'colorscheme': 'selenized_light' }
+    set background=light
+endif
+colorscheme selenized
+
+syntax on " Syntax highlighting
+
