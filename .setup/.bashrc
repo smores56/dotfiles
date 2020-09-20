@@ -29,7 +29,7 @@ if [ -z "$TMUX" ]; then
     command -v figlet &>/dev/null && figlet -w 45 -c -d ~/.figlet/fonts/ -f big "S'mores"
     [ -d "$HOME/.pfetch" ] && sh "$HOME/.pfetch/pfetch"
 else
-    command -v figlet &>/dev/null && figlet -d ~/.figlet/fonts/ -f rounded "S'mux"
+    command -v figlet &>/dev/null && figlet -w 32 -c -d ~/.figlet/fonts/ -f rounded "S'mux"
 fi
 
 # better cd

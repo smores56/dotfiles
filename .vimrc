@@ -1,8 +1,6 @@
 set nocompatible " Fuck VI... That's for grandpas.
 filetype off
 
-packloadall " load all plugins to ensure that themes can be loaded properly
-
 " We have to turn this stuff back on if we want all of our features.
 filetype plugin indent on " Filetype auto-detection
 
@@ -56,65 +54,59 @@ noremap <leader><space> :noh<cr>:call clearmatches()<cr>
 " Quick buffer switching - like cmd-tab'ing
 nnoremap <leader><leader> <c-^>
 
-
 " Visual line nav, not real line nav
 " If you wrap lines, vim by default won't let you move down one line to the
 " wrapped portion. This fixes that.
 noremap j gj
 noremap k gk
 
+
+
 " Plugin settings:
 " Below are some 'sane' (IMHO) defaults for a couple of the above plugins I
 " referenced.
 
-" Map the key for toggling comments with vim-commentary
-nnoremap <leader>c <Plug>CommentaryLine
+" basic ALE config
+let g:ale_completion_enabled = 1
+let g:ale_completion_autoimport = 1
+let g:ale_fix_on_save = 1
 
-map <C-o> :NERDTreeToggle<CR>
+let g:ale_fixers = {
+  \   '*': ['remove_trailing_lines', 'trim_whitespace'],
+  \   'rust': ['rustfmt'],
+  \}
 
-" Remap ctrlp to ctrl-t -- map it however you like, or stick with the
-" defaults. Additionally, in my OS, I remap caps lock to control. I never use
-" caps lock. This is highly recommended.
-let g:ctrlp_map = '<c-t>'
+" completion made easier
+set completeopt=longest,menuone
+inoremap <expr> <CR> pumvisible() ? "\<C-y>" : "\<C-g>u\<CR>"
+inoremap <expr> <TAB> pumvisible() ? "\<C-n>" : "\<TAB>"
+inoremap <expr> <C-n> pumvisible() ? '<C-n>' :
+  \ '<C-n><C-r>=pumvisible() ? "\<lt>Down>" : ""<CR>'
+inoremap <expr> <M-,> pumvisible() ? '<C-n>' :
+  \ '<C-x><C-o><C-n><C-p><C-r>=pumvisible() ? "\<lt>Down>" : ""<CR>'
 
-" Let ctrlp have up to 30 results.
-let g:ctrlp_max_height = 30
+" lightline config
+let g:lightline = {}
+let g:lightline.separator = {'left': "\uE0B0", 'right': "\uE0B2"}
+let g:lightline.subseparator = {'left': "\uE0B1", 'right': "\uE0B3" }
+
+" set colorscheme based on time of day
+if strftime("%H") >= 8 && strftime("%H") < 20
+    let g:lightline.colorscheme = 'selenized_light'
+    set background=light
+else
+    let g:lightline.colorscheme = 'selenized_dark'
+    set background=dark
+endif
+
+packloadall " load all plugins to ensure that themes can be loaded properly
 
 " Finally the color scheme. Choose whichever you want from the list in the
 " link above (back up where we included the bundle of a ton of themes.)
 set termguicolors
 
 colorscheme selenized
-if strftime("%H") >= 8 && strftime("%H") < 20
-    let g:lightline = { 'colorscheme': 'selenized-dark' }
-    set background=dark
-else
-    let g:lightline = { 'colorscheme': 'selenized-light' }
-    set background=light
-endif
-
 syntax on " Syntax highlighting
 
-let g:lightline.component_expand = {
-      \  'linter_checking': 'lightline#ale#checking',
-      \  'linter_infos': 'lightline#ale#infos',
-      \  'linter_warnings': 'lightline#ale#warnings',
-      \  'linter_errors': 'lightline#ale#errors',
-      \  'linter_ok': 'lightline#ale#ok',
-      \ }
-
-let g:lightline.component_type = {
-      \     'linter_checking': 'right',
-      \     'linter_infos': 'right',
-      \     'linter_warnings': 'warning',
-      \     'linter_errors': 'error',
-      \     'linter_ok': 'right',
-      \ }
-
-let g:lightline.active = { 'right': [[
-      \     'linter_checking',
-      \     'linter_errors',
-      \     'linter_warnings',
-      \     'linter_infos',
-      \     'linter_ok',
-      \ ]] }
+" Map the key for toggling comments with vim-commentary
+nnoremap <leader>c <Plug>CommentaryLine
