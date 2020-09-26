@@ -38,3 +38,6 @@
 	path = .nvm
 	url = https://github.com/nvm-sh/nvm.git
 
+[submodule ".vim/pack/plugins/start/ranger"]
+	path = .vim/pack/plugins/start/ranger
+	url = https://github.com/francoiscabrol/ranger.vim
