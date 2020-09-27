@@ -109,5 +109,4 @@ colorscheme selenized
 syntax on " Syntax highlighting
 
 " Map the key for toggling comments with vim-commentary
-nnoremap <leader>c <Plug>CommentaryLine
-
+nnoremap <leader>c :Commentary<CR>

@@ -7,7 +7,6 @@ python3.8
 python3-pip
 nnn
 gh
-zig
 build-essential
 libssl-dev
 neofetch
@@ -16,3 +15,18 @@ figlet
 fzf
 software-properties-common
 fonts-firacode
+mpd
+mpc
+ncmpcpp
+autoconf
+libmpdclient2
+libmpdclient-dev
+libpcre3
+libpcre3-dev
+libncursesw5
+libncursesw5-dev
+libncurses5-dev
+libtagc0
+libtagc0-dev
+libcurl4-openssl-dev
+cmake
