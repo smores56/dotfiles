@@ -9,7 +9,7 @@ export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || pr
 # set aliases
 alias r="ranger"
 alias doc="ssh root@167.172.140.191"
-alias port_forward_hostwinds="ssh -fNR 80:127.0.0.1:3000 root@dev.mohr.codes"
+alias pfdoc="ssh -fNR 80:127.0.0.1:3000 root@167.172.140.191"
 alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 
 # define functions
