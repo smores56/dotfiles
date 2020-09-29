@@ -8,8 +8,8 @@ export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || pr
 
 # set aliases
 alias r="ranger"
-alias doc="ssh root@167.172.140.191"
-alias pfdoc="ssh -fNR 80:127.0.0.1:3000 root@167.172.140.191"
+alias doc="ssh root@dev.mohr.codes"
+alias pfdoc="ssh -fNR 80:127.0.0.1:3000 root@dev.mohr.codes"
 alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 
 # define functions
@@ -29,6 +29,9 @@ if [ -z "$TMUX" ]; then
 else
     command -v figlet &>/dev/null && figlet -w 32 -c -d ~/.figlet/fonts/ -f rounded "S'mux"
 fi
+
+# switch escape and caps lock
+command -v setxkbmap &>/dev/null && setxkbmap -option caps:swapescape
 
 # better cd
 command -v zoxide &>/dev/null && eval "$(zoxide init bash)"
