@@ -30,3 +30,4 @@ libtagc0
 libtagc0-dev
 libcurl4-openssl-dev
 cmake
+kakoune

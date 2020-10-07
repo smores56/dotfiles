@@ -12,3 +12,6 @@ sudo add-apt-repository -y ppa:jonathonf/vim
 
 # fonts repo
 sudo add-apt-repository -y universe
+
+# lazygit repo
+sudo add-apt-repository ppa:lazygit-team/release

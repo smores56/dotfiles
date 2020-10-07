@@ -40,3 +40,6 @@
 [submodule ".vim/pack/plugins/start/ranger"]
 	path = .vim/pack/plugins/start/ranger
 	url = https://github.com/francoiscabrol/ranger.vim
+[submodule "/home/smores/.config/kak/plugins/plug.kak"]
+	path = /home/smores/.config/kak/plugins/plug.kak
+	url = https://github.com/robertmeta/plug.kak.git

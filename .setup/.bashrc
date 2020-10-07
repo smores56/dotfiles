@@ -1,15 +1,18 @@
 # set basic variables
 export PATH=/usr/local/go/bin:$HOME/go/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/lib/zig:$HOME/.local/share/share/ponyup/bin:$PATH
-export EDITOR=vim
+export EDITOR=kak
+export NNN_FIFO=/tmp/nnn.fifo
+export NNN_PLUG="i:preview-tui;t:treeview"
 
 # load nvm
 export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" 
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
 # set aliases
 alias r="ranger"
+alias lg="lazygit"
 alias doc="ssh root@dev.mohr.codes"
-alias pfdoc="ssh -fNR 80:127.0.0.1:3000 root@dev.mohr.codes"
+alias pfdoc="ssh -gfNR 80:127.0.0.1:3000 root@dev.mohr.codes"
 alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
 
 # define functions

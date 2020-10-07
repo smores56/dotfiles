@@ -1,1 +1,13 @@
 vim-language-server
+purescript-language-server
+purescript
+spago
+purty
+elm-test
+elm-format
+@elm-tooling/elm-language-server
+yaml-language-server
+bash-language-server
+vscode-html-languageserver-bin
+vscode-css-languageserver-bin
+vscode-json-languageserver-bin
