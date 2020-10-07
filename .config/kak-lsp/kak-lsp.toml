@@ -181,3 +181,9 @@ filetypes = ["terraform"]
 roots = ["*.tf"]
 command = "terraform-ls"
 args = ["serve"]
+
+[language.purescript]
+filetypes = ["purescript"]
+roots = ["spago.dhall", ".git"]
+command = "purescript-language-server"
+args = ["--stdio", "--config {}"]

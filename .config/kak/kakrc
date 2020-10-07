@@ -1,5 +1,13 @@
+add-highlighter global/ number-lines -hlcursor
+add-highlighter global/ show-matching
+# add-highlighter global/ show-whitespaces
+
+colorscheme solarized-light
+
 map global normal ";" ":"
-add-highlighter global/ number-lines
+map global normal / /(?i)
+map global normal <a-/> <a-/>(?i)
+map global normal "#" ": comment-line<ret>"
 
 hook global InsertCompletionShow .* %{
     try %{
@@ -28,9 +36,6 @@ plug "alexherbo2/surround.kak" %{
     # Move macros to ^
     map global normal ^ q
     map global normal <a-^> Q
-}
-plug "TeddyDD/kakoune-selenized" theme config %{
-    colorscheme selenized-dark
 }
 
 plug "ul/kak-lsp" do %{
