@@ -3,6 +3,7 @@ export PATH=/usr/local/go/bin:$HOME/go/bin:$HOME/.cargo/bin:$HOME/.local/bin:/us
 export EDITOR=kak
 export NNN_FIFO=/tmp/nnn.fifo
 export NNN_PLUG="i:preview-tui;t:treeview"
+export BAT_THEME=gruvbox
 
 # load nvm
 export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
