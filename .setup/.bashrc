@@ -12,6 +12,8 @@ export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || pr
 # set aliases
 alias r="ranger"
 alias lg="lazygit"
+alias hom="ssh smores@home.mohr.codes"
+alias pfhom="ssh -gfNR 80:127.0.0.1:3000 root@dev.mohr.codes"
 alias doc="ssh root@dev.mohr.codes"
 alias pfdoc="ssh -gfNR 80:127.0.0.1:3000 root@dev.mohr.codes"
 alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
