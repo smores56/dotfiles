@@ -51,7 +51,7 @@ echo "install Javascript packages..."
 jq '.js[]' config.json | xargs xargs npm i -g
 
 echo "install starship..."
-curl -fsSL https://starship.rs/install.sh | bash
+curl -fsSL https://starship.rs/install.sh | bash -s -- -y
 
 echo "install rclone..."
 curl https://rclone.org/install.sh | sudo bash
