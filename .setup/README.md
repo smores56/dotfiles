@@ -25,6 +25,9 @@ cd ~/.setup/ && sh install.sh
 
 ## Post-Install
 
+Make sure to run `Ctrl-B + I` in `tmux` to install all of the plugins used there,
+including the "gruvbox" theme.
+
 This repo is setup for the `fish` shell, which you can permanently switch to with:
 
 ```sh
