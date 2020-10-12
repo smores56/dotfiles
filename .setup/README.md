@@ -28,6 +28,9 @@ cd ~/.setup/ && sh install.sh
 Make sure to run `Ctrl-B + I` in `tmux` to install all of the plugins used there,
 including the "gruvbox" theme.
 
+Also remember to install all of the provided `kakoune` plugins by running `:plug-install`
+in `kakoune`'s command mode.
+
 This repo is setup for the `fish` shell, which you can permanently switch to with:
 
 ```sh
