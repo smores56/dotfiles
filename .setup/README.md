@@ -16,7 +16,7 @@ should do everything you need to set up your system.
 ```sh
 cd ~
 git clone --bare https://github.com/smores56/dotfiles.git ~/.dotfiles
-alias dotfiles=git --git-dir=~/.dotfiles --work-tree=~
+alias dotfiles=git --git-dir"=$HOME/.dotfiles" --work-tree="$HOME"
 dotfiles reset --hard
 dotfiles submodule update --init --recursive
 cd ~/.setup/ && sh install.sh
