@@ -1,8 +1,6 @@
 # set basic variables
 export PATH=/usr/local/go/bin:$HOME/go/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/lib/zig:$HOME/.local/share/share/ponyup/bin:$PATH
 export EDITOR=kak
-export NNN_FIFO=/tmp/nnn.fifo
-export NNN_PLUG="i:preview-tui;t:treeview"
 export BAT_THEME=gruvbox
 
 # load nvm
@@ -43,4 +41,4 @@ command -v setxkbmap &>/dev/null && setxkbmap -option caps:swapescape
 command -v zoxide &>/dev/null && eval "$(zoxide init bash)"
 
 # custom prompt
-command -v starship &>/dev/null && eval "$(starship init bash)"
+# command -v starship &>/dev/null && eval "$(starship init bash)"

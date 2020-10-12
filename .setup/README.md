@@ -1,54 +1,61 @@
 # Setup
 
-This folder contains scripts to set up a consistent environment on any Ubuntu-derivative linux box.
+This folder contains scripts to set up my environment consistently on any
+Ubuntu-derivative linux box.
+
+I use `kitty` as my terminal emulator, `fish` for my shell, `kakoune` for my editor,
+and `tmux` for multitasking, so most of the config is for those tools. Everything else
+is for tools I use at least on a weekly basis.
 
 
 ## Install
 
-You will need to first install `git`, as well as admin permissions.
-
-First clone this repo into your $HOME directory with:
-
-```sh
-git clone --bare https://github.com/smores56/dotfiles.git $HOME/.dotfiles
-```
-
-Then update all of the submodules:
+You will need to first install `git`, as well as admin permissions. Once you do that, the following
+should do everything you need to set up your system.
 
 ```sh
-git --git-dir=$HOME/.dotfiles --work-tree=$HOME submodule update --init --recursive
-```
-
-Lastly, run the install script:
-
-```sh
+cd ~
+git clone --bare https://github.com/smores56/dotfiles.git ~/.dotfiles
+alias dotfiles=git --git-dir=~/.dotfiles --work-tree=~
+dotfiles reset --hard
+dotfiles submodule update --init --recursive
 cd ~/.setup/ && sh install.sh
 ```
 
 
 ## Post-Install
 
-You'll want to add everything to your `.bashrc` by putting
-`source $HOME/.setup/.bashrc` at the end of your `.bashrc`.
-
-Make sure to install a [Nerd font][nerd-font] to ensure that vim, tmux, and starship
-all work properly. "FiraCode Mono" works pretty well. _(If you don't use that font,_
-_you'll have to update `alacritty`'s [config file][alacritty config] to use it instead.)_
-
-If you want to switch escape and caps lock, add the following to your `.profile`:
+This repo is setup for the `fish` shell, which you can permanently switch to with:
 
 ```sh
-setxkbmap -option caps:swapescape
+echo /usr/bin/fish | sudo tee -a /etc/shells
+chsh -s /usr/bin/fish
 ```
+
+Make sure to install a [Nerd font][nerd-font] to ensure that kakoune, tmux, and starship
+all work properly. "FiraCode Mono" works pretty well. _(If you don't use that font,_
+_you'll have to update `kitty`'s [config file][kitty config] to use it instead.)_
+
 
 ### Optional
 
-You can install the `alacritty` terminal emulator by running `cargo install alacritty`.
+You can install the `kitty` terminal emulator by running `sudo apt install kitty`.
 
-You can install MEGASync [here][megasync], but `nnn` and `rclone` already integrate with MEGA.
+If you want file syncronization with MEGA, you can install MEGASync [here][megasync].
+
+If you want to switch escape and caps lock, you can `sudo apt install gnome-tweaks` and
+under "Keyboard & Mouse -> Additional Layout Options -> Caps Lock Behavior" toggle the
+"Swap ESC and Caps lock" option.
+
+
+### Troubleshooting
+
+If one of your SSH servers doesn't support the `kitty` terminal (maybe you ran into something
+like `open terminal failed: missing or unsuitable terminal: xterm-kitty`), you can run
+`kitty +kitten ssh myserver` to add kitty support.
 
 
 
-[alacritty config]: ../.alacritty.yml
+[kitty config]: ../.config/kitty/kitty.conf
 [megasync]: https://mega.nz/sync
 [nerd-font]: https://www.nerdfonts.com/font-downloads

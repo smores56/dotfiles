@@ -46,6 +46,10 @@ plug "alexherbo2/auto-pairs.kak"
 plug "lePerdu/kakboard" %{
     hook global WinCreate .* %{ kakboard-enable }
 }
+plug "alexherbo2/move-line.kak" config %{
+    map global normal <down> ': move-line-below<ret>'
+    map global normal <up> ': move-line-above<ret>'
+}
 plug "alexherbo2/surround.kak" %{
     # Quoting
     map global normal q ': enter-user-mode surround<ret>'
@@ -82,7 +86,7 @@ plug "ul/kak-lsp" do %{
         set-option window lsp_hover_anchor true
         set-face window DiagnosticError default+u
         set-face window DiagnosticWarning default+u
-        # lsp-formatting-sync
+        lsp-formatting-sync
     }
 
     hook global WinSetOption filetype=rust %{

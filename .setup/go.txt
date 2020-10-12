@@ -1,2 +1,0 @@
-github.com/rclone/rclone
-github.com/schollz/croc
