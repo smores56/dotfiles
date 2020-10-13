@@ -31,18 +31,22 @@ hook global InsertCompletionHide .* %{
 hook global WinSetOption filetype=(java|rust|python) %{ set-option buffer indentwidth 4 }
 hook global WinSetOption filetype=(elm|crystal|javascript|typescript|purescript|css|html) %{ set-option buffer indentwidth 2 }
 
-
 # import plug.kak
 source "%val{config}/plugins/plug.kak/rc/plug.kak"
 
 # import plugins
 plug "robertmeta/plug.kak" noload
+plug "delapouite/kakoune-palette"
 plug "occivink/kakoune-sudo-write"
 plug "alexherbo2/auto-pairs.kak"
 plug "alexherbo2/explore.kak" 
 plug "TeddyDD/kakoune-mint"
 plug "alexherbo2/prelude.kak"
 plug "alexherbo2/auto-pairs.kak"
+plug "andreyorst/fzf.kak" config %{
+    map global normal <c-p> ": fzf-mode<ret>"
+    set-option global fzf_highlight_command bat
+}
 plug "lePerdu/kakboard" %{
     hook global WinCreate .* %{ kakboard-enable }
 }
@@ -50,7 +54,7 @@ plug "alexherbo2/move-line.kak" config %{
     map global normal <down> ': move-line-below<ret>'
     map global normal <up> ': move-line-above<ret>'
 }
-plug "alexherbo2/surround.kak" %{
+plug "alexherbo2/surround.kak" config %{
     # Quoting
     map global normal q ': enter-user-mode surround<ret>'
     map global normal Q ': surround-enter-insert-mode<ret>'
@@ -59,7 +63,7 @@ plug "alexherbo2/surround.kak" %{
     map global normal <a-^> Q
 }
 plug "jdugan6240/powerline.kak" defer powerline %{
-    set-option global powerline_format 'bufname filetype mode_info line_column position'
+    set-option global powerline_format 'bufname filetype lsp mode_info line_column position'
     powerline-theme gruvbox
 } config %{
     powerline-start
@@ -79,14 +83,22 @@ plug "ul/kak-lsp" do %{
     define-command ee -docstring 'go to current error/warning from lsp' %{ lsp-find-error --include-warnings; lsp-find-error --previous --include-warnings }
 
     hook global WinSetOption filetype=(c|cpp|rust|elm|typescript|javascript|crystal) %{
-        map window user "l" ": enter-user-mode lsp<ret>" -docstring "LSP mode"
+        # enable LSP with hover
         lsp-enable-window
         lsp-auto-hover-enable
         lsp-auto-hover-insert-mode-disable
         set-option window lsp_hover_anchor true
-        set-face window DiagnosticError default+u
-        set-face window DiagnosticWarning default+u
-        lsp-formatting-sync
+
+        # add keybindings
+        map window user "<c-l>" ": enter-user-mode lsp<ret>" -docstring "LSP mode"
+        map window user "<c-r>" ": lsp-rename-prompt<ret>" -docstring "rename item with LSP"
+
+        # set how errors and warnings look
+        set-face window DiagnosticError default,red+b
+        set-face window DiagnosticWarning default,yellow+di
+
+        # auto format on save
+        hook window BufWritePre .* lsp-formatting-sync
     }
 
     hook global WinSetOption filetype=rust %{
@@ -96,11 +108,11 @@ plug "ul/kak-lsp" do %{
     hook global KakEnd .* lsp-exit
 }
 
-hook global WinSetOption filetype=rust %{
-  hook window -group rust-inlay-hints BufReload .* rust-analyzer-inlay-hints
-  hook window -group rust-inlay-hints NormalIdle .* rust-analyzer-inlay-hints
-  hook window -group rust-inlay-hints InsertIdle .* rust-analyzer-inlay-hints
-  hook -once -always window WinSetOption filetype=.* %{
-    remove-hooks window rust-inlay-hints
-  }
-}
+# hook global WinSetOption filetype=rust %{
+#   hook window -group rust-inlay-hints BufReload .* rust-analyzer-inlay-hints
+#   hook window -group rust-inlay-hints NormalIdle .* rust-analyzer-inlay-hints
+#   hook window -group rust-inlay-hints InsertIdle .* rust-analyzer-inlay-hints
+#   hook -once -always window WinSetOption filetype=.* %{
+#     remove-hooks window rust-inlay-hints
+#   }
+# }

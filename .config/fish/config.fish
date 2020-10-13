@@ -1,10 +1,11 @@
 # set env vars 
-set -x PATH /usr/local/go/bin:$HOME/go/bin:$HOME/.cargo/bin:$HOME/.local/bin:/usr/lib/zig:$HOME/.local/share/share/ponyup/bin:$PATH
+set -x PATH /usr/local/go/bin $HOME/go/bin $HOME/.cargo/bin $HOME/.local/bin /usr/lib/zig $HOME/.local/share/share/ponyup/bin $PATH
 set -x EDITOR kak
 set -x BAT_THEME gruvbox
 
 # set aliases
 alias k="kak"
+alias kf="kak (fzf-tmux)"
 alias r="ranger"
 alias lg="lazygit"
 alias df="dotfiles"
@@ -71,3 +72,8 @@ end
 set fish_greeting
 zoxide init fish | source
 starship init fish | source
+
+# install nvm
+fundle plugin 'FabioAntunes/fish-nvm'
+fundle plugin 'edc/bass'
+fundle init
