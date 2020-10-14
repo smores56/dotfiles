@@ -95,7 +95,7 @@ plug "ul/kak-lsp" do %{
 
         # set how errors and warnings look
         set-face window DiagnosticError default,red+b
-        set-face window DiagnosticWarning default,yellow+di
+        set-face window DiagnosticWarning default+du
 
         # auto format on save
         hook window BufWritePre .* lsp-formatting-sync
