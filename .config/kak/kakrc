@@ -51,8 +51,8 @@ plug "lePerdu/kakboard" %{
     hook global WinCreate .* %{ kakboard-enable }
 }
 plug "alexherbo2/move-line.kak" config %{
-    map global normal <down> ': move-line-below<ret>'
-    map global normal <up> ': move-line-above<ret>'
+    map global normal <c-down> ': move-line-below<ret>'
+    map global normal <c-up> ': move-line-above<ret>'
 }
 plug "alexherbo2/surround.kak" config %{
     # Quoting
