@@ -29,7 +29,9 @@ hook global InsertCompletionHide .* %{
 
 # set tab widths per language
 hook global WinSetOption filetype=(java|rust|python) %{ set-option buffer indentwidth 4 }
-hook global WinSetOption filetype=(elm|crystal|javascript|typescript|purescript|css|html) %{ set-option buffer indentwidth 2 }
+hook global WinSetOption filetype=(elm|crystal|javascript|typescript|purescript|css|html|markdown) %{
+    set-option buffer indentwidth 2
+}
 
 # import plug.kak
 source "%val{config}/plugins/plug.kak/rc/plug.kak"
@@ -85,13 +87,13 @@ plug "ul/kak-lsp" do %{
     hook global WinSetOption filetype=(c|cpp|rust|elm|typescript|javascript|crystal) %{
         # enable LSP with hover
         lsp-enable-window
-        lsp-auto-hover-enable
+        # lsp-auto-hover-enable
         lsp-auto-hover-insert-mode-disable
         set-option window lsp_hover_anchor true
 
         # add keybindings
-        map window user "<c-l>" ": enter-user-mode lsp<ret>" -docstring "LSP mode"
-        map window user "<c-r>" ": lsp-rename-prompt<ret>" -docstring "rename item with LSP"
+        map window user "l" ": enter-user-mode lsp<ret>" -docstring "LSP mode"
+        map window user "r" ": lsp-rename-prompt<ret>" -docstring "rename item with LSP"
 
         # set how errors and warnings look
         set-face window DiagnosticError default,red+b
@@ -108,11 +110,11 @@ plug "ul/kak-lsp" do %{
     hook global KakEnd .* lsp-exit
 }
 
-# hook global WinSetOption filetype=rust %{
-#   hook window -group rust-inlay-hints BufReload .* rust-analyzer-inlay-hints
-#   hook window -group rust-inlay-hints NormalIdle .* rust-analyzer-inlay-hints
-#   hook window -group rust-inlay-hints InsertIdle .* rust-analyzer-inlay-hints
-#   hook -once -always window WinSetOption filetype=.* %{
-#     remove-hooks window rust-inlay-hints
-#   }
-# }
+hook global WinSetOption filetype=rust %{
+  hook window -group rust-inlay-hints BufReload .* rust-analyzer-inlay-hints
+  hook window -group rust-inlay-hints NormalIdle .* rust-analyzer-inlay-hints
+  hook window -group rust-inlay-hints InsertIdle .* rust-analyzer-inlay-hints
+  hook -once -always window WinSetOption filetype=.* %{
+    remove-hooks window rust-inlay-hints
+  }
+}

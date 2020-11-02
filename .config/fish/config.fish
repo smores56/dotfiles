@@ -28,7 +28,7 @@ if status --is-interactive
         end
         sh ~/.pfetch/pfetch
     else
-        if type -q figlet
+       if type -q figlet
             figlet -w 32 -c -d ~/.figlet/fonts/ -f rounded "S'mux"
         end
     end
