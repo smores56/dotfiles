@@ -49,8 +49,8 @@ function port_forward --description "Port forward through SSH server"
         return 1
     end
 
-    set InternalPort ( if test (count $argv) -gt 1; $argv[2]; else; 3000; end )
-    set ExternalPort ( if test (count $argv) -gt 2; $argv[3]; else; 80; end )
+    set InternalPort ( if test (count $argv) -gt 1; echo $argv[2]; else; echo 3000; end )
+    set ExternalPort ( if test (count $argv) -gt 2; echo $argv[3]; else; echo 80; end )
 
     ssh -gfNR "$ExternalPort:127.0.0.1:$InternalPort" "$SshLocation"
 end

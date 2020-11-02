@@ -107,6 +107,12 @@ roots = ["package.json"]
 command = "html-languageserver"
 args = ["--stdio"]
 
+[language.typescript]
+filetypes = ["typescript"]
+roots = ["package.json", "tsconfig.json"]
+command = "tsserver"
+args = ["--stdio"]
+
 [language.javascript]
 filetypes = ["javascript"]
 roots = [".flowconfig"]
