@@ -6,6 +6,7 @@ colorscheme gruvbox
 
 # convenient mappings (easy commands, comments, etc.)
 map global normal ";" ":"
+map global normal ":" ";"
 map global normal / /(?i)
 map global normal <a-/> <a-/>(?i)
 map global normal "#" ": comment-line<ret>"

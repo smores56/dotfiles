@@ -167,9 +167,8 @@
       "verbose": "Left Shift"
     },
     {
-      "keyCode": 42,
-      "label": "Bksp",
-      "verbose": "Backspace"
+      "keyCode": 44,
+      "label": "Space"
     },
     {
       "keyCode": 224,
@@ -182,8 +181,9 @@
       "verbose": "Left Alt"
     },
     {
-      "keyCode": 44,
-      "label": "Space"
+      "keyCode": 42,
+      "label": "Bksp",
+      "verbose": "Backspace"
     },
     {
       "keyCode": 17451,
