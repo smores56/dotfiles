@@ -38,7 +38,12 @@
     "pkg-config",
     "libx11-dev",
     "fish",
-    "moreutils"
+    "alacritty",
+    "moreutils",
+    "libxrandr-dev",
+    "libxi-dev",
+    "libxinerama-dev",
+    "libxcursor-dev"
   ],
   "go": [
     "github.com/schollz/croc"

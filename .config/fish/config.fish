@@ -1,7 +1,6 @@
 # set env vars 
-set -x PATH /usr/local/go/bin $HOME/go/bin $HOME/.cargo/bin $HOME/.local/bin /usr/lib/zig $HOME/.local/share/ponyup/bin /usr/local/lib/swift/usr/bin/ $PATH
-set -x EDITOR kak
-set -x BAT_THEME gruvbox
+set -xg PATH /usr/local/go/bin $HOME/go/bin $HOME/.cargo/bin $HOME/.local/bin /usr/lib/zig $HOME/.local/share/ponyup/bin /usr/local/lib/swift/usr/bin/ $PATH
+set -xg EDITOR kak
 
 # include custom functions
 source ~/.config/fish/functions/custom.fish
@@ -21,6 +20,7 @@ alias pfdoc="port_forward root@dev.mohr.codes"
 
 # startup splashes
 if status --is-interactive
+    # give a splash screen based on whether currently in Tmux
     if test "$TMUX" = ""
         echo ""
         if type -q figlet
@@ -33,6 +33,9 @@ if status --is-interactive
         end
     end
 end
+
+# set themes based on time of day
+set_theme
 
 # set custom prompt
 set fish_greeting

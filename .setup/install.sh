@@ -50,6 +50,9 @@ jq '.go[]' config.json | xargs -I % go get -v %
 echo "install Javascript packages..."
 jq '.js[]' config.json | xargs xargs npm i -g
 
+echo "install rx..."
+cargo install --git https://github.com/cloudhead/rx --tag v0.4.0
+
 echo "install starship..."
 curl -fsSL https://starship.rs/install.sh | bash -s -- -y
 

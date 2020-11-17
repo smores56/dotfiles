@@ -2,8 +2,6 @@
 add-highlighter global/ number-lines -hlcursor
 add-highlighter global/ show-matching
 
-colorscheme gruvbox
-
 # convenient mappings (easy commands, comments, etc.)
 map global normal ";" ":"
 map global normal ":" ";"
@@ -59,6 +57,12 @@ plug "alexherbo2/move-line.kak" config %{
 }
 plug "alexherbo2/surround.kak" config %{
     # Quoting
+    declare-user-mode surround
+    map global surround s ':surround<ret>' -docstring 'surround'
+    map global surround c ':change-surround<ret>' -docstring 'change'
+    map global surround d ':delete-surround<ret>' -docstring 'delete'
+    map global surround t ':select-surrounding-tag<ret>' -docstring 'select tag'
+
     map global normal q ': enter-user-mode surround<ret>'
     map global normal Q ': surround-enter-insert-mode<ret>'
     # Move macros to ^
@@ -67,7 +71,19 @@ plug "alexherbo2/surround.kak" config %{
 }
 plug "jdugan6240/powerline.kak" defer powerline %{
     set-option global powerline_format 'bufname filetype lsp mode_info line_column position'
-    powerline-theme gruvbox
+
+    source "%val{config}/gruvbox-light-powerline.kak"
+
+    # Set colorscheme based on the time of day
+    evaluate-commands %sh{
+        if [ "$THEME" = "light" ]; then
+            echo "colorscheme gruvbox-light"
+            echo "powerline-theme gruvbox-light"
+        else
+            echo "colorscheme gruvbox"
+            echo "powerline-theme gruvbox"
+        fi
+    }
 } config %{
     powerline-start
 }
@@ -79,7 +95,7 @@ plug "ul/kak-lsp" do %{
 } config %{
     set global lsp_diagnostic_line_error_sign '║'
     set global lsp_diagnostic_line_warning_sign '┊'
-    set global lsp_hover_max_lines 20
+    set global lsp_hover_max_lines 15
 
     define-command ne -docstring 'go to next error/warning from lsp' %{ lsp-find-error --include-warnings }
     define-command pe -docstring 'go to previous error/warning from lsp' %{ lsp-find-error --previous --include-warnings }
@@ -88,9 +104,9 @@ plug "ul/kak-lsp" do %{
     hook global WinSetOption filetype=(c|cpp|rust|elm|typescript|javascript|crystal) %{
         # enable LSP with hover
         lsp-enable-window
-        # lsp-auto-hover-enable
+        lsp-auto-hover-enable
         lsp-auto-hover-insert-mode-disable
-        set-option window lsp_hover_anchor true
+        # set-option window lsp_hover_anchor true
 
         # add keybindings
         map window user "l" ": enter-user-mode lsp<ret>" -docstring "LSP mode"
@@ -111,11 +127,11 @@ plug "ul/kak-lsp" do %{
     hook global KakEnd .* lsp-exit
 }
 
-hook global WinSetOption filetype=rust %{
-  hook window -group rust-inlay-hints BufReload .* rust-analyzer-inlay-hints
-  hook window -group rust-inlay-hints NormalIdle .* rust-analyzer-inlay-hints
-  hook window -group rust-inlay-hints InsertIdle .* rust-analyzer-inlay-hints
-  hook -once -always window WinSetOption filetype=.* %{
-    remove-hooks window rust-inlay-hints
-  }
-}
+# hook global WinSetOption filetype=rust %{
+#   hook window -group rust-inlay-hints BufReload .* rust-analyzer-inlay-hints
+#   hook window -group rust-inlay-hints NormalIdle .* rust-analyzer-inlay-hints
+#   hook window -group rust-inlay-hints InsertIdle .* rust-analyzer-inlay-hints
+#   hook -once -always window WinSetOption filetype=.* %{
+#     remove-hooks window rust-inlay-hints
+#   }
+# }

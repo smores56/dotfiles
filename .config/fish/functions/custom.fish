@@ -35,3 +35,29 @@ function port_forward --description "Port forward through SSH server"
 
     ssh -gfNR "$ExternalPort:127.0.0.1:$InternalPort" "$SshLocation"
 end
+
+function set_theme --description "Set theming for apps based on the time of day"
+    if test (count $argv) -gt 0
+        if test $argv[1] = "light"; or test $argv[1] = "dark"
+            set -xg THEME $argv[1]
+        else
+            error "Only 'light' and 'dark' themes are supported"
+            return 1
+        end
+    else
+        set currentTime (date '+%H')
+        if test $currentTime -ge '7'; and test $currentTime -lt '18'
+            set -xg THEME light
+        else
+            set -xg THEME dark
+        end
+    end
+    
+    if test $THEME = "light"
+        set -xg BAT_THEME gruvbox-light
+        ln -f ~/.config/alacritty/light.yml ~/.config/alacritty/alacritty.yml
+    else
+        set -xg BAT_THEME gruvbox
+        ln -f ~/.config/alacritty/dark.yml ~/.config/alacritty/alacritty.yml
+    end
+end
