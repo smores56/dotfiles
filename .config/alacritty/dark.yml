@@ -1,7 +1,7 @@
 window:
   startup_mode: Maximized
   decorations: "none"
-  dynamic_padding: false
+  dynamic_padding: true
   padding:
     x: 5
     y: 5
