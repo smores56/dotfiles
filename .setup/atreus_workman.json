@@ -1,74 +1,24 @@
 {
   "keymap": [
     {
-      "keyCode": 20,
-      "label": "Q"
+      "keyCode": 2078,
+      "label": "!"
     },
     {
-      "keyCode": 7,
-      "label": "D"
+      "keyCode": 2079,
+      "label": "@"
     },
     {
-      "keyCode": 21,
-      "label": "R"
+      "keyCode": 82,
+      "label": "↑"
     },
     {
-      "keyCode": 26,
-      "label": "W"
+      "keyCode": 2081,
+      "label": "$"
     },
     {
-      "keyCode": 5,
-      "label": "B"
-    },
-    {
-      "keyCode": 0,
-      "label": "Blocked",
-      "verbose": "Disabled"
-    },
-    {
-      "keyCode": 0,
-      "label": "Blocked",
-      "verbose": "Disabled"
-    },
-    {
-      "keyCode": 13,
-      "label": "J"
-    },
-    {
-      "keyCode": 9,
-      "label": "F"
-    },
-    {
-      "keyCode": 24,
-      "label": "U"
-    },
-    {
-      "keyCode": 19,
-      "label": "P"
-    },
-    {
-      "keyCode": 51,
-      "label": ";"
-    },
-    {
-      "keyCode": 4,
-      "label": "A"
-    },
-    {
-      "keyCode": 22,
-      "label": "S"
-    },
-    {
-      "keyCode": 11,
-      "label": "H"
-    },
-    {
-      "keyCode": 23,
-      "label": "T"
-    },
-    {
-      "keyCode": 10,
-      "label": "G"
+      "keyCode": 2082,
+      "label": "%"
     },
     {
       "keyCode": 0,
@@ -81,76 +31,139 @@
       "verbose": "Disabled"
     },
     {
-      "keyCode": 28,
-      "label": "Y"
+      "keyCode": 75,
+      "label": "PgUp",
+      "verbose": "Page Up"
     },
     {
-      "keyCode": 17,
-      "label": "N"
+      "keyCode": 36,
+      "label": "7",
+      "extraLabel": "&"
     },
     {
-      "keyCode": 8,
-      "label": "E"
+      "keyCode": 37,
+      "label": "8",
+      "extraLabel": "*"
     },
     {
-      "keyCode": 18,
-      "label": "O"
+      "keyCode": 38,
+      "label": "9",
+      "extraLabel": "("
     },
     {
-      "keyCode": 12,
-      "label": "I"
+      "keyCode": 76,
+      "label": "Del"
     },
     {
-      "keyCode": 29,
-      "label": "Z"
+      "keyCode": 2086,
+      "label": "("
     },
     {
-      "keyCode": 27,
-      "label": "X"
+      "keyCode": 80,
+      "label": "←"
     },
     {
-      "keyCode": 16,
-      "label": "M"
+      "keyCode": 81,
+      "label": "↓"
     },
     {
-      "keyCode": 6,
-      "label": "C"
+      "keyCode": 79,
+      "label": "→"
     },
     {
-      "keyCode": 25,
-      "label": "V"
+      "keyCode": 2087,
+      "label": ")"
     },
     {
-      "keyCode": 53,
-      "label": "`"
+      "keyCode": 0,
+      "label": "Blocked",
+      "verbose": "Disabled"
     },
     {
-      "keyCode": 49,
-      "label": "\\"
+      "keyCode": 0,
+      "label": "Blocked",
+      "verbose": "Disabled"
     },
     {
-      "keyCode": 14,
-      "label": "K"
+      "keyCode": 78,
+      "label": "PgDn",
+      "verbose": "Page Down"
     },
     {
-      "keyCode": 15,
-      "label": "L"
+      "keyCode": 33,
+      "label": "4",
+      "extraLabel": "$"
     },
     {
-      "keyCode": 54,
-      "label": ","
+      "keyCode": 34,
+      "label": "5",
+      "extraLabel": "%"
     },
     {
-      "keyCode": 55,
-      "label": "."
+      "keyCode": 35,
+      "label": "6",
+      "extraLabel": "^"
     },
     {
-      "keyCode": 56,
-      "label": "/"
+      "keyCode": 65535,
+      "label": "",
+      "verbose": "Transparent"
     },
     {
-      "keyCode": 41,
-      "label": "Esc"
+      "keyCode": 47,
+      "label": "["
+    },
+    {
+      "keyCode": 48,
+      "label": "]"
+    },
+    {
+      "keyCode": 2080,
+      "label": "#"
+    },
+    {
+      "keyCode": 2095,
+      "label": "{"
+    },
+    {
+      "keyCode": 2096,
+      "label": "}"
+    },
+    {
+      "keyCode": 2083,
+      "label": "^"
+    },
+    {
+      "keyCode": 2084,
+      "label": "&"
+    },
+    {
+      "keyCode": 2085,
+      "label": "*"
+    },
+    {
+      "keyCode": 30,
+      "label": "1",
+      "extraLabel": "!"
+    },
+    {
+      "keyCode": 31,
+      "label": "2",
+      "extraLabel": "@"
+    },
+    {
+      "keyCode": 32,
+      "label": "3",
+      "extraLabel": "#"
+    },
+    {
+      "keyCode": 2094,
+      "label": "+"
+    },
+    {
+      "keyCode": 17410,
+      "label": "2",
+      "extraLabel": "LockTo"
     },
     {
       "keyCode": 43,
@@ -186,21 +199,22 @@
       "verbose": "Backspace"
     },
     {
-      "keyCode": 17451,
-      "label": "1",
-      "extraLabel": "ShiftTo"
+      "keyCode": 65535,
+      "label": "",
+      "verbose": "Transparent"
     },
     {
-      "keyCode": 45,
-      "label": "-"
+      "keyCode": 55,
+      "label": "."
     },
     {
-      "keyCode": 52,
-      "label": "'"
+      "keyCode": 39,
+      "label": "0",
+      "extraLabel": ")"
     },
     {
-      "keyCode": 40,
-      "label": "Enter"
+      "keyCode": 46,
+      "label": "="
     }
   ],
   "palette": []

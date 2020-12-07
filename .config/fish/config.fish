@@ -1,5 +1,5 @@
 # set env vars 
-set -xg PATH /usr/local/go/bin $HOME/go/bin $HOME/.cargo/bin $HOME/.local/bin /usr/lib/zig $HOME/.local/share/ponyup/bin /usr/local/lib/swift/usr/bin/ $PATH
+set -xg PATH /usr/local/go/bin $HOME/go/bin $HOME/.cargo/bin $HOME/.local/bin /usr/lib/zig $PATH
 set -xg EDITOR kak
 
 # include custom functions
@@ -7,10 +7,9 @@ source ~/.config/fish/functions/custom.fish
 
 # set aliases
 alias k="kak"
-alias kf="kak (fzf-tmux)"
 alias r="ranger"
 alias lg="lazygit"
-alias df="dotfiles"
+alias df="lazygit -w $HOME -g $HOME/.dotfiles/"
 alias t="tmux a 2>/dev/null; or tmux new -s main"
 alias erg="ssh_tmux sam@erglabs.org"
 alias hom="ssh_tmux smores@home.mohr.codes"

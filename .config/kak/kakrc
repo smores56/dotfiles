@@ -1,4 +1,6 @@
 # add number line to side of screen
+#
+# # format crystal code on save for now, as crystal LSP is not work
 add-highlighter global/ number-lines -hlcursor
 add-highlighter global/ show-matching
 
@@ -13,23 +15,24 @@ map global normal "#" ": comment-line<ret>"
 map global insert <tab> '<a-;><gt>'
 map global insert <s-tab> '<a-;><lt>'
 
-# use tab for completion
-hook global InsertCompletionShow .* %{
-    try %{
-        exec -draft 'h<a-K>\h<ret>'
-        map window insert <s-tab> <c-p>
-        map window insert <tab> <c-n>
-    }
-}
-hook global InsertCompletionHide .* %{
-    unmap window insert <tab> <c-n>
-    unmap window insert <s-tab> <c-p>
-}
-
 # set tab widths per language
 hook global WinSetOption filetype=(java|rust|python) %{ set-option buffer indentwidth 4 }
-hook global WinSetOption filetype=(elm|crystal|javascript|typescript|purescript|css|html|markdown) %{
+hook global WinSetOption filetype=(yaml|elm|crystal|javascript|typescript|purescript|css|html|markdown) %{
     set-option buffer indentwidth 2
+}
+
+# wrap text in txt and markdown files
+hook global WinSetOption filetype=(markdown|text) %{
+    add-highlighter buffer/ wrap
+    add-highlighter buffer/ show-whitespaces
+}
+
+# install plug.kak if it isn't installed yet
+nop %sh{
+    if [ ! -d "$HOME/.config/kak/plugins/plug.kak" ]; then
+        mkdir -p "$HOME/.config/kak/plugins"
+        git clone https://github.com/robertmeta/plug.kak.git "$HOME/.config/kak/plugins/plug.kak"
+    fi
 }
 
 # import plug.kak
@@ -101,7 +104,7 @@ plug "ul/kak-lsp" do %{
     define-command pe -docstring 'go to previous error/warning from lsp' %{ lsp-find-error --previous --include-warnings }
     define-command ee -docstring 'go to current error/warning from lsp' %{ lsp-find-error --include-warnings; lsp-find-error --previous --include-warnings }
 
-    hook global WinSetOption filetype=(c|cpp|rust|elm|typescript|javascript|crystal) %{
+    hook global WinSetOption filetype=(c|cpp|rust|elm|typescript|javascript) %{
         # enable LSP with hover
         lsp-enable-window
         lsp-auto-hover-enable
@@ -125,6 +128,15 @@ plug "ul/kak-lsp" do %{
     }
 
     hook global KakEnd .* lsp-exit
+}
+
+# format crystal code on save for now, as crystal LSP is not working
+hook global WinSetOption filetype=crystal %{
+    hook window BufWritePre .* %{
+        nop %sh{
+            crystal tool format %val{buffile}
+        }
+    }
 }
 
 # hook global WinSetOption filetype=rust %{

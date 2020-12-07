@@ -1,6 +1,5 @@
 {
   "rust": [
-    "exa",
     "bat",
     "ripgrep",
     "fd-find",
@@ -8,6 +7,7 @@
     "typeracer",
     "dua-cli",
     "tokei",
+    "meli",
     "watchexec",
     "zoxide"
   ],
