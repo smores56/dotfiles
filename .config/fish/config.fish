@@ -40,8 +40,3 @@ set_theme
 set fish_greeting
 zoxide init fish | source
 starship init fish | source
-
-# install nvm
-fundle plugin 'FabioAntunes/fish-nvm'
-fundle plugin 'edc/bass'
-fundle init

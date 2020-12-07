@@ -4,6 +4,7 @@
     "ripgrep",
     "fd-find",
     "sd",
+    "fnm",
     "typeracer",
     "dua-cli",
     "tokei",
