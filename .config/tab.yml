@@ -1,0 +1,16 @@
+tab: main
+doc: the primary workspace
+shell: fish
+
+workspace:
+  - tab: listen
+    doc: listen to music
+  - tab: dev
+    doc: development work
+
+key_bindings:
+  - action: Disconnect
+    keys: ctrl-d
+
+  - action: SelectInteractive
+    keys: ctrl-t

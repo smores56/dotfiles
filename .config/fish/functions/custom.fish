@@ -14,12 +14,19 @@ function ssh_tmux --description "SSH into a TMUX session"
         return 1
     end
 
-    if test "$TMUX" = ""
-        ssh "$SshLocation" -t "tmux a 2>/dev/null || tmux new -s main; exit"
+    if test "$TAB" = ""
+        ssh "$SshLocation" -t "tab; echo; exit"
     else
-        error "Don't SSH into tmux from tmux!"
+        error "Don't SSH into tab from tab!"
         return 1
     end
+
+    # if test "$TMUX" = ""
+    #     ssh "$SshLocation" -t "tmux a 2>/dev/null || tmux new -s main; exit"
+    # else
+    #     error "Don't SSH into tmux from tmux!"
+    #     return 1
+    # end
 end
 
 function port_forward --description "Port forward through SSH server"
