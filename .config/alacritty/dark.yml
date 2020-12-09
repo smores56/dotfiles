@@ -7,8 +7,9 @@ window:
     y: 5
 
 font:
+  size: 15
   normal:
-    family: FiraCode
+    family: SauceCodePro Nerd Font
 
 background_opacity: 0.85
 
