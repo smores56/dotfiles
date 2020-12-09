@@ -47,10 +47,6 @@ plug "alexherbo2/explore.kak"
 plug "TeddyDD/kakoune-mint"
 plug "alexherbo2/prelude.kak"
 plug "alexherbo2/auto-pairs.kak"
-plug "andreyorst/fzf.kak" config %{
-    map global normal <c-p> ": fzf-mode<ret>"
-    set-option global fzf_highlight_command bat
-}
 plug "lePerdu/kakboard" %{
     hook global WinCreate .* %{ kakboard-enable }
 }
