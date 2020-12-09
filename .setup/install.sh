@@ -22,18 +22,8 @@ ZIG_URL=$(curl $ZIG_INDEX 2>/dev/null | jq -r '.master."x86_64-linux".tarball')
 sudo mkdir -p /usr/lib/zig/
 curl $ZIG_URL | sudo tar -xf -C /usr/lib/zig/ --strip-components 1
 
-echo "install Pony..."
-PONY_URL="https://raw.githubusercontent.com/ponylang/ponyup/latest-release/ponyup-init.sh"
-sh -c "$(curl --proto '=https' --tlsv1.2 -sSf $PONY_URL)"
-ponyup update ponyc nightly
-
 echo "prepare install of packages..."
 PATH=/usr/local/go/bin:$HOME/.cargo/bin:$HOME/.local/bin/:/usr/lib/zig/0.6.0/:$PATH
-NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
-. $HOME/.nvm/nvm.sh
-
-echo "install NPM..."
-nvm install node && nvm use node
 
 echo "install Python packages..."
 jq '.python[]' config.json | xargs pip3 install
@@ -46,6 +36,9 @@ echo "install Go packages..."
 mkdir -p $HOME/go
 GOPATH=$HOME/go
 jq '.go[]' config.json | xargs -I % go get -v %
+
+echo "install npm with fnm..."
+fnm install --lts
 
 echo "install Javascript packages..."
 jq '.js[]' config.json | xargs xargs npm i -g
