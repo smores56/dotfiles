@@ -27,14 +27,6 @@ hook global WinSetOption filetype=(markdown|text) %{
     add-highlighter buffer/ show-whitespaces
 }
 
-# install plug.kak if it isn't installed yet
-nop %sh{
-    if [ ! -d "$HOME/.config/kak/plugins/plug.kak" ]; then
-        mkdir -p "$HOME/.config/kak/plugins"
-        git clone https://github.com/robertmeta/plug.kak.git "$HOME/.config/kak/plugins/plug.kak"
-    fi
-}
-
 # import plug.kak
 source "%val{config}/plugins/plug.kak/rc/plug.kak"
 
@@ -42,15 +34,16 @@ source "%val{config}/plugins/plug.kak/rc/plug.kak"
 plug "robertmeta/plug.kak" noload
 plug "delapouite/kakoune-palette"
 plug "occivink/kakoune-sudo-write"
+plug "occivink/kakoune-filetree"
 plug "alexherbo2/auto-pairs.kak"
 plug "alexherbo2/explore.kak" 
 plug "TeddyDD/kakoune-mint"
+plug "jjk96/kakoune-fireplace"
 plug "alexherbo2/prelude.kak"
-plug "alexherbo2/auto-pairs.kak"
 plug "lePerdu/kakboard" %{
     hook global WinCreate .* %{ kakboard-enable }
 }
-plug "alexherbo2/move-line.kak" config %{
+plug "alexherbo2/move-line.kak" %{
     map global normal <c-down> ': move-line-below<ret>'
     map global normal <c-up> ': move-line-above<ret>'
 }

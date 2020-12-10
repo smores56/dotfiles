@@ -1,9 +1,6 @@
 [submodule ".config/kak/plugins/plug.kak"]
 	path = .config/kak/plugins/plug.kak
 	url = https://github.com/robertmeta/plug.kak.git
-[submodule ".pfetch"]
-	path = .pfetch
-	url = https://github.com/dylanaraps/pfetch.git
 [submodule ".crystal/ameba"]
 	path = .crystal/ameba
 	url = https://github.com/crystal-ameba/ameba.git

@@ -25,16 +25,15 @@ if status --is-interactive
         if type -q figlet
             figlet -w 45 -c -d ~/.figlet/fonts/ -f big "S'mores"
         end
-        sh ~/.pfetch/pfetch
     else
-       if type -q figlet
+        if type -q figlet
             figlet -w 32 -c -d ~/.figlet/fonts/ -f rounded "S'mux"
         end
     end
-end
 
-# set themes based on time of day
-set_theme
+    # set themes based on time of day
+    set_theme
+end
 
 # set custom prompt
 set fish_greeting

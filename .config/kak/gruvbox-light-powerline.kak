@@ -1,8 +1,5 @@
 # Powerline colorscheme for base16 Kakoune theme
 
-hook global ModuleLoaded powerline %{ require-module powerline_gruvbox_light }
-
-provide-module powerline_gruvbox_light %§
 set-option -add global powerline_themes "gruvbox-light"
 
 define-command -hidden powerline-theme-gruvbox-light %{ evaluate-commands %sh{
@@ -65,5 +62,3 @@ define-command -hidden powerline-theme-gruvbox-light %{ evaluate-commands %sh{
         declare-option -hidden str powerline_base_bg %opt{powerline_color08}
     "
 }}
-
-§

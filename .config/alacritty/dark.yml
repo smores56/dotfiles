@@ -1,19 +1,20 @@
 window:
   startup_mode: Maximized
-  decorations: "none"
+  decorations: none
   dynamic_padding: true
   padding:
-    x: 5
-    y: 5
+    x: 3
+    y: 3
 
 font:
   size: 15
   normal:
-    family: SauceCodePro Nerd Font
+    family: Hack Nerd Font
 
 background_opacity: 0.85
 
 colors:
+  # gruvbox dark
   primary:
     # hard contrast: background = '0x1d2021'
     background: '0x282828'

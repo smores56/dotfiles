@@ -14,19 +14,12 @@ function ssh_tmux --description "SSH into a TMUX session"
         return 1
     end
 
-    if test "$TAB" = ""
-        ssh "$SshLocation" -t "tab; echo; exit"
+    if test "$TMUX" = ""
+        ssh "$SshLocation" -t "tmux a 2>/dev/null || tmux new -s main; exit"
     else
-        error "Don't SSH into tab from tab!"
+        error "Don't SSH into tmux from tmux!"
         return 1
     end
-
-    # if test "$TMUX" = ""
-    #     ssh "$SshLocation" -t "tmux a 2>/dev/null || tmux new -s main; exit"
-    # else
-    #     error "Don't SSH into tmux from tmux!"
-    #     return 1
-    # end
 end
 
 function port_forward --description "Port forward through SSH server"
@@ -61,7 +54,7 @@ function set_theme --description "Set theming for apps based on the time of day"
     end
     
     if test $THEME = "light"
-        set -xg BAT_THEME gruvbox-light
+        set -xg BAT_THEME gruvbox-white
         ln -f ~/.config/alacritty/light.yml ~/.config/alacritty/alacritty.yml
     else
         set -xg BAT_THEME gruvbox
