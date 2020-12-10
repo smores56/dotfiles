@@ -54,10 +54,12 @@ function set_theme --description "Set theming for apps based on the time of day"
     end
     
     if test $THEME = "light"
-        set -xg BAT_THEME gruvbox-white
+        set -xg BAT_THEME gruvbox-light
         ln -f ~/.config/alacritty/light.yml ~/.config/alacritty/alacritty.yml
+        ln -f ~/.config/amp/light.yml ~/.config/amp/config.yml
     else
         set -xg BAT_THEME gruvbox
         ln -f ~/.config/alacritty/dark.yml ~/.config/alacritty/alacritty.yml
+        ln -f ~/.config/amp/dark.yml ~/.config/amp/config.yml
     end
 end

@@ -1,0 +1,33 @@
+theme: gruvbox
+
+soft_tabs: true
+
+types:
+  rs:
+    tab_width: 4
+  java:
+    tab_width: 4
+  py:
+    tab_width: 4
+  go:
+    tab_width: 4
+  yml:
+    tab_width: 2
+  elm:
+    tab_width: 2
+  cr:
+    tab_width: 2
+  js:
+    tab_width: 2
+  jsx:
+    tab_width: 2
+  ts:
+    tab_width: 2
+  tsx:
+    tab_width: 2
+  css:
+    tab_width: 2
+  html:
+    tab_width: 2
+  md:
+    tab_width: 2
