@@ -7,6 +7,7 @@ source ~/.config/fish/functions/custom.fish
 
 # set aliases
 alias k="kak"
+alias a="amp"
 alias r="ranger"
 alias lg="lazygit"
 alias df="lazygit -w $HOME -g $HOME/.dotfiles/"
