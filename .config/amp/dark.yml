@@ -1,6 +1,11 @@
 theme: gruvbox
 
 soft_tabs: true
+line_wrapping: false
+line_length_guide: 80
+
+search_select:
+  max_results: 10
 
 types:
   rs:
@@ -31,3 +36,6 @@ types:
     tab_width: 2
   md:
     tab_width: 2
+    line_wrapping: true
+  txt:
+    line_wrapping: true
