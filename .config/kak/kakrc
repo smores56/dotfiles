@@ -93,7 +93,7 @@ plug "ul/kak-lsp" do %{
     define-command pe -docstring 'go to previous error/warning from lsp' %{ lsp-find-error --previous --include-warnings }
     define-command ee -docstring 'go to current error/warning from lsp' %{ lsp-find-error --include-warnings; lsp-find-error --previous --include-warnings }
 
-    hook global WinSetOption filetype=(c|cpp|rust|elm|typescript|javascript) %{
+    hook global WinSetOption filetype=(c|cpp|rust|elm|typescript|javascript|crystal) %{
         # enable LSP with hover
         lsp-enable-window
         lsp-auto-hover-enable
@@ -109,7 +109,7 @@ plug "ul/kak-lsp" do %{
         set-face window DiagnosticWarning default+du
 
         # auto format on save
-        hook window BufWritePre .* lsp-formatting-sync
+        hook window BufWritePre .* lsp-formatting
     }
 
     hook global WinSetOption filetype=rust %{
@@ -117,15 +117,6 @@ plug "ul/kak-lsp" do %{
     }
 
     hook global KakEnd .* lsp-exit
-}
-
-# format crystal code on save for now, as crystal LSP is not working
-hook global WinSetOption filetype=crystal %{
-    hook window BufWritePre .* %{
-        nop %sh{
-            crystal tool format %val{buffile}
-        }
-    }
 }
 
 # hook global WinSetOption filetype=rust %{
