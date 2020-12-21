@@ -34,9 +34,9 @@ if status --is-interactive
 
     # set themes based on time of day
     set_theme
-end
 
-# set custom prompt
-set fish_greeting
-zoxide init fish | source
-starship init fish | source
+    # set custom prompt
+    set fish_greeting
+    zoxide init fish | source
+    starship init fish | source
+end
