@@ -32,7 +32,6 @@
     "libsqlite3-dev",
     "figlet",
     "software-properties-common",
-    "fonts-firacode",
     "autoconf",
     "libncursesw5",
     "libncursesw5-dev",
@@ -46,10 +45,12 @@
     "libxrandr-dev",
     "libxi-dev",
     "libxinerama-dev",
-    "libxcursor-dev"
+    "libxcursor-dev",
+    "lazygit"
   ],
   "go": [
-    "github.com/schollz/croc"
+    "github.com/schollz/croc",
+    "github.com/ivaaaan/smug"
   ],
   "js": [
     "purescript",
