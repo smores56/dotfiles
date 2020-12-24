@@ -1,1 +1,1 @@
-fnm env | source
+~/.cargo/bin/fnm env | source
