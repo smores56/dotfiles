@@ -8,13 +8,12 @@ source ~/.config/fish/functions/custom.fish
 # set aliases
 alias k="kak"
 alias a="amp"
+alias t="tab"
 alias r="ranger"
 alias lg="lazygit"
 alias df="lazygit -w $HOME -g $HOME/.dotfiles/"
-alias t="tmux a 2>/dev/null; or tmux new -s main"
-alias erg="ssh_tmux sam@erglabs.org"
-alias hom="ssh_tmux smores@home.mohr.codes"
-alias doc="ssh_tmux root@dev.mohr.codes"
+alias hom="ssh_tab smores@home.mohr.codes"
+alias doc="ssh_tab root@dev.mohr.codes"
 alias pfhom="port_forward smores@home.mohr.codes"
 alias pfdoc="port_forward root@dev.mohr.codes"
 
