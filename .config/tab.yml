@@ -10,7 +10,7 @@ workspace:
 
 key_bindings:
   - action: Disconnect
-    keys: ctrl-d
+    keys: ctrl-a
 
   - action: SelectInteractive
     keys: ctrl-t

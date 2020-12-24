@@ -3,7 +3,7 @@ function error --description "Print error to stderr"
 end
 
 function dotfiles --description "Manage my dotfiles"
-    git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME $argv
+    git --work-tree=$HOME $argv
 end
 
 function ssh_tab --description "SSH into a `tab` session"
