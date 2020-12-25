@@ -1,2 +1,4 @@
 set icons
 set previewer ~/.config/lf/pv.sh
+map <backspace2> set hidden!
+map <delete> delete
