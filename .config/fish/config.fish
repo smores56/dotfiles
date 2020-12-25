@@ -19,15 +19,15 @@ alias pfdoc="port_forward root@dev.mohr.codes"
 
 # startup splashes
 if status --is-interactive
-    # give a splash screen based on whether currently in Tmux
-    if test "$TMUX" = ""
+    # give a splash screen based on whether currently in a tab
+    if test "$TAB" = ""
         echo ""
         if type -q figlet
             figlet -w 45 -c -d ~/.figlet/fonts/ -f big "S'mores"
         end
     else
         if type -q figlet
-            figlet -w 32 -c -d ~/.figlet/fonts/ -f rounded "S'mux"
+            figlet -w 32 -c -d ~/.figlet/fonts/ -f rounded "S'tab"
         end
     end
 
