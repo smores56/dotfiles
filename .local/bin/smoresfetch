@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# A script to fetch system info very quickly.
+# Inspired by https://github.com/elenapan/dotfiles/blob/master/bin/bunnyfetch.
+
+r="$(tput setaf 1)"
+b="$(tput setaf 4)"
+t="$(tput sgr0)"
+
+machinename=$(hostname)
+wifiname=$(iwgetid | cut -d \" -f2)
+wmname=$(awk -F= '/PRETTY_NAME/ {print substr($2, 2, length($2) - 2)}' /etc/os-release)
+kernel=$(uname -r | cut -d '-' -f1)
+resolution=$(xwininfo -root | grep geometry | awk '{print $2}' | cut -d + -f1)
+shell=$(basename $SHELL)
+
+# ╭────────────────────────────╼
+# │  ___ _
+# │ / __( )_ __  ___ _ _ ___ ___
+# │ \__ \/| '  \/ _ \ '_/ -_|_-<
+# │ |___/ |_|_|_\___/_| \___/__/
+# │
+# ├─╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌─╼
+# │ 💻 MACHINE
+# │ 🪟 WINDOW MANAGER
+# │ 🍿 KERNEL
+# │ 🐚 SHELL
+# │ 📐 RESOLUTION
+# │ 📡 WIFI
+# ╽
+
+cat << EOF
+╭────────────────────────────╼
+│ $r ___$t$b _$t
+│ $r/ __$b( )$(tput sgr0)_ __  ___ _ _ ___$r ___$t
+│ $r\__ \\$b/$t| '  \/ _ \ '_/ -_$r|_-<$t
+│ $r|___/$t |_|_|_\___/_| \___$r/__/$t
+│
+├─╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌─╼
+│ $b💻$t $machinename
+│ 🪟 $wmname
+│ 🍿 $kernel
+│ 🐚 $shell
+│ 📐 $resolution
+│ 📡 $wifiname
+╽
+EOF
