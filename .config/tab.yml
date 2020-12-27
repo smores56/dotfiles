@@ -7,10 +7,12 @@ workspace:
     doc: listen to music
   - tab: dev
     doc: development work
+  - tab: typeracer
+    doc: practice typing
 
 key_bindings:
   - action: Disconnect
-    keys: ctrl-d
+    keys: ctrl-a
 
   - action: SelectInteractive
     keys: ctrl-t

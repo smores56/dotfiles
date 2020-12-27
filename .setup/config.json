@@ -15,8 +15,7 @@
     "zoxide"
   ],
   "python": [
-    "beets",
-    "ranger-fm"
+    "beets"
   ],
   "packages": [
     "jq",
@@ -50,6 +49,7 @@
   ],
   "go": [
     "github.com/schollz/croc",
+    "github.com/gokcehan/lf",
     "github.com/ivaaaan/smug"
   ],
   "js": [

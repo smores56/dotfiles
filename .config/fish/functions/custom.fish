@@ -3,10 +3,10 @@ function error --description "Print error to stderr"
 end
 
 function dotfiles --description "Manage my dotfiles"
-    git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME $argv
+    git --work-tree=$HOME $argv
 end
 
-function ssh_tmux --description "SSH into a TMUX session"
+function ssh_tab --description "SSH into a `tab` session"
     if test (count $argv) -gt 0
         set SshLocation $argv[1]
     else
@@ -14,10 +14,10 @@ function ssh_tmux --description "SSH into a TMUX session"
         return 1
     end
 
-    if test "$TMUX" = ""
-        ssh "$SshLocation" -t "tmux a 2>/dev/null || tmux new -s main; exit"
+    if test "$TAB" = ""
+        ssh "$SshLocation" -t "SSH_CONNECTION=1 tab; exit"
     else
-        error "Don't SSH into tmux from tmux!"
+        error "Don't SSH into tab from tab!"
         return 1
     end
 end

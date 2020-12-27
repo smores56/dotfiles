@@ -1,6 +1,4 @@
 # add number line to side of screen
-#
-# # format crystal code on save for now, as crystal LSP is not work
 add-highlighter global/ number-lines -hlcursor
 add-highlighter global/ show-matching
 
@@ -22,7 +20,7 @@ hook global WinSetOption filetype=(yaml|elm|crystal|javascript|typescript|puresc
 }
 
 # wrap text in txt and markdown files
-hook global WinSetOption filetype=(markdown|text) %{
+hook global WinSetOption filetype=(markdown|plain) %{
     add-highlighter buffer/ wrap
     add-highlighter buffer/ show-whitespaces
 }
@@ -32,35 +30,9 @@ source "%val{config}/plugins/plug.kak/rc/plug.kak"
 
 # import plugins
 plug "robertmeta/plug.kak" noload
-plug "delapouite/kakoune-palette"
 plug "occivink/kakoune-sudo-write"
-plug "occivink/kakoune-filetree"
 plug "alexherbo2/auto-pairs.kak"
-plug "alexherbo2/explore.kak" 
 plug "TeddyDD/kakoune-mint"
-plug "jjk96/kakoune-fireplace"
-plug "alexherbo2/prelude.kak"
-plug "lePerdu/kakboard" %{
-    hook global WinCreate .* %{ kakboard-enable }
-}
-plug "alexherbo2/move-line.kak" %{
-    map global normal <c-down> ': move-line-below<ret>'
-    map global normal <c-up> ': move-line-above<ret>'
-}
-plug "alexherbo2/surround.kak" config %{
-    # Quoting
-    declare-user-mode surround
-    map global surround s ':surround<ret>' -docstring 'surround'
-    map global surround c ':change-surround<ret>' -docstring 'change'
-    map global surround d ':delete-surround<ret>' -docstring 'delete'
-    map global surround t ':select-surrounding-tag<ret>' -docstring 'select tag'
-
-    map global normal q ': enter-user-mode surround<ret>'
-    map global normal Q ': surround-enter-insert-mode<ret>'
-    # Move macros to ^
-    map global normal ^ q
-    map global normal <a-^> Q
-}
 plug "jdugan6240/powerline.kak" defer powerline %{
     set-option global powerline_format 'bufname filetype lsp mode_info line_column position'
 
@@ -119,11 +91,11 @@ plug "ul/kak-lsp" do %{
     hook global KakEnd .* lsp-exit
 }
 
-# hook global WinSetOption filetype=rust %{
-#   hook window -group rust-inlay-hints BufReload .* rust-analyzer-inlay-hints
-#   hook window -group rust-inlay-hints NormalIdle .* rust-analyzer-inlay-hints
-#   hook window -group rust-inlay-hints InsertIdle .* rust-analyzer-inlay-hints
-#   hook -once -always window WinSetOption filetype=.* %{
-#     remove-hooks window rust-inlay-hints
-#   }
-# }
+hook global WinSetOption filetype=rust %{
+  hook window -group rust-inlay-hints BufReload .* rust-analyzer-inlay-hints
+  hook window -group rust-inlay-hints NormalIdle .* rust-analyzer-inlay-hints
+  hook window -group rust-inlay-hints InsertIdle .* rust-analyzer-inlay-hints
+  hook -once -always window WinSetOption filetype=.* %{
+    remove-hooks window rust-inlay-hints
+  }
+}

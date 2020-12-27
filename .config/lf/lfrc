@@ -1,3 +1,6 @@
+# show icons when browsing files
+set icons
+
 # interpreter for shell commands (needs to be POSIX compatible)
 set shell sh
 
@@ -32,7 +35,7 @@ map o &mimeopen $f
 map O $mimeopen --ask $f
 
 # shortcut for toggling hidden files
-map . set hidden!
+map <backspace2> set hidden!
 
 # use 256 colors
 set color256
@@ -51,10 +54,6 @@ cmd open ${{
     esac
 }}
 
-# define a custom 'rename' command without prompt for overwrite
-# cmd rename %[ -e $1 ] && printf "file exists" || mv $f $1
-# map r push :rename<space>
-
 # make sure trash folder exists
 # %mkdir -p ~/.trash
 
@@ -62,18 +61,8 @@ cmd open ${{
 # (also see 'man mv' for backup/overwrite options)
 cmd trash %set -f; mv $fx ~/.trash
 
-# define a custom 'delete' command
-# cmd delete ${{
-#     set -f
-#     printf "$fx\n"
-#     printf "delete?[y/n]"
-#     read ans
-#     [ $ans = "y" ] && rm -rf $fx
-# }}
-
 # use '<delete>' key for either 'trash' or 'delete' command
-# map <delete> trash
-# map <delete> delete
+map <delete> delete
 
 # extract the current file with the right command
 # (xkcd link: https://xkcd.com/1168/)
