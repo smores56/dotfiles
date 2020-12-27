@@ -1,3 +1,6 @@
+# set TERM if it is not set yet
+if test $TERM = ""; set -xg TERM xterm; end
+
 # set env vars 
 set -xg PATH /usr/local/go/bin $HOME/go/bin $HOME/.cargo/bin $HOME/.local/bin /usr/lib/zig $PATH
 set -xg EDITOR kak
