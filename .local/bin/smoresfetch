@@ -11,7 +11,7 @@ machinename=$(hostname)
 wifiname=$(iwgetid | cut -d \" -f2)
 wmname=$(awk -F= '/PRETTY_NAME/ {print substr($2, 2, length($2) - 2)}' /etc/os-release)
 kernel=$(uname -r | cut -d '-' -f1)
-resolution=$(xwininfo -root | grep geometry | awk '{print $2}' | cut -d + -f1)
+resolution=$(xwininfo -root 2>/dev/null | grep geometry | awk '{print $2}' | cut -d + -f1)
 shell=$(basename $SHELL)
 
 if [[ -z "$wifiname" ]]; then wifiname="not connected"; fi
