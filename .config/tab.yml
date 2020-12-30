@@ -1,5 +1,5 @@
 tab: main
-doc: the primary workspace
+doc: primary workspace
 shell: fish
 
 workspace:
@@ -9,6 +9,8 @@ workspace:
     doc: development work
   - tab: typeracer
     doc: practice typing
+  - tab: mohr-codes
+    doc: personal website
 
 key_bindings:
   - action: Disconnect

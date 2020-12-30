@@ -33,6 +33,10 @@ plug "robertmeta/plug.kak" noload
 plug "occivink/kakoune-sudo-write"
 plug "alexherbo2/auto-pairs.kak"
 plug "TeddyDD/kakoune-mint"
+# clipboard integration
+plug "lePerdu/kakboard" %{
+        hook global WinCreate .* %{ kakboard-enable }
+}
 plug "jdugan6240/powerline.kak" defer powerline %{
     set-option global powerline_format 'bufname filetype lsp mode_info line_column position'
 
@@ -91,11 +95,11 @@ plug "ul/kak-lsp" do %{
     hook global KakEnd .* lsp-exit
 }
 
-hook global WinSetOption filetype=rust %{
-  hook window -group rust-inlay-hints BufReload .* rust-analyzer-inlay-hints
-  hook window -group rust-inlay-hints NormalIdle .* rust-analyzer-inlay-hints
-  hook window -group rust-inlay-hints InsertIdle .* rust-analyzer-inlay-hints
-  hook -once -always window WinSetOption filetype=.* %{
-    remove-hooks window rust-inlay-hints
-  }
-}
+# hook global WinSetOption filetype=rust %{
+#   hook window -group rust-inlay-hints BufReload .* rust-analyzer-inlay-hints
+#   hook window -group rust-inlay-hints NormalIdle .* rust-analyzer-inlay-hints
+#   hook window -group rust-inlay-hints InsertIdle .* rust-analyzer-inlay-hints
+#   hook -once -always window WinSetOption filetype=.* %{
+#     remove-hooks window rust-inlay-hints
+#   }
+# }
