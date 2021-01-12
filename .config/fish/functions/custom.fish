@@ -6,7 +6,7 @@ function dotfiles --description "Manage my dotfiles"
     git --work-tree=$HOME $argv
 end
 
-function ssh_tab --description "SSH into a `tab` session"
+function ssh_tmux --description "SSH into a tmux session"
     if test (count $argv) -gt 0
         set SshLocation $argv[1]
     else
@@ -14,10 +14,10 @@ function ssh_tab --description "SSH into a `tab` session"
         return 1
     end
 
-    if test "$TAB" = ""
-        ssh "$SshLocation" -t "SSH_CONNECTION=1 tab; exit"
+    if test "$TMUX" = ""
+        ssh "$SshLocation" -t "SSH_CONNECTION=1 tmux a 2>/dev/null; or SSH_CONNECTION=1 tmux new -s main; exit"
     else
-        error "Don't SSH into tab from tab!"
+        error "Don't SSH into tmux from tmux!"
         return 1
     end
 end

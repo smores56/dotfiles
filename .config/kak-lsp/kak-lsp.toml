@@ -107,23 +107,40 @@ roots = ["package.json"]
 command = "html-languageserver"
 args = ["--stdio"]
 
-[language.typescript]
+[language.yaml]
+filetypes = ["yaml"]
+roots = ["*.yml"]
+command = "yaml-language-server"
+args = ["--stdio"]
+
+# [language.typescript]
+# filetypes = ["typescript"]
+# roots = ["package.json", "tsconfig.json"]
+# command = "typescript-language-server"
+# args = ["--stdio"]
+
+[language.tsx]
 filetypes = ["typescript"]
 roots = ["package.json", "tsconfig.json"]
-command = "tsserver"
+offset_encoding = "utf-8"
+command = "typescript-language-server"
 args = ["--stdio"]
 
 [language.javascript]
 filetypes = ["javascript"]
-roots = [".flowconfig"]
-command = "flow"
-args = ["lsp"]
-
-[language.json]
-filetypes = ["json"]
 roots = ["package.json"]
-command = "json-languageserver"
+command = "typescript-language-server"
 args = ["--stdio"]
+
+[language.svelte]
+filetypes = ["svelte"]
+roots = ["package.json"]
+command = "svelteserver"
+args = ["--stdio"]
+
+# [language.json]
+# filetypes = ["json"]
+# roots = ["package.json"]
 
 [language.latex]
 filetypes = ["latex"]

@@ -11,12 +11,13 @@ source ~/.config/fish/functions/custom.fish
 # set aliases
 alias k="kak"
 alias a="amp"
-alias t="tab"
+alias t="tmux a 2>/dev/null; tmux new -s main"
 alias l="lf"
 alias lg="lazygit"
 alias df="lazygit -w $HOME"
-alias hom="ssh_tab smores@home.mohr.codes"
-alias doc="ssh_tab root@dev.mohr.codes"
+alias st="set_theme"
+alias hom="ssh_tmux smores@home.mohr.codes"
+alias doc="ssh_tmux root@dev.mohr.codes"
 alias pfhom="port_forward smores@home.mohr.codes"
 alias pfdoc="port_forward root@dev.mohr.codes"
 

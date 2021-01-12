@@ -65,8 +65,8 @@
     "tldr",
     "yaml-language-server",
     "bash-language-server",
-    "vscode-html-languageserver-bin",
-    "vscode-css-languageserver-bin",
-    "vscode-json-languageserver-bin"
+    "typescript-language-server",
+    "svelte-language-server",
+    "vscode-json-languageserver"
   ]
 }
