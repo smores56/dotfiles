@@ -50,7 +50,8 @@
   "go": [
     "github.com/schollz/croc",
     "github.com/gokcehan/lf",
-    "github.com/ivaaaan/smug"
+    "github.com/ivaaaan/smug",
+    "github.com/charmbracelet/glow"
   ],
   "js": [
     "purescript",
