@@ -25,6 +25,13 @@ hook global WinSetOption filetype=(markdown|plain|yaml) %{
     add-highlighter buffer/ show-whitespaces
 }
 
+# add spell check for text files
+set-option global spell_lang en-US
+hook global WinSetOption filetype=(markdown|plain) %{
+    spell
+    hook buffer BufWritePost .* spell
+}
+
 # import plug.kak
 source "%val{config}/plugins/plug.kak/rc/plug.kak"
 
