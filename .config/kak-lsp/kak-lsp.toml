@@ -107,11 +107,11 @@ roots = ["package.json"]
 command = "html-languageserver"
 args = ["--stdio"]
 
-[language.yaml]
-filetypes = ["yaml"]
-roots = ["*.yml"]
-command = "yaml-language-server"
-args = ["--stdio"]
+# [language.yaml]
+# filetypes = ["yaml"]
+# roots = ["*.yml"]
+# command = "yaml-language-server"
+# args = ["--stdio"]
 
 # [language.typescript]
 # filetypes = ["typescript"]
