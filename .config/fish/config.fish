@@ -12,7 +12,7 @@ source ~/.config/fish/functions/custom.fish
 alias k="kak"
 alias a="amp"
 alias t="tmux a 2>/dev/null; tmux new -s main"
-alias l="lf"
+alias r="ranger"
 alias lg="lazygit"
 alias df="lazygit -w $HOME"
 alias st="set_theme"

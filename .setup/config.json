@@ -15,7 +15,8 @@
     "zoxide"
   ],
   "python": [
-    "beets"
+    "beets",
+    "ranger-fm"
   ],
   "packages": [
     "jq",
