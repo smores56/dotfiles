@@ -9,3 +9,6 @@ sudo apt-add-repository -y https://cli.github.com/packages
 
 # lazygit repo
 sudo add-apt-repository -y ppa:lazygit-team/release
+
+# update packages
+sudo apt update

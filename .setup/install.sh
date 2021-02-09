@@ -4,8 +4,8 @@ echo "install repositories..."
 sh install_repos.sh
 
 echo "install packages..."
-sudo apt update
-sudo apt install jq
+sudo curl https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -o /usr/local/bin/jq && \
+    sudo chmod +x /usr/local/bin/jq
 jq '.packages[]' config.json | xargs sudo apt install -y
 
 echo "install Rust..."
@@ -38,7 +38,7 @@ GOPATH=$HOME/go
 jq '.go[]' config.json | xargs -I % go get -v %
 
 echo "install npm with fnm..."
-fnm install --lts
+$HOME/.cargo/bin/fnm install --lts
 
 echo "install Javascript packages..."
 jq '.js[]' config.json | xargs npm i -g
