@@ -41,7 +41,7 @@ echo "install npm with fnm..."
 fnm install --lts
 
 echo "install Javascript packages..."
-jq '.js[]' config.json | xargs xargs npm i -g
+jq '.js[]' config.json | xargs npm i -g
 
 echo "install rx..."
 cargo install --git https://github.com/cloudhead/rx --tag v0.4.0

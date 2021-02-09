@@ -1,0 +1,10 @@
+session: gleeclub
+root: ~/dev/gleeclub/
+
+windows:
+  - name: site
+    root: glubhub
+  - name: api
+    root: grease
+  - name: old-api
+    root: grease_old
