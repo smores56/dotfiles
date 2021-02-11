@@ -1,0 +1,10 @@
+session: music
+root: ~
+
+windows:
+  - name: musikcube
+    root: .
+    commands:
+      - musikcube
+  - name: beets
+    root: .

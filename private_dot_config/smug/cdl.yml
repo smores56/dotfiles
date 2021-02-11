@@ -1,0 +1,11 @@
+session: abb
+root: ~/dev/abb/
+
+windows:
+  - name: cdl
+    root: cdl
+    panes:
+      - type: horizontal
+        root: .
+        commands:
+          - lf
