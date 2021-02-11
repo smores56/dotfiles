@@ -10,9 +10,11 @@ source ~/.config/fish/functions/custom.fish
 
 # set aliases
 alias k="kak"
+alias e="exa"
 alias a="amp"
 alias t="tmux a 2>/dev/null; tmux new -s main"
 alias r="ranger"
+alias cm="chezmoi"
 alias lg="lazygit"
 alias df="lazygit -w $HOME"
 alias st="set_theme"
