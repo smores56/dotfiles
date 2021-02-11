@@ -32,7 +32,6 @@
     "pkg-config",
     "libx11-dev",
     "fish",
-    "lazygit",
     "w3m",
     "w3m-img"
   ],
@@ -40,7 +39,8 @@
     "github.com/schollz/croc",
     "github.com/gokcehan/lf",
     "github.com/ivaaaan/smug",
-    "github.com/charmbracelet/glow"
+    "github.com/charmbracelet/glow",
+    "github.com/jesseduffield/lazygit"
   ],
   "js": [
     "sass",
