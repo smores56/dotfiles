@@ -1,0 +1,10 @@
+[custom]
+
+[custom.tab]
+description = "The current tab in the tab terminal multiplexer"
+command = "echo $TAB"
+when = "echo $TAB"
+shell = ["sh"]
+format = "in $symbol [$output]($style) "
+style = "bold blue"
+symbol = "📑"

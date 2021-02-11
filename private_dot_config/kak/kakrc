@@ -1,0 +1,114 @@
+# add number line to side of screen
+add-highlighter global/ number-lines -hlcursor
+add-highlighter global/ show-matching
+
+# convenient mappings (easy commands, comments, etc.)
+map global normal ";" ":"
+map global normal ":" ";"
+map global normal / /(?i)
+map global normal <a-/> <a-/>(?i)
+map global normal "#" ": comment-line<ret>"
+
+# change indentation in insert mode with tab
+map global insert <tab> '<a-;><gt>'
+map global insert <s-tab> '<a-;><lt>'
+
+# set tab widths per language
+hook global WinSetOption filetype=(java|rust|python|elm) %{ set-option buffer indentwidth 4 }
+hook global WinSetOption filetype=(svelte|yaml|crystal|javascript|typescript|purescript|css|html|markdown) %{
+    set-option buffer indentwidth 2
+}
+
+# wrap text in txt and markdown files
+hook global WinSetOption filetype=(markdown|plain|yaml) %{
+    add-highlighter buffer/ wrap
+    add-highlighter buffer/ show-whitespaces
+}
+
+# add spell check for text files
+set-option global spell_lang en-US
+hook global WinSetOption filetype=(markdown|plain) %{
+    spell
+    hook buffer BufWritePost .* spell
+}
+
+# import plug.kak
+source "%val{config}/plugins/plug.kak/rc/plug.kak"
+
+# import plugins
+plug "robertmeta/plug.kak" noload
+plug "occivink/kakoune-sudo-write"
+plug "alexherbo2/auto-pairs.kak"
+plug "TeddyDD/kakoune-mint"
+# clipboard integration
+plug "lePerdu/kakboard" %{
+        hook global WinCreate .* %{ kakboard-enable }
+}
+plug "jdugan6240/powerline.kak" defer powerline %{
+    set-option global powerline_format 'bufname filetype lsp mode_info line_column position'
+
+    source "%val{config}/gruvbox-light-powerline.kak"
+
+    # Set colorscheme based on the time of day
+    evaluate-commands %sh{
+        if [ "$THEME" = "light" ]; then
+            echo "colorscheme gruvbox-light"
+            echo "powerline-theme gruvbox-light"
+        else
+            echo "colorscheme gruvbox"
+            echo "powerline-theme gruvbox"
+        fi
+    }
+} config %{
+    powerline-start
+}
+
+# setup lsp plugin
+plug "ul/kak-lsp" do %{
+    cargo build --release --locked
+    cargo install --force --path .
+} config %{
+    set global lsp_cmd "kak-lsp -s %val{session} -vvv --log /tmp/kak-lsp.log"
+
+    set global lsp_diagnostic_line_error_sign '║'
+    set global lsp_diagnostic_line_warning_sign '┊'
+    set global lsp_hover_max_lines 15
+
+    define-command ne -docstring 'go to next error/warning from lsp' %{ lsp-find-error --include-warnings }
+    define-command pe -docstring 'go to previous error/warning from lsp' %{ lsp-find-error --previous --include-warnings }
+    define-command ee -docstring 'go to current error/warning from lsp' %{ lsp-find-error --include-warnings; lsp-find-error --previous --include-warnings }
+
+    hook global WinSetOption filetype=(c|cpp|rust|elm|typescript|javascript|crystal|yaml|svelte) %{
+        # enable LSP with hover
+        lsp-enable-window
+        lsp-auto-hover-enable
+        lsp-auto-hover-insert-mode-disable
+        # set-option window lsp_hover_anchor true
+
+        # add keybindings
+        map window user "l" ": enter-user-mode lsp<ret>" -docstring "LSP mode"
+        map window user "r" ": lsp-rename-prompt<ret>" -docstring "rename item with LSP"
+
+        # set how errors and warnings look
+        set-face window DiagnosticError default,red+b
+        set-face window DiagnosticWarning default+du
+
+        # auto format on save
+        hook window BufWritePre .* lsp-formatting
+    }
+
+    hook global WinSetOption filetype=rust %{
+        set-option window lsp_server_configuration rust.clippy_preference="on"
+    }
+
+    hook global KakEnd .* lsp-exit
+}
+
+# hook global WinSetOption filetype=rust %{
+#   hook window -group rust-inlay-hints BufReload .* rust-analyzer-inlay-hints
+#   hook window -group rust-inlay-hints NormalIdle .* rust-analyzer-inlay-hints
+#   hook window -group rust-inlay-hints InsertIdle .* rust-analyzer-inlay-hints
+#   hook -once -always window WinSetOption filetype=.* %{
+#     remove-hooks window rust-inlay-hints
+#   }
+# }
