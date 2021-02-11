@@ -1,0 +1,6 @@
+[submodule "dot_tmux/plugins/tpm"]
+	path = dot_tmux/plugins/tpm
+	url = git@github.com:tmux-plugins/tpm.git
+[submodule "private_dot_config/kak/plugins/plug_dot_kak"]
+	path = private_dot_config/kak/plugins/plug_dot_kak
+	url = git@github.com:robertmeta/plug.kak.git
