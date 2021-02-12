@@ -46,6 +46,7 @@
     "sass",
     "tldr",
     "md-to-pdf",
+    "@bitwarden/cli",
     "purescript",
     "purescript-language-server",
     "spago",
