@@ -17,7 +17,8 @@
   ],
   "python": [
     "beets",
-    "ranger-fm"
+    "ranger-fm",
+    "python-language-server[yapf,pycodestyle,pydocstyle,mccabe,rope,pyflakes]"
   ],
   "packages": [
     "tmux",
