@@ -12,7 +12,8 @@
     "tokei",
     "meli",
     "watchexec",
-    "zoxide"
+    "zoxide",
+    "uwuify"
   ],
   "python": [
     "beets",
@@ -47,6 +48,7 @@
     "tldr",
     "md-to-pdf",
     "@bitwarden/cli",
+    "nb.sh",
     "purescript",
     "purescript-language-server",
     "spago",
