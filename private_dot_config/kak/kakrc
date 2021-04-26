@@ -3,8 +3,6 @@ add-highlighter global/ number-lines -hlcursor
 add-highlighter global/ show-matching
 
 # convenient mappings (easy commands, comments, etc.)
-map global normal ";" ":"
-map global normal ":" ";"
 map global normal / /(?i)
 map global normal <a-/> <a-/>(?i)
 map global normal "#" ": comment-line<ret>"
@@ -78,7 +76,7 @@ plug "ul/kak-lsp" do %{
     define-command pe -docstring 'go to previous error/warning from lsp' %{ lsp-find-error --previous --include-warnings }
     define-command ee -docstring 'go to current error/warning from lsp' %{ lsp-find-error --include-warnings; lsp-find-error --previous --include-warnings }
 
-    hook global WinSetOption filetype=(c|cpp|rust|elm|typescript|javascript|crystal|yaml|svelte) %{
+    hook global WinSetOption filetype=(c|cpp|rust|elm|typescript|javascript|crystal|yaml|svelte|python) %{
         # enable LSP with hover
         lsp-enable-window
         lsp-auto-hover-enable

@@ -12,11 +12,13 @@
     "tokei",
     "meli",
     "watchexec",
-    "zoxide"
+    "zoxide",
+    "uwuify"
   ],
   "python": [
     "beets",
-    "ranger-fm"
+    "ranger-fm",
+    "python-language-server[yapf,pycodestyle,pydocstyle,mccabe,rope,pyflakes]"
   ],
   "packages": [
     "tmux",
@@ -46,6 +48,8 @@
     "sass",
     "tldr",
     "md-to-pdf",
+    "@bitwarden/cli",
+    "nb.sh",
     "purescript",
     "purescript-language-server",
     "spago",

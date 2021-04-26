@@ -4,3 +4,6 @@
 [submodule "private_dot_config/kak/plugins/plug.kak"]
 	path = private_dot_config/kak/plugins/plug.kak
 	url = git@github.com:robertmeta/plug.kak.git
+[submodule "dot_emacs.d"]
+	path = dot_emacs.d
+	url = https://github.com/syl20bnr/spacemacs

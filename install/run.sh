@@ -4,7 +4,7 @@ echo "install repositories..."
 sh repos.sh
 
 echo "install packages..."
-sudo curl https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -o /usr/local/bin/jq && \
+sudo curl -L https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -o /usr/local/bin/jq && \
     sudo chmod +x /usr/local/bin/jq
 jq '.packages[]' config.json | xargs sudo apt install -y
 
