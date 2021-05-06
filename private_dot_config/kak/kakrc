@@ -6,6 +6,8 @@ add-highlighter global/ show-matching
 map global normal / /(?i)
 map global normal <a-/> <a-/>(?i)
 map global normal "#" ": comment-line<ret>"
+map global normal ";" ":"
+map global normal ":" ";"
 
 # change indentation in insert mode with tab
 map global insert <tab> '<a-;><gt>'
@@ -29,6 +31,9 @@ hook global WinSetOption filetype=(markdown|plain) %{
     spell
     hook buffer BufWritePost .* spell
 }
+
+# show dilbert in place of clippy
+set-option global ui_options ncurses_assistant=dilbert
 
 # import plug.kak
 source "%val{config}/plugins/plug.kak/rc/plug.kak"
@@ -62,7 +67,7 @@ plug "jdugan6240/powerline.kak" defer powerline %{
 }
 
 # setup lsp plugin
-plug "ul/kak-lsp" do %{
+plug "kak-lsp/kak-lsp" do %{
     cargo build --release --locked
     cargo install --force --path .
 } config %{
