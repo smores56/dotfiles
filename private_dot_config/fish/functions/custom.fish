@@ -57,11 +57,9 @@ function set_theme --description "Set theming for apps based on the time of day"
         set -xg BAT_THEME gruvbox-light
         ln -f ~/.config/alacritty/light.yml ~/.config/alacritty/alacritty.yml
         ln -f ~/.config/amp/light.yml ~/.config/amp/config.yml
-        ln -f ~/.tmux/plugins/gruvbox/tmux-gruvbox-light.conf ~/.tmux/theme.conf
     else
         set -xg BAT_THEME gruvbox
         ln -f ~/.config/alacritty/dark.yml ~/.config/alacritty/alacritty.yml
         ln -f ~/.config/amp/dark.yml ~/.config/amp/config.yml
-        ln -f ~/.tmux/plugins/gruvbox/tmux-gruvbox-dark.conf ~/.tmux/theme.conf
     end
 end
