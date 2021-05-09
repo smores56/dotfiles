@@ -1,3 +1,6 @@
 [submodule "private_dot_config/kak/plugins/plug.kak"]
 	path = private_dot_config/kak/plugins/plug.kak
 	url = git@github.com:robertmeta/plug.kak.git
+[submodule "dot_vim"]
+	path = dot_vim
+	url = https://github.com/SpaceVim/SpaceVim.git

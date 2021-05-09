@@ -22,7 +22,6 @@
   ],
   "packages": [
     "tmux",
-    "cmus",
     "crystal",
     "python3.8",
     "python3-pip",
@@ -34,8 +33,7 @@
     "pkg-config",
     "libx11-dev",
     "fish",
-    "w3m",
-    "w3m-img"
+    "vim-gtk"
   ],
   "go": [
     "github.com/schollz/croc",
