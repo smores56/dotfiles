@@ -12,7 +12,7 @@ source ~/.config/fish/functions/custom.fish
 alias k="kak"
 alias e="exa"
 alias a="amp"
-alias t="tmux"
+alias t="tmux_smart"
 alias r="ranger"
 alias v="vim"
 alias cm="chezmoi"
@@ -24,6 +24,9 @@ alias hom="ssh_tmux smores@home.mohr.codes"
 alias doc="ssh_tmux root@dev.mohr.codes"
 alias pfhom="port_forward smores@home.mohr.codes"
 alias pfdoc="port_forward root@dev.mohr.codes"
+
+# change directory with ranger using ctrl-O 
+bind \co ranger_cd
 
 # startup splashes
 if status --is-interactive

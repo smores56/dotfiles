@@ -6,6 +6,16 @@ function dotfiles --description "Manage my dotfiles"
     git --work-tree=$HOME $argv
 end
 
+function tmux_smart --description "Intelligent tmux liaison"
+    if test (count $argv) -eq 0
+        tmux attach 2>/dev/null; or tmux new -s main
+    else if test (count $argv) -eq 1
+        tmux attach -t $argv[1] 2>/dev/null/; or tmux new -s $argv[1]
+    else
+        tmux $argv[2..-1]
+    end
+end
+
 function ssh_tmux --description "SSH into a tmux session"
     if test (count $argv) -gt 0
         set SshLocation $argv[1]
@@ -15,7 +25,7 @@ function ssh_tmux --description "SSH into a tmux session"
     end
 
     if test "$TMUX" = ""
-        ssh "$SshLocation" -t "SSH_CONNECTION=1 tmux "(echo $argv[2..-1])
+        ssh "$SshLocation" -t "SSH_CONNECTION=1 tmux_smart "(echo $argv[2..-1])
     else
         error "Don't SSH into tmux from tmux!"
         return 1
