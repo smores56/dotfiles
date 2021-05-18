@@ -10,7 +10,7 @@ function tmux_smart --description "Intelligent tmux liaison"
     if test (count $argv) -eq 0
         tmux attach 2>/dev/null; or tmux new -s main
     else if test (count $argv) -eq 1
-        tmux attach -t $argv[1] 2>/dev/null/; or tmux new -s $argv[1]
+        tmux attach -t $argv[1] 2>/dev/null; or tmux new -s $argv[1]
     else
         tmux $argv[2..-1]
     end
