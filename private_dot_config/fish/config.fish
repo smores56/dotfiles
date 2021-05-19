@@ -3,13 +3,13 @@ if test -z $TERM; set -xg TERM xterm; end
 
 # set env vars 
 set -xg PATH /usr/local/go/bin $HOME/go/bin $HOME/.cargo/bin $HOME/.local/bin /usr/lib/zig $PATH
-set -xg EDITOR kak-smart
+set -xg EDITOR kak-spawn
 
 # include custom functions
 source ~/.config/fish/functions/custom.fish
 
 # set aliases
-alias k="kak-smart"
+alias k="kak-spawn"
 alias e="exa"
 alias a="amp"
 alias t="tmux-smart"
