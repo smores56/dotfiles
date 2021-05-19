@@ -10,10 +10,9 @@
     "typeracer",
     "dua-cli",
     "tokei",
-    "meli",
     "watchexec",
     "zoxide",
-    "uwuify"
+    "gitui"
   ],
   "python": [
     "beets",
@@ -40,7 +39,6 @@
     "github.com/gokcehan/lf",
     "github.com/ivaaaan/smug",
     "github.com/charmbracelet/glow",
-    "github.com/jesseduffield/lazygit"
   ],
   "js": [
     "sass",

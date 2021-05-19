@@ -2,11 +2,7 @@ function error --description "Print error to stderr"
     echo (tput setaf 1)"error: $argv"(tput sgr0) 1>&2
 end
 
-function dotfiles --description "Manage my dotfiles"
-    git --work-tree=$HOME $argv
-end
-
-function tmux_smart --description "Intelligent tmux liaison"
+function tmux-smart --description "Intelligent tmux liaison"
     if test (count $argv) -eq 0
         tmux attach 2>/dev/null; or tmux new -s main
     else if test (count $argv) -eq 1
@@ -16,7 +12,7 @@ function tmux_smart --description "Intelligent tmux liaison"
     end
 end
 
-function ssh_tmux --description "SSH into a tmux session"
+function ssh-tmux --description "SSH into a tmux session"
     if test (count $argv) -gt 0
         set SshLocation $argv[1]
     else
@@ -25,14 +21,14 @@ function ssh_tmux --description "SSH into a tmux session"
     end
 
     if test "$TMUX" = ""
-        ssh "$SshLocation" -t "SSH_CONNECTION=1 tmux_smart "(echo $argv[2..-1])
+        ssh "$SshLocation" -t "SSH_CONNECTION=1 tmux-smart "(echo $argv[2..-1])
     else
         error "Don't SSH into tmux from tmux!"
         return 1
     end
 end
 
-function port_forward --description "Port forward through SSH server"
+function port-forward --description "Port forward through SSH server"
     if test (count $argv) -gt 0
         set SshLocation $argv[1]
     else
@@ -46,7 +42,7 @@ function port_forward --description "Port forward through SSH server"
     ssh -gfNR "$ExternalPort:127.0.0.1:$InternalPort" "$SshLocation"
 end
 
-function set_theme --description "Set theming for apps based on the time of day"
+function set-theme --description "Set theming for apps based on the time of day"
     if test (count $argv) -gt 0
         if test $argv[1] = "light"; or test $argv[1] = "dark"
             set -xg THEME $argv[1]
