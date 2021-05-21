@@ -1,9 +1,6 @@
-[submodule "private_dot_config/kak/plugins/plug.kak"]
-	path = private_dot_config/kak/plugins/plug.kak
+[submodule "dot_config/kak/plugins/plug.kak"]
+	path = dot_config/kak/plugins/plug.kak
 	url = git@github.com:robertmeta/plug.kak.git
-[submodule "dot_vim"]
-	path = dot_vim
-	url = https://github.com/SpaceVim/SpaceVim.git
 [submodule "dot_tmux/better-mouse-mode"]
 	path = dot_tmux/better-mouse-mode
 	url = https://github.com/NHDaly/tmux-better-mouse-mode.git
