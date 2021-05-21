@@ -1,4 +1,4 @@
 #!/bin/bash
 
 unset COLORTERM
-bat --color always "$1"
+bat --color always --theme $(bat-theme) "$1"

@@ -1,0 +1,7 @@
+#!/bin/sh
+
+if [ $(theme) = "light" ]; then
+    echo gruvbox-light
+else
+    echo gruvbox
+fi

@@ -53,8 +53,8 @@ plug "jdugan6240/powerline.kak" defer powerline %{
     source "%val{config}/gruvbox-light-powerline.kak"
 
     define-command detect-theme -docstring "Set colorscheme based on the time of day" %{
-        colorscheme "%sh{~/.config/kak/theme.sh}"
-        powerline-theme "%sh{~/.config/kak/theme.sh}"
+        colorscheme "%sh{bat-theme}"
+        powerline-theme "%sh{bat-theme}"
     }
 
     detect-theme
