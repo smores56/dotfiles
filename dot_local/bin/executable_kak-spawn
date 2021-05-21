@@ -10,4 +10,4 @@ if [[ $socket_file == "" ]]; then
 fi
 
 # and run kakoune (with any arguments passed to the script)
-kak -c $server_name $@
+kak -c $server_name -e "detect-theme" $@
