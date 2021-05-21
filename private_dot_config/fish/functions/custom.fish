@@ -2,6 +2,10 @@ function error --description "Print error to stderr"
     echo (tput setaf 1)"error: $argv"(tput sgr0) 1>&2
 end
 
+function bat-themed --description "Themed paging"
+    ~/.cargo/bin/bat --theme (bat-theme) $argv
+end
+
 function tmux-smart --description "Intelligent tmux liaison"
     if test (count $argv) -eq 0
         tmux attach 2>/dev/null; or tmux new -s main
@@ -42,6 +46,28 @@ function port-forward --description "Port forward through SSH server"
     ssh -gfNR "$ExternalPort:127.0.0.1:$InternalPort" "$SshLocation"
 end
 
+function theme --description "Get the theme based on the time of day"
+    if set -q THEME
+        echo $THEME
+        return 0
+    end
+
+    set currentTime (date '+%H')
+    if test $currentTime -ge '7'; and test $currentTime -lt '18'
+        echo light
+    else
+        echo dark
+    end
+end
+
+function bat-theme --description "Specialized theme name for bat"
+    if test (theme) = "light"
+        echo gruvbox-light
+    else
+        echo gruvbox
+    end
+end
+
 function set-theme --description "Set theming for apps based on the time of day"
     if test (count $argv) -gt 0
         if test $argv[1] = "light"; or test $argv[1] = "dark"
@@ -51,21 +77,6 @@ function set-theme --description "Set theming for apps based on the time of day"
             return 1
         end
     else
-        set currentTime (date '+%H')
-        if test $currentTime -ge '7'; and test $currentTime -lt '18'
-            set -xg THEME light
-        else
-            set -xg THEME dark
-        end
-    end
-    
-    if test $THEME = "light"
-        set -xg BAT_THEME gruvbox-light
-        ln -f ~/.config/alacritty/light.yml ~/.config/alacritty/alacritty.yml
-        ln -f ~/.config/amp/light.yml ~/.config/amp/config.yml
-    else
-        set -xg BAT_THEME gruvbox
-        ln -f ~/.config/alacritty/dark.yml ~/.config/alacritty/alacritty.yml
-        ln -f ~/.config/amp/dark.yml ~/.config/amp/config.yml
+        set -e THEME
     end
 end
