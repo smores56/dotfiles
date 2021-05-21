@@ -1,7 +1,7 @@
 # workflow apps
 alias e="kak-spawn"
 alias l="exa"
-alias m="tmux-smart"
+alias t="tmux-smart"
 alias f="ranger"
 alias p="bat-themed"
 alias cm="chezmoi"
