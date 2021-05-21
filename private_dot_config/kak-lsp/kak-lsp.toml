@@ -52,7 +52,7 @@ command = "clangd"
 [language.crystal]
 filetypes = ["crystal"]
 roots = ["shard.yml"]
-command = "crystalline"
+command = "scry"
 
 [language.css]
 filetypes = ["css"]
