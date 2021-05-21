@@ -16,7 +16,6 @@
   ],
   "python": [
     "beets",
-    "ranger-fm",
     "python-language-server[yapf,pycodestyle,pydocstyle,mccabe,rope,pyflakes]"
   ],
   "packages": [
