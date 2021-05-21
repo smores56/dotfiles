@@ -1,6 +1,9 @@
 # show icons when browsing files
 set icons
 
+# allow mouse control
+set mouse true
+
 # interpreter for shell commands (needs to be POSIX compatible)
 set shell sh
 
