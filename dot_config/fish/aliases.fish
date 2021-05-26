@@ -1,6 +1,6 @@
 # workflow apps
 alias e="kak-spawn"
-alias l="exa -l"
+alias l="exa -lhg"
 alias t="tmux-smart"
 alias f="lf"
 alias c="bat-themed"
