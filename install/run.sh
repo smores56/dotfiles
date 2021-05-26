@@ -1,11 +1,14 @@
 #!/bin/bash
 
-echo "install repositories..."
-sh repos.sh
+echo "add crystal repository..."
+curl -fsSL https://crystal-lang.org/install.sh | sudo bash
 
-echo "install packages..."
+echo "install jq..."
 sudo curl -L https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -o /usr/local/bin/jq && \
     sudo chmod +x /usr/local/bin/jq
+
+echo "install packages..."
+sudo apt update
 jq '.packages[]' config.json | xargs sudo apt install -y
 
 echo "install Rust..."
@@ -32,10 +35,6 @@ echo "install Rust packages..."
 . $HOME/.cargo/env
 jq '.rust[]' config.json | xargs cargo install
 
-echo "install Rust Analyzer..."
-curl -L https://github.com/rust-analyzer/rust-analyzer/releases/latest/download/rust-analyzer-linux -o ~/.local/bin/rust-analyzer
-chmod +x ~/.local/bin/rust-analyzer
-
 echo "install Go packages..."
 mkdir -p $HOME/go
 GOPATH=$HOME/go
@@ -52,6 +51,3 @@ cargo install --git https://github.com/cloudhead/rx --tag v0.4.0
 
 echo "install starship..."
 curl -fsSL https://starship.rs/install.sh | bash -s -- -y
-
-echo "install rclone..."
-curl https://rclone.org/install.sh | sudo bash
