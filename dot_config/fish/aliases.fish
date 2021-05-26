@@ -1,12 +1,12 @@
 # workflow apps
 alias e="kak-spawn"
-alias l="exa"
+alias l="exa -l"
 alias t="tmux-smart"
 alias f="lf"
 alias c="bat-themed"
 alias cm="chezmoi"
-alias g="gitui"
-alias df="gitui -d ~/.local/share/chezmoi/"
+alias g="lazygit"
+alias df="lazygit -p ~/.local/share/chezmoi/"
 alias st="set-theme"
 
 # remote access

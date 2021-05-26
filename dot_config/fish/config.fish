@@ -11,9 +11,6 @@ source ~/.config/fish/functions/custom.fish
 # include aliases
 source ~/.config/fish/aliases.fish
 
-# change directory with ranger using ctrl-O 
-bind \co ranger-cd
-
 # startup splashes
 if status --is-interactive
     # give a splash screen based on whether currently in a tab
