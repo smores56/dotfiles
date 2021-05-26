@@ -20,6 +20,8 @@ colors:
     background: '0x282828'
     # soft contrast: background = '0x32302f'
     foreground: '0xebdbb2'
+
+  # Normal colors
   normal:
     black:   '0x282828'
     red:     '0xcc241d'
@@ -29,6 +31,8 @@ colors:
     magenta: '0xb16286'
     cyan:    '0x689d6a'
     white:   '0xa89984'
+
+  # Bright colors
   bright:
     black:   '0x928374'
     red:     '0xfb4934'
