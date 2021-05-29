@@ -9,7 +9,8 @@
     "dua-cli",
     "tokei",
     "watchexec-cli",
-    "zoxide"
+    "zoxide",
+    "skim"
   ],
   "python": [
     "beets",
