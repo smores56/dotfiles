@@ -38,7 +38,7 @@ jq '.rust[]' config.json | xargs cargo install
 echo "install Go packages..."
 mkdir -p $HOME/go
 GOPATH=$HOME/go
-jq '.go[]' config.json | xargs -I % go get -v %
+jq '.go[]' config.json | xargs -I % GO111MODULE=on go get -v %
 
 echo "install npm with fnm..."
 $HOME/.cargo/bin/fnm install --lts

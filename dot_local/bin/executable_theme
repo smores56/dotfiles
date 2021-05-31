@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 theme=$(cat ~/.theme 2>/dev/null)
 if [ "$theme" = "light" ] || [ "$theme" = "dark" ]; then

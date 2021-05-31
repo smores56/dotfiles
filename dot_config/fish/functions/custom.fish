@@ -57,7 +57,6 @@ function set-theme --description "Set theming for apps based on the time of day"
     else
         rm ~/.theme 2>/dev/null
     end
-    
-    # update alacritty theme
-    ln -f ~/.config/alacritty/(theme).yml ~/.config/alacritty/alacritty.yml
+
+    set-alacritty-theme
 end

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [ ! -f "$HOME/.config/alacritty/override.yml" ]; then
+    touch "$HOME/.config/alacritty/override.yml"
+fi
+
+yq ea "select(fileIndex == 0) * select(fileIndex == 1) * select(fileIndex == 2)" \
+    "$HOME/.config/alacritty/base.yml" \
+    "$HOME/.config/alacritty/$(theme).yml" \
+    "$HOME/.config/alacritty/override.yml" | \
+    sponge "$HOME/.config/alacritty/alacritty.yml"

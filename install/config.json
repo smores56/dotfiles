@@ -36,6 +36,7 @@
     "github.com/ivaaaan/smug",
     "github.com/charmbracelet/glow",
     "github.com/jesseduffield/lazygit",
+    "github.com/mikefarah/yq",
     "github.com/cli/cli"
   ],
   "js": [

@@ -14,10 +14,10 @@ source ~/.config/fish/aliases.fish
 # startup splashes
 if status --is-interactive
     # give a splash screen based on whether currently in a tab
-    ~/.local/bin/smoresfetch
+    smoresfetch
 
     # update alacritty theme
-    ln -f ~/.config/alacritty/(theme).yml ~/.config/alacritty/alacritty.yml
+    set-alacritty-theme
 
     # set custom prompt
     set fish_greeting
