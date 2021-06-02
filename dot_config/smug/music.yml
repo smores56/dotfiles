@@ -2,9 +2,9 @@ session: music
 root: ~
 
 windows:
-  - name: musikcube
+  - name: cmus
     root: .
     commands:
-      - musikcube
+      - cmus
   - name: beets
     root: .
