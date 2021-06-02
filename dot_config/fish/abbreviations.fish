@@ -1,11 +1,12 @@
 # workflow apps
-abbr -a e "kak-spawn"
+abbr -a e "edit"
 abbr -a l "exa -lhg"
 abbr -a t "tmux-smart"
 abbr -a f "lf"
 abbr -a c "bat-themed"
 abbr -a g "lazygit"
 abbr -a st "set-theme"
+abbr -a / "fd --type f"
 
 # dotfiles management
 abbr -a cm "chezmoi"

@@ -9,6 +9,9 @@ set -xg LS_COLORS (echo ~/.config/fish/ls-colors.txt)
 # include custom functions
 source ~/.config/fish/functions/custom.fish
 
+# add edit alias
+alias edit "kak-spawn"
+
 # include abbreviations
 source ~/.config/fish/abbreviations.fish
 
