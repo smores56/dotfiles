@@ -8,8 +8,8 @@ set -xg EDITOR kak-spawn
 # include custom functions
 source ~/.config/fish/functions/custom.fish
 
-# include aliases
-source ~/.config/fish/aliases.fish
+# include abbreviations
+source ~/.config/fish/abbreviations.fish
 
 # startup splashes
 if status --is-interactive
