@@ -12,12 +12,7 @@ function tmux-smart --description "Intelligent tmux liaison"
         if test (count $sessions) -eq 0
             tmux new -s main
         else
-            set session (for s in $sessions; echo $s; end | sk -1)
-            if test $status -eq 0
-                tmux attach -t $session
-            else
-                error "Must choose a session."
-            end
+            tmux attach \; choose-tree
         end
    else if test (count $argv) -eq 1
         tmux attach -t $argv[1] 2>/dev/null; or tmux new -s $argv[1]
