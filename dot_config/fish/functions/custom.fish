@@ -8,8 +8,18 @@ end
 
 function tmux-smart --description "Intelligent tmux liaison"
     if test (count $argv) -eq 0
-        tmux attach 2>/dev/null; or tmux new -s main
-    else if test (count $argv) -eq 1
+        set sessions (tmux ls -F "#{session_name}" 2>/dev/null)
+        if test (count $sessions) -eq 0
+            tmux new -s main
+        else
+            set session (for s in $sessions; echo $s; end | sk -1)
+            if test $status -eq 0
+                tmux attach -t $session
+            else
+                error "Must choose a session."
+            end
+        end
+   else if test (count $argv) -eq 1
         tmux attach -t $argv[1] 2>/dev/null; or tmux new -s $argv[1]
     else
         tmux $argv[2..-1]
