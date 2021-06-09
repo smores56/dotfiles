@@ -2,10 +2,6 @@ function error --description "Print error to stderr"
     echo (tput setaf 1)"error: $argv"(tput sgr0) 1>&2
 end
 
-function bat-themed --description "Themed paging"
-    ~/.cargo/bin/bat --theme (bat-theme) $argv
-end
-
 function tmux-smart --description "Intelligent tmux liaison"
     if test (count $argv) -eq 0
         set sessions (tmux ls -F "#{session_name}" 2>/dev/null)
