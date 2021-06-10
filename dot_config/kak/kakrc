@@ -6,8 +6,6 @@ add-highlighter global/ show-matching
 map global normal / /(?i)
 map global normal <a-/> <a-/>(?i)
 map global normal "#" ": comment-line<ret>"
-map global normal ";" ":"
-map global normal ":" ";"
 
 # change indentation in insert mode with tab
 map global insert <tab> '<a-;><gt>'
