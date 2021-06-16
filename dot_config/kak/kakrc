@@ -87,15 +87,13 @@ plug "kak-lsp/kak-lsp" do %{
         echo -debug "Enabling LSP for filtetype %opt{filetype}"
         lsp-enable-window
 
+        hook window BufWritePre .* lsp-formatting-sync
+
         map global user "l" ": enter-user-mode lsp<ret>" -docstring "LSP mode"
     }
 
     hook global WinSetOption filetype=(rust) %{
         set window lsp_server_configuration rust.clippy_preference="on"
-    }
-
-    hook global WinSetOption filetype=rust %{
-        hook window BufWritePre .* lsp-formatting-sync
     }
 
     hook global KakEnd .* lsp-exit
