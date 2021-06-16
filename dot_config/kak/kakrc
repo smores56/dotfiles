@@ -6,10 +6,13 @@ add-highlighter global/ show-matching
 map global normal / /(?i)
 map global normal <a-/> <a-/>(?i)
 map global normal "#" ": comment-line<ret>"
+map global normal <c-w> ": w<ret>"
+map global normal <c-q> ": q<ret>"
+map global normal <c-Q> ": wq<ret>"
 
 # change indentation in insert mode with tab
-map global insert <tab> '<a-;><gt>'
-map global insert <s-tab> '<a-;><lt>'
+map global insert <tab> "<a-;><gt>"
+map global insert <s-tab> "<a-;><lt>"
 
 # set tab widths per language
 hook global WinSetOption filetype=(java|rust|python|elm) %{ set-option buffer indentwidth 4 }
