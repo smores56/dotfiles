@@ -51,6 +51,20 @@ plug "lePerdu/kakboard" %{
     }
 }
 
+# git mode
+plug 'jordan-yee/kakoune-git-mode' config %{
+    map global user g ': enter-user-mode git<ret>' -docstring "git mode"
+
+    hook global WinCreate .* %{ evaluate-commands %sh{
+        if [ $kak_buffile != $kak_bufname ] && git ls-files --error-unmatch "$kak_buffile" > /dev/null 2>&1; then
+            echo "git-mode-show-diff"
+        fi
+    }}
+
+    hook global BufWritePost .* git-mode-update-diff
+    hook global BufReload .* git-mode-update-diff
+}
+
 # status line
 plug "andreyorst/powerline.kak" defer powerline %{
     set-option global powerline_format 'bufname filetype lsp mode_info line_column position'
@@ -90,9 +104,11 @@ plug "kak-lsp/kak-lsp" do %{
         echo -debug "Enabling LSP for filtetype %opt{filetype}"
         lsp-enable-window
 
-        hook window BufWritePre .* lsp-formatting-sync
-
         map global user "l" ": enter-user-mode lsp<ret>" -docstring "LSP mode"
+    }
+
+    hook global set-option filetype=(c|cpp|rust|elm|typescript|javascript|crystal|svelte|python) %{
+        hook window BufWritePre .* lsp-formatting-sync
     }
 
     hook global WinSetOption filetype=(rust) %{
