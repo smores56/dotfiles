@@ -48,6 +48,20 @@ plug "lePerdu/kakboard" %{
     }
 }
 
+# git mode
+plug 'jordan-yee/kakoune-git-mode' config %{
+    map global user g ': enter-user-mode git<ret>' -docstring "git mode"
+
+    hook global WinCreate .* %{ evaluate-commands %sh{
+        if [ $kak_buffile != $kak_bufname ] && git ls-files --error-unmatch "$kak_buffile" > /dev/null 2>&1; then
+            echo "git-mode-show-diff"
+        fi
+    }}
+
+    hook global BufWritePost .* git-mode-update-diff
+    hook global BufReload .* git-mode-update-diff
+}
+
 # status line
 plug "andreyorst/powerline.kak" defer powerline %{
     set-option global powerline_format 'bufname filetype lsp mode_info line_column position'
