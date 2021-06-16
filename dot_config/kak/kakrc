@@ -101,9 +101,11 @@ plug "kak-lsp/kak-lsp" do %{
         echo -debug "Enabling LSP for filtetype %opt{filetype}"
         lsp-enable-window
 
-        hook window BufWritePre .* lsp-formatting-sync
-
         map global user "l" ": enter-user-mode lsp<ret>" -docstring "LSP mode"
+    }
+
+    hook global set-option filetype=(c|cpp|rust|elm|typescript|javascript|crystal|svelte|python) %{
+        hook window BufWritePre .* lsp-formatting-sync
     }
 
     hook global WinSetOption filetype=(rust) %{
