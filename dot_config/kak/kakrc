@@ -107,7 +107,7 @@ plug "kak-lsp/kak-lsp" do %{
         map global user "l" ": enter-user-mode lsp<ret>" -docstring "LSP mode"
     }
 
-    hook global set-option filetype=(c|cpp|rust|elm|typescript|javascript|crystal|svelte|python) %{
+    hook global WinSetOption filetype=(c|cpp|rust|elm|typescript|javascript|crystal|svelte|python) %{
         hook window BufWritePre .* lsp-formatting-sync
     }
 
