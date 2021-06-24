@@ -33,6 +33,14 @@ hook global WinSetOption filetype=(markdown|plain) %{
     hook buffer BufWritePost .* spell
 }
 
+# clipboard integration
+map -docstring "copy to system clipboard"                   global user 'y' '<a-|>xsel -b -i<ret>:<space>echo -markup %{{Information}yanked selection to system clipboard}<ret>'
+map -docstring "cut to system clipboard"                    global user 'd' '|xsel -b -i<ret>'
+map -docstring "cut to system clipboard, enter insert mode" global user 'c' '|xsel -b -i<ret>i'
+map -docstring "paste from system clipboard before cursor"  global user 'P' '!xsel --output --clipboard<ret>'
+map -docstring "paste from system clipboard after cursor"   global user 'p' '<a-!>xsel --output --clipboard<ret>'
+map -docstring "replace selection with system clipboard"    global user 'R' '|xsel --output --clipboard<ret>'
+
 # import plug.kak
 source "%val{config}/plugins/plug.kak/rc/plug.kak"
 
@@ -41,15 +49,6 @@ plug "robertmeta/plug.kak" noload
 
 # save root-level files
 plug "occivink/kakoune-sudo-write"
-
-# clipboard integration
-plug "lePerdu/kakboard" %{
-    hook global WinCreate .* %{
-        set-option global kakboard_copy_cmd "xclip -in -selection clipboard"
-        set-option global kakboard_paste_cmd "xclip -out -selection clipboard"
-        kakboard-enable
-    }
-}
 
 # git mode
 plug 'jordan-yee/kakoune-git-mode' config %{
