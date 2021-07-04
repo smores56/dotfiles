@@ -20,8 +20,9 @@ if status --is-interactive
     # give a splash screen based on whether currently in a tab
     smoresfetch
 
-    # update alacritty theme
+    # update terminal theme
     set-alacritty-theme
+    set-kitty-theme
 
     # set custom prompt
     set fish_greeting
