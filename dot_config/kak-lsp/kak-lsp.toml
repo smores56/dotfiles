@@ -219,7 +219,7 @@ command = "rust-analyzer"
 # 1. The safe choice is two disable the warning:
 diagnostics.disabled = ["unresolved-proc-macro"]
 # 2. Or you can opt-in for proc macro support
-procMacro.enable = true
+# procMacro.enable = true
 cargo.loadOutDirsFromCheck = true
 # See https://github.com/rust-analyzer/rust-analyzer/issues/6448
 
