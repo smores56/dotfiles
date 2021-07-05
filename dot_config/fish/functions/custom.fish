@@ -60,4 +60,5 @@ function set-theme --description "Set theming for apps based on the time of day"
     end
 
     set-alacritty-theme
+    set-kitty-theme
 end
