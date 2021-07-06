@@ -68,14 +68,8 @@ plug 'jordan-yee/kakoune-git-mode' config %{
 plug "andreyorst/powerline.kak" defer powerline %{
     set-option global powerline_format 'bufname filetype lsp mode_info line_column position'
 
-    source "%val{config}/colors/gruvbox-light-powerline.kak"
-
-    define-command detect-theme -docstring "Set colorscheme based on the time of day" %{
-        colorscheme "%sh{bat-theme}"
-        powerline-theme "%sh{bat-theme}"
-    }
-
-    detect-theme
+    colorscheme gruvbox
+    powerline-theme gruvbox
 } config %{
     powerline-start
 }
