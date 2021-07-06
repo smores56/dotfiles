@@ -1,6 +1,6 @@
 # workflow apps
 abbr -a e "edit"
-abbr -a l "exa -lhg"
+abbr -a l "exa -lh"
 abbr -a t "tmux-smart"
 abbr -a f "ranger-cd"
 abbr -a c "bat"
