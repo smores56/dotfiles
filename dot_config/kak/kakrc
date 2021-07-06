@@ -12,6 +12,7 @@ map global normal "#" ": comment-line<ret>"
 map global normal <c-w> ": w<ret>"
 map global normal <c-q> ": q<ret>"
 map global normal <c-Q> ": wq<ret>"
+map global insert <a-backspace> "<a-;>b<a-;>d"
 
 # change indentation in insert mode with tab
 map global insert <tab> "<a-;><gt>"
