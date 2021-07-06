@@ -2,6 +2,9 @@
 add-highlighter global/ number-lines -hlcursor
 add-highlighter global/ show-matching
 
+# use simple title
+set-option global ui_options ncurses_set_title=false
+
 # convenient mappings (easy commands, comments, etc.)
 map global normal / /(?i)
 map global normal <a-/> <a-/>(?i)
@@ -34,12 +37,12 @@ hook global WinSetOption filetype=(markdown|plain) %{
 }
 
 # clipboard integration
-map -docstring "copy to system clipboard"                   global user 'y' '<a-|>xsel -b -i<ret>:<space>echo -markup %{{Information}yanked selection to system clipboard}<ret>'
-map -docstring "cut to system clipboard"                    global user 'd' '|xsel -b -i<ret>'
-map -docstring "cut to system clipboard, enter insert mode" global user 'c' '|xsel -b -i<ret>i'
-map -docstring "paste from system clipboard before cursor"  global user 'P' '!xsel --output --clipboard<ret>'
-map -docstring "paste from system clipboard after cursor"   global user 'p' '<a-!>xsel --output --clipboard<ret>'
-map -docstring "replace selection with system clipboard"    global user 'R' '|xsel --output --clipboard<ret>'
+map -docstring "copy to system clipboard"                   global normal 'y' '<a-|>xsel -b -i<ret>:<space>echo -markup %{{Information}yanked selection to system clipboard}<ret>'
+map -docstring "cut to system clipboard"                    global normal 'd' '|xsel -b -i<ret>'
+map -docstring "cut to system clipboard, enter insert mode" global normal 'c' '|xsel -b -i<ret>i'
+map -docstring "paste from system clipboard before cursor"  global normal 'P' '!xsel --output --clipboard<ret>'
+map -docstring "paste from system clipboard after cursor"   global normal 'p' '<a-!>xsel --output --clipboard<ret>'
+map -docstring "replace selection with system clipboard"    global normal 'R' '|xsel --output --clipboard<ret>'
 
 # import plug.kak
 source "%val{config}/plugins/plug.kak/rc/plug.kak"
