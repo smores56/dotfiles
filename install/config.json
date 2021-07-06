@@ -14,6 +14,7 @@
   ],
   "python": [
     "beets",
+    "ranger-fm",
     "python-language-server[yapf,pycodestyle,pydocstyle,mccabe,rope,pyflakes]"
   ],
   "packages": [
@@ -32,11 +33,9 @@
   ],
   "go": [
     "github.com/schollz/croc",
-    "github.com/gokcehan/lf",
     "github.com/ivaaaan/smug",
     "github.com/charmbracelet/glow",
     "github.com/jesseduffield/lazygit",
-    "github.com/mikefarah/yq",
     "github.com/cli/cli"
   ],
   "js": [
