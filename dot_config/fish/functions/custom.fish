@@ -47,18 +47,12 @@ function port-forward --description "Port forward through SSH server"
     ssh -gfNR "$ExternalPort:127.0.0.1:$InternalPort" "$SshLocation"
 end
 
-function set-theme --description "Set theming for apps based on the time of day"
-    if test (count $argv) -gt 0
-        if test $argv[1] = "light"; or test $argv[1] = "dark"
-            echo $argv[1] > ~/.theme
-        else
-            error "Only 'light' and 'dark' themes are supported"
-            return 1
-        end
-    else
-        rm ~/.theme 2>/dev/null
-    end
-
-    set-alacritty-theme
-    set-kitty-theme
+function ranger-cd --description "Set directory on exit ranger"
+    set dir (mktemp -t ranger_cd.XXX)
+    ranger --choosedir=$dir
+    
+    cd (cat $dir) $argv
+    rm $dir
+    
+    commandline -f repaint
 end

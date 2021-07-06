@@ -2,10 +2,9 @@
 abbr -a e "edit"
 abbr -a l "exa -lhg"
 abbr -a t "tmux-smart"
-abbr -a f "lf"
-abbr -a c "bat --theme=(bat-theme)"
+abbr -a f "ranger-cd"
+abbr -a c "bat"
 abbr -a g "lazygit"
-abbr -a st "set-theme"
 abbr -a / "fd --type f"
 
 # dotfiles management
