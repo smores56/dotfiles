@@ -1,4 +1,0 @@
-#!/bin/bash
-
-ln -sf "$HOME/.config/kitty/gruvbox_$(theme).conf" "$HOME/.config/kitty/theme.conf"
-kitty @ set-colors "$HOME/.config/kitty/theme.conf"
