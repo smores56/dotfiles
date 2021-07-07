@@ -8,7 +8,7 @@ function tmux-smart --description "Intelligent tmux liaison"
         if test (count $sessions) -eq 0
             tmux new -s main
         else
-            tmux attach \; choose-tree
+            tmux attach
         end
    else if test (count $argv) -eq 1
         tmux attach -t $argv[1] 2>/dev/null; or tmux new -s $argv[1]
