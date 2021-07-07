@@ -11,52 +11,84 @@ from __future__ import (absolute_import, division, print_function)
 
 # You can import any python module as needed.
 import os
+import sys
+import shlex
+from functools import partial
 
 # You always need to import ranger.api.commands here to get the Command class:
 from ranger.api.commands import Command
 
 
-# Any class that is a subclass of "Command" will be integrated into ranger as a
-# command.  Try typing ":my_edit<ENTER>" in ranger!
-class my_edit(Command):
-    # The so-called doc-string of the class will be visible in the built-in
-    # help that is accessible by typing "?c" inside ranger.
-    """:my_edit <filename>
-
-    A sample command for demonstration purposes that opens a file in an editor.
+class TrashPut(Command):
+    """Move the selection or the files to the trash
     """
+    def __init__(self, line, quantifier=None):
+        Command.__init__(self, line, quantifier)
+        self.trash_put = None
+        try:
+            from trashcli import put
+            self.trash_put = put
+        except ImportError:
+            pass
 
-    # The execute method is called when you run this command in ranger.
     def execute(self):
-        # self.arg(1) is the first (space-separated) argument to the function.
-        # This way you can write ":my_edit somefilename<ENTER>".
-        if self.arg(1):
-            # self.rest(1) contains self.arg(1) and everything that follows
-            target_filename = self.rest(1)
+        def is_directory_with_files(path):
+            return os.path.isdir(path) and not os.path.islink(path) and len(
+                os.listdir(path)) > 0
+
+        args = ['trash']
+        if self.rest(1):
+            files = shlex.split(self.rest(1))
+            many_files = (len(files) > 1 or is_directory_with_files(files[0]))
         else:
-            # self.fm is a ranger.core.filemanager.FileManager object and gives
-            # you access to internals of ranger.
-            # self.fm.thisfile is a ranger.container.file.File object and is a
-            # reference to the currently selected file.
-            target_filename = self.fm.thisfile.path
+            cwd = self.fm.thisdir
+            tfile = self.fm.thisfile
+            if not cwd or not tfile:
+                self.fm.notify('Error: no file selected!', bad=True)
+                return
 
-        # This is a generic function to print text in ranger.
-        self.fm.notify("Let's edit the file " + target_filename + "!")
+            # relative_path used for a user-friendly output in the confirmation.
+            files = [f.relative_path for f in self.fm.thistab.get_selection()]
+            many_files = (cwd.marked_items
+                          or is_directory_with_files(tfile.path))
 
-        # Using bad=True in fm.notify allows you to print error messages:
-        if not os.path.exists(target_filename):
-            self.fm.notify("The given file does not exist!", bad=True)
-            return
+        args += files
+        confirm = self.fm.settings.confirm_on_delete
+        if confirm != 'never' and (confirm != 'multiple' or many_files):
+            self.fm.ui.console.ask(
+                "Confirm deletion of: %s (y/N)" % ', '.join(files),
+                partial(self._question_callback, args),
+                ('n', 'N', 'y', 'Y'),
+            )
+        else:
+            # no need for a confirmation, just delete
+            self._trash_delete_files(args)
 
-        # This executes a function from ranger.core.acitons, a module with a
-        # variety of subroutines that can help you construct commands.
-        # Check out the source, or run "pydoc ranger.core.actions" for a list.
-        self.fm.edit_file(target_filename)
-
-    # The tab method is called when you press tab, and should return a list of
-    # suggestions that the user will tab through.
-    # tabnum is 1 for <TAB> and -1 for <S-TAB> by default
     def tab(self, tabnum):
-        # This is a generic tab-completion function that iterates through the
-        # content of the current directory.
         return self._tab_directory_content()
+
+    def _question_callback(self, args, answer):
+        if answer in ('y', 'Y'):
+            self._trash_delete_files(args)
+
+    def _trash_delete_files(self, args):
+        """
+        trash_put may output error message, so catch the Exception and use builtin delete to
+        fallback
+        """
+        argv_b = sys.argv
+        out_b = sys.stdout
+        err_b = sys.stderr
+        try:
+            sys.argv = args
+            sys.stderr = None
+            sys.stdout = None
+            self.trash_put.main()
+        except Exception:
+            self.fm.notify('Failed to move to trash, using console delete',
+                           bad=True)
+            self.fm.delete(args[1:])
+        finally:
+            sys.argv = argv_b
+            sys.stdout = out_b
+            sys.stderr = err_b

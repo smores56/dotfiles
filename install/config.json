@@ -15,6 +15,7 @@
   "python": [
     "beets",
     "ranger-fm",
+    "trash-cli",
     "python-language-server[yapf,pycodestyle,pydocstyle,mccabe,rope,pyflakes]"
   ],
   "packages": [
