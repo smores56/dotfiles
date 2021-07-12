@@ -47,7 +47,7 @@ hook global WinSetOption filetype=(markdown|plain) %{
 
 # clipboard integration
 hook global NormalKey y|d|c %{ nop %sh{
-    echo $kak_main_reg_dquote | xsel --input --clipboard
+    printf "%s" "$kak_main_reg_dquote" | xsel --input --clipboard
 }}
 map -docstring "paste from system clipboard before cursor"  global normal 'P' '!xsel --output --clipboard<ret>'
 map -docstring "paste from system clipboard after cursor"   global normal 'p' '<a-!>xsel --output --clipboard<ret>'
