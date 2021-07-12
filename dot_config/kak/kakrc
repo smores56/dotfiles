@@ -8,19 +8,11 @@ set-option global ui_options ncurses_set_title=false
 # convenient mappings
 map global normal / /(?i)
 map global normal <a-/> <a-/>(?i)
+map global normal "#" ": comment-line<ret>"
 map global normal <c-w> ": w<ret>"
 map global normal <c-q> ": q<ret>"
 map global normal <c-Q> ": wq<ret>"
 map global insert <a-backspace> "<a-;>b<a-;>d"
-
-# comment lines/blocks with hashtag
-define-command comment %{
-    try %{
-        execute-keys _
-        comment-block
-    } catch comment-line
-}
-map global normal "#" ": comment<ret>"
 
 # change indentation in insert mode with tab
 map global insert <tab> "<a-;><gt>"
