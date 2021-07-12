@@ -1,5 +1,6 @@
 {
   "rust": [
+    "exa",
     "bat",
     "ripgrep",
     "fd-find",

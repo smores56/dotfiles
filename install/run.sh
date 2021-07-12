@@ -50,4 +50,4 @@ echo "install starship..."
 curl -fsSL https://starship.rs/install.sh | bash -s -- -y
 
 echo "install f sys info..."
-gcc install/f.c -o ~/.local/bin/f
+gcc f.c -o ~/.local/bin/f
