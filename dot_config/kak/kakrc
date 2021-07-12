@@ -98,6 +98,9 @@ plug "kak-lsp/kak-lsp" do %{
     set global lsp_diagnostic_line_warning_sign '┊'
     set global lsp_hover_max_lines 15
 
+    set-face global DiagnosticError "default+br"
+    set-face global DiagnosticWarning "default+bu" 
+
     define-command ne -docstring 'go to next error/warning from lsp' %{ lsp-find-error --include-warnings }
     define-command pe -docstring 'go to previous error/warning from lsp' %{ lsp-find-error --previous --include-warnings }
     define-command ee -docstring 'go to current error/warning from lsp' %{ lsp-find-error --include-warnings; lsp-find-error --previous --include-warnings }
@@ -113,7 +116,7 @@ plug "kak-lsp/kak-lsp" do %{
     }
 
     hook global WinSetOption filetype=(c|cpp|rust|elm|typescript|javascript|crystal|svelte|python) %{
-        hook window BufWritePre .* lsp-formatting-sync
+        hook window BufWritePre .* lsp-formatting
     }
 
     hook global WinSetOption filetype=(rust) %{
