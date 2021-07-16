@@ -46,13 +46,3 @@ function port-forward --description "Port forward through SSH server"
 
     ssh -gfNR "$ExternalPort:127.0.0.1:$InternalPort" "$SshLocation"
 end
-
-function ranger-cd --description "Set directory on exit ranger"
-    set dir (mktemp -t ranger_cd.XXX)
-    ranger --choosedir=$dir
-    
-    cd (cat $dir) $argv
-    rm $dir
-    
-    commandline -f repaint
-end

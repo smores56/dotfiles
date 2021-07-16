@@ -2,7 +2,7 @@
 abbr -a e "kak"
 abbr -a l "exa -lh"
 abbr -a t "tmux-smart"
-abbr -a f "ranger-cd"
+abbr -a f "ranger"
 abbr -a c "bat"
 abbr -a g "lazygit"
 abbr -a / "fd --type f"
