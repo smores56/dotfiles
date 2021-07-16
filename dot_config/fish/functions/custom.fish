@@ -26,7 +26,7 @@ function ssh-tmux --description "SSH into a tmux session"
     end
 
     if test "$TMUX" = ""
-        ssh "$SshLocation" -X -t "SSH_CONNECTION=1 tmux-smart "(echo $argv[2..-1])
+        ssh "$SshLocation" -t "DISPLAY=:0 SSH_CONNECTION=1 tmux-smart "(echo $argv[2..-1])
     else
         error "Don't SSH into tmux from tmux!"
         return 1
