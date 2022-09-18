@@ -1,0 +1,21 @@
+# Use system theme
+theme = "theme"
+
+[editor]
+true-color = true
+cursorline = true
+color-modes = true
+
+[editor.lsp]
+display-messages = true
+
+[editor.file-picker]
+hidden = false
+
+[editor.indent-guides]
+render = true
+
+[keys.normal.space]
+s = ":write"
+c = ":quit"
+t = "hover"

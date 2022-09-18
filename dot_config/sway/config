@@ -1,0 +1,15 @@
+### Sway config
+
+# Use super key for prefix
+set $mod Mod4
+
+# Preferred terminal emulator
+set $term alacritty
+
+# Preferred browser
+set $browser firefox
+
+# Preferred application launcher
+set $menu onagre
+
+include ~/.config/sway/config.d/*
