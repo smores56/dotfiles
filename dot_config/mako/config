@@ -1,0 +1,26 @@
+# Format
+font=JetBrainsMono Nerd Font Mono Bold 12
+border-color=#073642
+background-color=#002B36AA
+text-color=#FDF6E3
+format=<b>%s</b> <span color="#93A1A1">(%a)</span>\n%b
+default-timeout=5000
+
+# Hidden format (used when there are too many notifications)
+[hidden]
+format=Hidden: %h [%t]
+
+[urgency=low]
+text-color=#93A1A1
+
+[urgency=low actionable]
+border-color=#93A1A1
+
+[urgency=normal actionable]
+border-color=#268BD2
+
+[urgency=high]
+border-color=#9C2220
+
+[urgency=high actionable]
+border-color=#6C71C4

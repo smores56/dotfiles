@@ -1,6 +1,12 @@
 # set env vars
 source ~/.config/fish/vars.fish
 
+# set up plugins
+source ~/.config/fish/fundle.fish
+
+# Set up fuzzing directory changing
+zoxide init fish --cmd c | source
+
 # source extra local config
 if test -d ~/.config/fish/extra
     source ~/.config/fish/extra/*.fish
@@ -16,8 +22,6 @@ if status --is-interactive
 
     # set custom prompt
     set fish_greeting
-    zoxide init fish --cmd c | source
-    starship init fish | source
 end
 
 # Run Sway unless off of the default tty

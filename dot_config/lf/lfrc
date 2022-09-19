@@ -4,8 +4,11 @@ set icons true
 # shortcut for toggling hidden files
 map <backspace2> set hidden!
 
-# use bat for file previews
-set previewer '~/.config/lf/preview.sh' 
+# use ctpv for file previews
+set previewer ctpv
+set cleaner ctpvclear
+&ctpv -s $id
+&ctpvquit $id
 
 # set '-eu' options for shell commands
 # These options are used to have safer shell commands. Option '-e' is used to

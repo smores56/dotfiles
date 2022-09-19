@@ -5,10 +5,6 @@
 # Install Alacritty
 sudo pacman -S --noconfirm alacritty
 
-# Install starship
-curl https://starship.rs/install.sh |
-  sh -s -- --yes --bin-dir ~/.local/bin
-
 # Install shell and multiplexer
 sudo pacman -S --noconfirm fish zellij
 
