@@ -15,3 +15,6 @@ sudo cp ~/.dotfiles/udev/90-backlight.rules /usr/lib/udev/rules.d/
 
 # Install i3status-rust for status bar
 ~/.cargo/bin/cargo install --git https://github.com/greshake/i3status-rust i3status-rs
+
+# Install tiling
+pip install autotiling
