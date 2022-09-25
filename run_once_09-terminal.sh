@@ -5,8 +5,8 @@
 # Install Alacritty
 sudo pacman -S --noconfirm alacritty
 
-# Install shell and multiplexer
-sudo pacman -S --noconfirm fish zellij
+# Install multiplexer
+sudo pacman -S --noconfirm zellij
 
 # Install f, a simple sysfetch
 rm -rf /tmp/f
