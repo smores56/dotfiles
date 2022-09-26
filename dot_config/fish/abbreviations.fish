@@ -2,10 +2,11 @@
 abbr -a e "$EDITOR"
 abbr -a l "exa --icons -lh"
 abbr -a t "zellij-picker"
+abbr -a a "mkdir"
 abbr -a f "lf"
 abbr -a b "bat"
 abbr -a g "lazygit"
-abbr -a gc "git clone"
+abbr -a gc "gh repo clone"
 
 # searching
 abbr -a / "fd --type f"

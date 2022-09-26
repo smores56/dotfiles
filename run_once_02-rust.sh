@@ -13,4 +13,5 @@ curl -L -tlsv1.2 -sSf https://sh.rustup.rs |
 ~/.cargo/bin/cargo install licensor ouch
 
 # Install crates from packages (faster)
-sudo pacman -S --noconfirm ripgrep bat bottom dua-cli sd zoxide eva exa fd
+sudo pacman -S --noconfirm \
+  ripgrep bat bottom dua-cli sd zoxide eva exa fd skim xh
