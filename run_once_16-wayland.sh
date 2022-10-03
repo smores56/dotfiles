@@ -3,7 +3,7 @@
 # DEPS: pacman, cargo
 
 sudo pacman -S --noconfirm wayland wlroots xorg-xwayland # wayland
-sudo pacman -S --noconfirm sway swaybg swaylock # sway
+sudo pacman -S --noconfirm sway swaybg swaylock swayidle # sway
 sudo pacman -S --noconfirm slurp grim # screenshots
 sudo pacman -S --noconfirm wl-clipboard # clipboard
 sudo pacman -S --noconfirm light # backlight
