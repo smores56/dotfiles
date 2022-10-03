@@ -37,6 +37,6 @@ hide_missing = true
 [[block]]
 block = "time"
 interval = 5
-format = "%a %d/%m %R"
+format = "%a %m/%d %R"
 [block.icons_overrides]
 time = ""
