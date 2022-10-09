@@ -2,7 +2,7 @@
 abbr -a e "$EDITOR"
 abbr -a l "exa --icons -lh"
 abbr -a t "zellij-picker"
-abbr -a a "mkdir"
+abbr -a a "mkdir -p"
 abbr -a f "lf"
 abbr -a b "bat"
 abbr -a g "lazygit"
