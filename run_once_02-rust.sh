@@ -10,7 +10,7 @@ curl -L -tlsv1.2 -sSf https://sh.rustup.rs |
 ~/.cargo/bin/rustup component add rust-src rust-analyzer
 
 # Install crates from source
-~/.cargo/bin/cargo install licensor typeracer
+~/.cargo/bin/cargo install licensor ttyper
 
 # Install crates from packages (faster)
 sudo pacman -S --noconfirm \
