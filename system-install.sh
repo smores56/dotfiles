@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -eu
+export PATH=~/.go/bin:$PATH
 
 PACKAGES=(
   fish opendoas zellij # Shell
@@ -10,13 +10,21 @@ PACKAGES=(
   rustup go python python-pip npm # Languages
   pyright gopls # LSP's
   unzip tar # Archiving
-  just gcc moreutils cmake # Build tools
+  just gcc moreutils cmake base-devel # Build tools
   openssh openssl curl xh tailscale # Networking
   gum bottom dua-cli eva # Misc
 )
 
 # Install official Arch packages
-sudo pacman -S --noconfirm "$PACKAGES"
+sudo pacman -S --needed --noconfirm "${PACKAGES[@]}"
+
+# Install AUR helper `yay`
+if ! which yay; then
+  rm -rf /tmp/yay
+  git clone https://aur.archlinux.org/yay.git /tmp/yay
+  cd /tmp/yay
+  makepkg -si
+fi
 
 # Install AUR packages
 AUR=(typioca elan-lean license flyctl-bin ctpv-git)
