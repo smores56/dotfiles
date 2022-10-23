@@ -23,7 +23,7 @@ if ! which yay; then
   rm -rf /tmp/yay
   git clone https://aur.archlinux.org/yay.git /tmp/yay
   cd /tmp/yay
-  makepkg -si
+  makepkg -si --noconfirm
 fi
 
 # Install AUR packages
