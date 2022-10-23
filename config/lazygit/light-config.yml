@@ -1,0 +1,12 @@
+git:
+  paging:
+    colorArg: always
+    pager: delta --paging=never --light
+
+gui:
+  theme:
+    lightTheme: true
+    selectedLineBgColor:
+      - underline
+    selectedRangeBgColor:
+      - underline

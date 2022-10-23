@@ -1,0 +1,24 @@
+[init]
+    defaultBranch = main
+[user]
+    email = "sam.mohr@protonmail.com"
+    name = "Sam Mohr"
+[core]
+    excludesFile = ~/.gitignore
+    pager = delta
+[diff]
+    colorMoved = default
+[pager]
+    diff = delta
+    log = delta
+    reflog = delta
+    show = delta
+[delta]
+    navigate = true
+    line-numbers = true
+[interactive]
+    diffFilter = delta --color-only
+[pull]
+    rebase = false
+[safe]
+    directory = *

@@ -1,0 +1,7 @@
+#!/bin/sh
+
+# Set random wallpaper with `swaybg` after every 10 minutes
+while true; do
+  sleep 600
+  random-wallpaper
+done

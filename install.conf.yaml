@@ -1,0 +1,25 @@
+- defaults:
+    link:
+      glob: true
+      force: true
+      relink: true
+      create: true
+    shell:
+      quiet: true
+      stdout: true
+      stderr: true
+
+- clean: ['~']
+
+- create:
+  - ~/.ssh/
+  - ~/.local/share/fonts/
+  - ~/.config/helix/themes/
+
+- link:
+    ~/.local/: local/**
+    ~/.config/: config/**
+    ~/.gitconfig: .gitconfig
+
+- shell:
+  - sh ~/.dotfiles/system-install.sh

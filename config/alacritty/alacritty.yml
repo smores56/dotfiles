@@ -1,0 +1,7 @@
+font:
+  size: 8
+  normal:
+    family: JetBrainsMono Nerd Font
+ 
+import:
+  - ~/.config/alacritty/theme.yml
