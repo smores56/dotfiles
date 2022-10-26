@@ -45,7 +45,7 @@ rustup default nightly
 rustup component add rust-src rust-analyzer
 
 # Install f, a simple sysfetch
-if test -z ~/.local/bin/f; then
+if ! test -e ~/.local/bin/f; then
   rm -rf /tmp/f
   git clone https://github.com/willeccles/f /tmp/f
   make -C /tmp/f
@@ -53,19 +53,19 @@ if test -z ~/.local/bin/f; then
 fi
 
 # Allow doas usage without a password
-if test -z /etc/doas.conf; then
+if ! test -e /etc/doas.conf; then
   echo "permit nopass :wheel" | sudo tee -a /etc/doas.conf
   sudo usermod -a -G wheel "$(whoami)"
   sudo chown root /etc/doas.conf
 fi
 
 # Set fish as the default shell
-if [ "$SHELL" != "/usr/bin/fish" ]; then
+if test "$SHELL" != "/usr/bin/fish"; then
   chsh -s /usr/bin/fish
 fi
 
 # Copy public SSH keys from GitHub
-if test -z ~/.ssh/authorized_keys; then
+if ! test -e ~/.ssh/authorized_keys; then
   curl -L https://github.com/smores56.keys -o ~/.ssh/authorized_keys
 fi
 
@@ -83,7 +83,7 @@ if test -n "$DISPLAY"; then
   FONT_URL=https://github.com/ryanoasis/nerd-fonts/releases/download/v2.1.0/JetBrainsMono.zip
 
   # Install JetBrainsMono Font
-  if test -z "$FONT_TMP_PATH"; then
+  if ! test -e "$FONT_TMP_PATH"; then
     curl -L "$FONT_URL" -o "$FONT_TMP_PATH"
     unzip -o "$FONT_TMP_PATH" -d "$FONT_PATH"
     fc-cache -f

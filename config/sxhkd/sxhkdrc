@@ -158,6 +158,9 @@ Print
 super + Print
 	~/.config/bspwm/scripts/screenshot.sh
 
+# Lock the screen
+super + l
+	~/.config/bspwm/scripts/i3lock-fancy/i3lock-fancy.sh
 
 # Shortcuts
 super + b 
