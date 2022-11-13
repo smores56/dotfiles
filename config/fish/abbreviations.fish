@@ -24,5 +24,5 @@ abbr -a dfi "~/.dotfiles/install"
 
 # remote access
 abbr -a s "ssh smores@home.sam-mohr.com -t"
-abbr -a sp "ssh smores@pi.sam-mohr.com -t"
+abbr -a sa "ssh smores@api.sam-mohr.com -t"
 abbr -a pf "port-forward smores@home.sam-mohr.com"
