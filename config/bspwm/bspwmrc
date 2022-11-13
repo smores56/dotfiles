@@ -53,7 +53,7 @@ xsetroot -cursor_name left_ptr &
 ~/.config/bspwm/scripts/low_bat_notifier.sh
 
 # Set wallpaper
-feh --bg-fill /usr/share/endeavouros/backgrounds/endeavouros-wallpaper.png
+sh ~/.fehbg
 
 # Start a terminal on launch
 alacritty
