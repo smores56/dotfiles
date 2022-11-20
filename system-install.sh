@@ -92,3 +92,8 @@ if test -n "$DISPLAY"; then
     fc-cache -f
   fi
 fi
+
+# Set default theme
+if test -z "$(fish -c 'echo $THEME')"; then
+  fish -c "set-theme dark"
+fi
