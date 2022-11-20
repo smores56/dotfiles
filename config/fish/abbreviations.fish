@@ -19,10 +19,10 @@ abbr -a dts "set-theme dark --select"
 abbr -a lts "set-theme light --select"
 
 # dotfiles management
-abbr -a cdf "c ~/.dotfiles"
+abbr -a ndf "n ~/.dotfiles"
 abbr -a dfi "~/.dotfiles/install"
 
 # remote access
-abbr -a s "ssh smores@home.sam-mohr.com -t"
-abbr -a sa "ssh smores@api.sam-mohr.com -t"
-abbr -a pf "port-forward smores@home.sam-mohr.com"
+abbr -a s "ssh smores@home.sammohr.dev -t"
+abbr -a sa "ssh smores@api.sammohr.dev -t"
+abbr -a pf "port-forward smores@home.sammohr.dev"

@@ -17,5 +17,5 @@ render = true
 
 [keys.normal.space]
 s = ":write"
-c = ":quit"
+n = ":quit"
 t = "hover"

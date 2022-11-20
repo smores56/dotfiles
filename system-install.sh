@@ -1,13 +1,13 @@
 #!/bin/sh
 
-export PATH=~/.go/bin:$PATH
+export PATH=~/.go/bin:~/.local/share/pnpm:$PATH
 
 PACKAGES=(
   fish opendoas zellij # Shell
   lazygit git-delta github-cli # Git
   helix glow bat lf chafa trash-cli fd # Files
   fzf skim jq zoxide exa ripgrep sd # Navigation
-  rustup go python python-pip npm # Languages
+  rustup go python python-pip # Languages
   pyright gopls # LSP's
   unzip tar # Archiving
   just gcc moreutils cmake base-devel # Build tools
@@ -34,8 +34,11 @@ for package in "${AUR[@]}"; do
   fi
 done
 
+# Install pnpm
+curl -fsSL https://get.pnpm.io/install.sh | sh -
+
 # Install JS packages
-sudo npm install --global \
+pnpm install --global \
   svelte-language-server bash-language-server \
   vscode-langservers-extracted typescript-language-server \
   yaml-language-server dockerfile-language-server-nodejs

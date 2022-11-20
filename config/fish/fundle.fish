@@ -5,7 +5,6 @@ end
 fundle plugin 'IlanCosman/tide@v5'
 fundle plugin 'jorgebucaran/autopair.fish'
 fundle plugin 'franciscolourenco/done'
-fundle plugin 'PatrickF1/fzf.fish'
 fundle plugin 'joshmedeski/fish-lf-icons'
 
 fundle init
