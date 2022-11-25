@@ -1,5 +1,4 @@
 default_shell "fish"
-mirror_session true
 
 ui {
     pane_frames {
