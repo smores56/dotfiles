@@ -25,4 +25,5 @@ if status --is-interactive
 
     # set custom prompt
     set fish_greeting
+    starship init fish | source
 end

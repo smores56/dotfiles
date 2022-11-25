@@ -3,7 +3,7 @@
 export PATH=~/.go/bin:~/.local/share/pnpm:$PATH
 
 PACKAGES=(
-  fish opendoas zellij # Shell
+  fish opendoas zellij starship # Shell
   lazygit git-delta github-cli # Git
   helix glow bat lf chafa trash-cli fd # Files
   fzf skim jq zoxide exa ripgrep sd # Navigation
@@ -11,7 +11,7 @@ PACKAGES=(
   pyright gopls # LSP's
   unzip tar # Archiving
   just gcc moreutils cmake base-devel # Build tools
-  openssh openssl curl xh tailscale # Networking
+  openssh openssl openssl-1.1 curl xh tailscale # Networking
   gum bottom dua-cli eva # Misc
 )
 
@@ -79,7 +79,7 @@ sudo tailscale up
 
 if test -n "$DISPLAY"; then
   # Install GUI apps
-  sudo pacman -S --noconfirm vlc discord alacritty thunar
+  sudo pacman -S --noconfirm scrot vlc discord alacritty thunar
 
   FONT_PATH=~/.local/share/fonts
   FONT_TMP_PATH=/tmp/JetBrainsMono.zip
