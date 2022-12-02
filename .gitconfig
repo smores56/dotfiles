@@ -1,7 +1,7 @@
 [init]
     defaultBranch = main
 [user]
-    email = "sam.mohr@protonmail.com"
+    email = "sam@sammohr.dev"
     name = "Sam Mohr"
 [core]
     excludesFile = ~/.gitignore
