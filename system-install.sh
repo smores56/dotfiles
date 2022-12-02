@@ -82,10 +82,10 @@ if test -n "$DISPLAY"; then
   sudo pacman -S --noconfirm scrot vlc discord alacritty thunar
 
   FONT_PATH=~/.local/share/fonts
-  FONT_TMP_PATH=/tmp/JetBrainsMono.zip
-  FONT_URL=https://github.com/ryanoasis/nerd-fonts/releases/download/v2.1.0/JetBrainsMono.zip
+  FONT_TMP_PATH=/tmp/CaskaydiaCove.zip
+  FONT_URL=https://github.com/ryanoasis/nerd-fonts/releases/download/v2.2.2/CascadiaCode.zip
 
-  # Install JetBrainsMono Font
+  # Install CaskaydiaCove Font
   if ! test -e "$FONT_TMP_PATH"; then
     curl -L "$FONT_URL" -o "$FONT_TMP_PATH"
     unzip -o "$FONT_TMP_PATH" -d "$FONT_PATH"
