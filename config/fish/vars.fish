@@ -1,7 +1,6 @@
 set -xg GOPATH ~/.go
-set -gx PNPM_HOME ~/.local/share/pnpm
 set -xg PATH ~/.cargo/bin ~/.rustup/toolchains/*/bin ~/.local/bin \
-    ~/.go/bin ~/.fly/bin ~/.bun/bin ~/.elan/bin ~/.local/share/pnpm $PATH
+    ~/.go/bin ~/.go/current/bin ~/.fly/bin ~/.bun/bin ~/.elan/bin $PATH
 
 set -xg BAT_THEME ansi
 set -xg LS_COLORS (cat ~/.config/fish/ls-colors.txt)

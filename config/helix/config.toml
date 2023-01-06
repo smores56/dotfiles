@@ -2,8 +2,8 @@
 theme = "theme"
 
 [editor]
-true-color = true
 cursorline = true
+bufferline = "multiple"
 color-modes = true
 
 [editor.lsp]
@@ -15,7 +15,22 @@ hidden = false
 [editor.indent-guides]
 render = true
 
+[editor.whitespace.render]
+space = "all"
+tab = "all"
+
+[editor.cursor-shape]
+normal = "block"
+insert = "bar"
+select = "underline"
+
 [keys.normal.space]
 s = ":write"
-n = ":quit"
+c = ":quit"
 t = "hover"
+
+[keys.insert.C-l]
+a = ":insert-output echo -n α"
+e = ":insert-output echo -n λ"
+u = ":insert-output echo -n ←"
+o = ":insert-output echo -n ×"

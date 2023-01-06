@@ -1,59 +1,50 @@
 #!/bin/sh
 
-export PATH=~/.go/bin:~/.local/share/pnpm:$PATH
+export GOPATH=~/.go
+export PATH=$GOPATH/bin:~/.bun/bin/bun:$PATH
 
 PACKAGES=(
-  fish opendoas zellij starship # Shell
-  lazygit git-delta github-cli # Git
-  helix glow bat lf chafa trash-cli fd # Files
-  fzf skim jq zoxide exa ripgrep sd # Navigation
-  rustup go python python-pip # Languages
-  pyright gopls # LSP's
-  unzip tar # Archiving
-  just gcc moreutils cmake base-devel # Build tools
-  openssh openssl openssl-1.1 curl xh tailscale # Networking
-  gum bottom dua-cli eva # Misc
+  github-cli # Git
+  helix chafa # Files
+  fish opendoas jq # Shell
+  python python-pip erlang # Languages
+  gcc moreutils cmake base-devel # Build tools
+  openssh openssl openssl-1.1 curl # Networking
 )
 
-# Install official Arch packages
-sudo pacman -S --needed --noconfirm "${PACKAGES[@]}"
+GRAPHICAL_PACKAGES=(scrot vlc discord alacritty thunar)
 
-# Install AUR helper `yay`
-if ! which yay; then
-  rm -rf /tmp/yay
-  git clone https://aur.archlinux.org/yay.git /tmp/yay
-  cd /tmp/yay
-  makepkg -si --noconfirm
-fi
+RUST_PACKAGES=(
+  zoxide exa ripgrep sd # Navigation
+  zellij git-delta bat # Shell
+  bat trashy fd-find dua-cli ouch # Files
+  xh bottom eva licensor typeracer # Misc
+)
 
-# Install AUR packages
-AUR=(typioca elan-lean license flyctl-bin ctpv-git)
-for package in "${AUR[@]}"; do
-  if ! pacman -Q "$package"; then
-    yay -S --noconfirm "$package"
-  fi
-done
+GO_PACKAGES=(
+  github.com/gokcehan/lf@latest
+  github.com/junegunn/fzf@latest
+  github.com/charmbracelet/gum@latest
+  github.com/charmbracelet/glow@latest
+  github.com/golang/tools/gopls@latest
+  github.com/jesseduffield/lazygit@latest
+)
 
-# Install pnpm
-curl -fsSL https://get.pnpm.io/install.sh | sh -
+JS_PACKAGES=(
+  yaml-language-server
+  bash-language-server
+  svelte-language-server
+  typescript-language-server
+  vscode-langservers-extracted
+  dockerfile-language-server-nodejs
+)
 
-# Install JS packages
-pnpm install --global \
-  svelte-language-server bash-language-server \
-  vscode-langservers-extracted typescript-language-server \
-  yaml-language-server dockerfile-language-server-nodejs
+PYTHON_PACKAGES=(pyright protonvpn-cli)
 
-# Setup Rust
-rustup default nightly
-rustup component add rust-src rust-analyzer
-
-# Install f, a simple sysfetch
-if ! test -e ~/.local/bin/f; then
-  rm -rf /tmp/f
-  git clone https://github.com/willeccles/f /tmp/f
-  make -C /tmp/f
-  mv /tmp/f/f ~/.local/bin/
-fi
+TOOLS_FROM_SOURCE=(
+  https://github.com/willeccles/f # Simple sysfetch
+  https://github.com/NikitaIvanovV/ctpv # file previewer
+)
 
 # Allow doas usage without a password
 if ! test -e /etc/doas.conf; then
@@ -62,9 +53,67 @@ if ! test -e /etc/doas.conf; then
   sudo chown root /etc/doas.conf
 fi
 
+# Install official Arch packages
+doas pacman -S --needed --noconfirm "${PACKAGES[@]}"
+
+# Install AUR helper `yay`
+if ! which yay 1>/dev/null; then
+  rm -rf /tmp/yay
+  git clone https://aur.archlinux.org/yay.git /tmp/yay
+  cd /tmp/yay
+  makepkg -si --noconfirm
+fi
+
+# Install bun and packages
+if ! test -e ~/.bun/bin/bun; then
+  curl https://bun.sh/install | bash
+  bun install --global "${JS_PACKAGES[@]}"
+fi
+
+# Install Rust and packages
+if ! test -e ~/.cargo/bin/cargo; then
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
+    sh -s -- -y --no-modify-path --default-toolchain nightly \
+    --component rust-src rust-analyzer
+fi
+~/.cargo/bin/cargo install "${RUST_PACKAGES[@]}"
+~/.cargo/bin/cargo install --git https://github.com/gleam-lang/gleam gleam
+
+# Install Python packages
+pip install "${PYTHON_PACKAGES[@]}"
+
+# Install tools from source
+for tool in "${TOOLS_FROM_SOURCE[@]}"; do
+  name=$(basename "$tool")
+  if ! which $(basename $name); then
+    rm -rf "/tmp/$name"
+    git clone "$tool" "/tmp/$name"
+    doas make -C "/tmp/$name" install
+  fi
+done
+
+# Install golang and packages
+if ! test -e ~/.go/current/bin/go; then
+  curl -sSf https://raw.githubusercontent.com/owenthereal/goup/master/install.sh | \
+    sh -s -- '--skip-prompt'
+fi
+for package in "${GO_PACKAGES[@]}"; do
+  ~/.go/current/bin/go install "$package"
+done
+
+# Install fly bin
+if ! test -e ~/.fly/bin/flyctl; then
+  curl -L https://fly.io/install.sh | sh
+fi
+
+# Install lean package manager
+~/.cargo/bin/cargo install --git https://github.com/leanprover/elan
+
 # Set fish as the default shell
-if test "$SHELL" != "/usr/bin/fish"; then
-  chsh -s /usr/bin/fish
+FISH_PATH=/usr/bin/fish
+if test "$SHELL" != "$FISH_PATH"; then
+  echo "$FISH_PATH" | sudo tee -a /etc/shells
+  chsh -s "$FISH_PATH"
 fi
 
 # Copy public SSH keys from GitHub
@@ -72,14 +121,17 @@ if ! test -e ~/.ssh/authorized_keys; then
   curl -L https://github.com/smores56.keys -o ~/.ssh/authorized_keys
 fi
 
-# Enable services
-sudo systemctl enable tailscaled
-sudo systemctl start tailscaled
-sudo tailscale up
+# Install and set up tailscale
+doas pacman -S --noconfirm tailscale
+if test "$(systemctl is-active tailscaled)" != "active"; then
+  doas systemctl enable tailscaled
+  doas systemctl start tailscaled
+  doas tailscale up
+fi
 
 if test -n "$DISPLAY"; then
   # Install GUI apps
-  sudo pacman -S --noconfirm scrot vlc discord alacritty thunar
+  doas pacman -S --noconfirm "${GRAPHICAL_PACKAGES[@]}"
 
   FONT_PATH=~/.local/share/fonts
   FONT_TMP_PATH=/tmp/CaskaydiaCove.zip
@@ -91,9 +143,4 @@ if test -n "$DISPLAY"; then
     unzip -o "$FONT_TMP_PATH" -d "$FONT_PATH"
     fc-cache -f
   fi
-fi
-
-# Set default theme
-if test -z "$(fish -c 'echo $THEME')"; then
-  fish -c "set-theme dark"
 fi

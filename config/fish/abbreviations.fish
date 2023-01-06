@@ -19,7 +19,7 @@ abbr -a dts "set-theme dark --select"
 abbr -a lts "set-theme light --select"
 
 # dotfiles management
-abbr -a ndf "n ~/.dotfiles"
+abbr -a cdf "c ~/.dotfiles"
 abbr -a dfi "~/.dotfiles/install"
 
 # remote access
