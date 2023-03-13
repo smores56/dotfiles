@@ -48,10 +48,10 @@ nm-applet --indicator &
 xsetroot -cursor_name left_ptr &
 
 # Low battery notifier
-~/.config/bspwm/scripts/low_bat_notifier.sh
+low_bat_notifier
 
 # Set wallpaper
-sh ~/.fehbg
+~/.fehbg
 
 # Start a terminal on launch
 alacritty

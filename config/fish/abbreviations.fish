@@ -12,6 +12,11 @@ abbr -a gc "gh repo clone"
 abbr -a / "fd --type f"
 abbr -a // "sk --ansi -i -c 'rg --color=always --line-number \"{}\"'"
 
+# Void Linux
+abbr -a xq "doas xbps-query"
+abbr -a xr "doas xbps-remove"
+abbr -a xi "doas xbps-install"
+
 # theming
 abbr -a dt "set-theme dark"
 abbr -a lt "set-theme light"
@@ -20,7 +25,7 @@ abbr -a lts "set-theme light --select"
 
 # dotfiles management
 abbr -a cdf "c ~/.dotfiles"
-abbr -a dfi "~/.dotfiles/install"
+abbr -a dfi "~/.dotfiles/install --quiet"
 
 # remote access
 abbr -a s "ssh smores@home.sammohr.dev -t"

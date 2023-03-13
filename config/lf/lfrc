@@ -5,10 +5,9 @@ set icons true
 map <backspace2> set hidden!
 
 # use ctpv for file previews
-set previewer ctpv
-set cleaner ctpvclear
-&ctpv -s $id
-&ctpvquit $id
+set previewer lfpreviewer
+set cleaner lfcleaner
+set preview
 
 # set '-eu' options for shell commands
 # These options are used to have safer shell commands. Option '-e' is used to
@@ -50,7 +49,7 @@ cmd open ${{
 
 # move current file or selected files to trash folder
 # (also see 'man mv' for backup/overwrite options)
-cmd trash %trash put $fx
+cmd trash %trash -- $fx
 map <delete> trash
 
 # shortcuts for file/directory creation

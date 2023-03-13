@@ -1,35 +1,48 @@
-#!/bin/sh
+#!/bin/bash
+
+set -e
 
 export GOPATH=~/.go
-export PATH=$GOPATH/bin:~/.bun/bin/bun:$PATH
+export PATH=$GOPATH/current/bin:~/.bun/bin/bun:~/.cargo/bin:~/.local/bin/:$PATH
 
 PACKAGES=(
-  github-cli # Git
-  helix chafa # Files
-  fish opendoas jq # Shell
-  python python-pip erlang # Languages
+  helix gopls # Editing
+  ouch unzip # Archiving
+  glow bat # Viewing files
+  github-cli lazygit delta # Git
+  zoxide exa ripgrep fd # Navigation
+  chafa lf trash-cli dua-cli # Files
+  python3 python3-pip rustup # Languages
   gcc moreutils cmake base-devel # Build tools
-  openssh openssl openssl-1.1 curl # Networking
+  fish-shell opendoas jq zellij fzf sd # Shell
+  openssh openssl curl xh tailscale NetworkManager # Networking
+  xdg-desktop-portal xdg-user-dirs xdg-utils # XDG
+  bottom eva licensor vsv # Misc
 )
 
-GRAPHICAL_PACKAGES=(scrot vlc discord alacritty thunar)
-
-RUST_PACKAGES=(
-  zoxide exa ripgrep sd # Navigation
-  zellij git-delta bat # Shell
-  bat trashy fd-find dua-cli ouch # Files
-  xh bottom eva licensor typeracer # Misc
+# TODO: add flatpak-hosted terminal
+GRAPHICAL_PACKAGES=(
+  bspwm sxhkd # Window Manager
+  xorg-minimal elogind dbus-elogind-x11 # Session
+  font-awesome6 font-iosevka fonts-roboto-ttf # Fonts
+  polybar feh picom scrot slock alacritty dunst rofi xsel # Misc
+  pavucontrol bluez numlockx xbacklight # Peripherals
 )
 
-GO_PACKAGES=(
-  github.com/gokcehan/lf@latest
-  github.com/junegunn/fzf@latest
-  github.com/charmbracelet/gum@latest
-  github.com/charmbracelet/glow@latest
-  github.com/golang/tools/gopls@latest
-  github.com/jesseduffield/lazygit@latest
+FLATPAKS=(
+  app/org.mozilla.firefox/x86_64/stable
+  app/com.discordapp.Discord/x86_64/stable
+  app/org.videolan.VLC/x86_64/stable
+  app/org.kde.dolphin/x86_64/stable
+)
+FLATHUB_FLATPAKS=(
+  org.libreoffice.LibreOffice
+  org.cubocore.CoreFM
 )
 
+RUST_PACKAGES=(typeracer)
+PYTHON_PACKAGES=(pyright protonvpn-cli yq python-rofi)
+GO_PACKAGES=(github.com/charmbracelet/gum@latest)
 JS_PACKAGES=(
   yaml-language-server
   bash-language-server
@@ -39,11 +52,9 @@ JS_PACKAGES=(
   dockerfile-language-server-nodejs
 )
 
-PYTHON_PACKAGES=(pyright protonvpn-cli)
-
 TOOLS_FROM_SOURCE=(
   https://github.com/willeccles/f # Simple sysfetch
-  https://github.com/NikitaIvanovV/ctpv # file previewer
+  https://github.com/soystemd/lfutils # File previews
 )
 
 # Allow doas usage without a password
@@ -53,16 +64,8 @@ if ! test -e /etc/doas.conf; then
   sudo chown root /etc/doas.conf
 fi
 
-# Install official Arch packages
-doas pacman -S --needed --noconfirm "${PACKAGES[@]}"
-
-# Install AUR helper `yay`
-if ! which yay 1>/dev/null; then
-  rm -rf /tmp/yay
-  git clone https://aur.archlinux.org/yay.git /tmp/yay
-  cd /tmp/yay
-  makepkg -si --noconfirm
-fi
+# Install official Void packages
+doas xbps-install -Sy "${PACKAGES[@]}"
 
 # Install bun and packages
 if ! test -e ~/.bun/bin/bun; then
@@ -72,12 +75,10 @@ fi
 
 # Install Rust and packages
 if ! test -e ~/.cargo/bin/cargo; then
-  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-    sh -s -- -y --no-modify-path --default-toolchain nightly \
+  rustup -y --no-modify-path --default-toolchain nightly \
     --component rust-src rust-analyzer
 fi
-~/.cargo/bin/cargo install "${RUST_PACKAGES[@]}"
-~/.cargo/bin/cargo install --git https://github.com/gleam-lang/gleam gleam
+cargo install "${RUST_PACKAGES[@]}"
 
 # Install Python packages
 pip install "${PYTHON_PACKAGES[@]}"
@@ -98,7 +99,7 @@ if ! test -e ~/.go/current/bin/go; then
     sh -s -- '--skip-prompt'
 fi
 for package in "${GO_PACKAGES[@]}"; do
-  ~/.go/current/bin/go install "$package"
+  go install "$package"
 done
 
 # Install fly bin
@@ -107,12 +108,14 @@ if ! test -e ~/.fly/bin/flyctl; then
 fi
 
 # Install lean package manager
-~/.cargo/bin/cargo install --git https://github.com/leanprover/elan
+cargo install --git https://github.com/leanprover/elan
 
 # Set fish as the default shell
-FISH_PATH=/usr/bin/fish
+FISH_PATH=$(which fish)
 if test "$SHELL" != "$FISH_PATH"; then
-  echo "$FISH_PATH" | sudo tee -a /etc/shells
+  if ! grep "$FISH_PATH" /etc/shells; then
+    echo "$FISH_PATH" | sudo tee -a /etc/shells
+  fi
   chsh -s "$FISH_PATH"
 fi
 
@@ -121,26 +124,34 @@ if ! test -e ~/.ssh/authorized_keys; then
   curl -L https://github.com/smores56.keys -o ~/.ssh/authorized_keys
 fi
 
-# Install and set up tailscale
-doas pacman -S --noconfirm tailscale
-if test "$(systemctl is-active tailscaled)" != "active"; then
-  doas systemctl enable tailscaled
-  doas systemctl start tailscaled
+# Set up tailscale
+if test "$(sv check tailscaled)" != "active"; then
+  doas vsv enable tailscaled
+  doas vsv start tailscaled
   doas tailscale up
 fi
 
 if test -n "$DISPLAY"; then
   # Install GUI apps
-  doas pacman -S --noconfirm "${GRAPHICAL_PACKAGES[@]}"
+  doas xbps-install -Sy "${GRAPHICAL_PACKAGES[@]}"
+  flatpak install -y "${FLATPAKS[@]}"
+  doas flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+  flatpak install -y flathub "${FLATHUB_FLATPAKS[@]}"
 
   FONT_PATH=~/.local/share/fonts
   FONT_TMP_PATH=/tmp/CaskaydiaCove.zip
   FONT_URL=https://github.com/ryanoasis/nerd-fonts/releases/download/v2.2.2/CascadiaCode.zip
+  FONT_NAME="Caskaydia Cove Nerd Font Complete"
 
   # Install CaskaydiaCove Font
-  if ! test -e "$FONT_TMP_PATH"; then
+  if ! (fc-list | grep "$FONT_NAME" 1>/dev/null); then
     curl -L "$FONT_URL" -o "$FONT_TMP_PATH"
     unzip -o "$FONT_TMP_PATH" -d "$FONT_PATH"
     fc-cache -f
+  fi
+
+  # Set default theme if missing
+  if fish -c 'test -z "$THEME"'; then
+    set-theme dark
   fi
 fi

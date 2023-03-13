@@ -1,4 +1,5 @@
 - defaults:
+  
     link:
       glob: true
       force: true
@@ -12,14 +13,16 @@
 - clean: ['~']
 
 - create:
+  - ~/dev/
   - ~/.ssh/
   - ~/.local/share/fonts/
   - ~/.config/helix/themes/
 
 - link:
-    ~/.local/: local/**
     ~/.config/: config/**
+    ~/.local/bin/: scripts/**
     ~/.gitconfig: .gitconfig
+    ~/.xinitrc: .xinitrc
 
 - shell:
-  - sh ~/.dotfiles/system-install.sh
+  - bash ~/.dotfiles/system-install.sh

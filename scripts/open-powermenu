@@ -26,19 +26,19 @@ $shutdown" | rofi -dmenu\
 # Do something based on selected option
 if [ "$selected_option" == "$lock" ]
 then
-    /home/$USER/.config/bspwm/scripts/i3lock-fancy/i3lock-fancy.sh
+    slock
 elif [ "$selected_option" == "$logout" ]
 then
     bspc quit
 elif [ "$selected_option" == "$shutdown" ]
 then
-    systemctl poweroff
+    doas poweroff
 elif [ "$selected_option" == "$reboot" ]
 then
-    systemctl reboot
+    doas reboot
 elif [ "$selected_option" == "$sleep" ]
 then
-    amixer set Master mute
+    pamixer --mute
     systemctl suspend
 else
     echo "No match"

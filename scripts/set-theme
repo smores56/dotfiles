@@ -1,0 +1,141 @@
+#!/usr/bin/env python3
+
+import os
+import yaml
+import errno
+
+from rofi import Rofi
+from argparse import ArgumentParser
+
+
+HOME = os.environ["HOME"]
+DEFAULT_LIGHT_THEME = "rose_pine_dawn"
+DEFAULT_DARK_THEME = "rose_pine_moon"
+
+
+def error_out(msg):
+    print(msg)
+    exit(1)
+
+
+def symlink(src, dst):
+    try:
+        os.symlink(src, dst)
+    except OSError as e:
+        if e.errno == errno.EEXIST:
+            os.remove(dst)
+            os.symlink(src, dst)
+
+
+def get_variants_of_theme(theme):
+    theme_dir = f"{HOME}/.config/alacritty/{theme}/"
+    return [fname.split(sep=".")[0] for fname in os.listdir(theme_dir)]
+
+
+def select_theme_variant(theme):
+    variants = get_variants_of_theme(theme)
+    r = Rofi()
+    index, _key = r.select("Pick a theme variant: ", variants)
+    if index < 0:
+        error_out(f"Must pick one of the available {theme} themes.")
+
+    return variants[index]
+
+
+def apply_theme(theme, variant):
+    # Set light/dark lazygit theme
+    symlink(f"{HOME}/.config/lazygit/{theme}-config.yml", f"{HOME}/.config/lazygit/config.yml")
+
+    # Set Alacritty theme
+    symlink(f"{HOME}/.config/alacritty/{theme}/{variant}.yml", f"{HOME}/.config/alacritty/theme.yml")
+
+    # Set Helix theme
+    symlink(f"/lib/helix/runtime/themes/{variant}.toml", f"{HOME}/.config/helix/themes/theme.toml")
+
+    with open(f"{HOME}/.config/alacritty/{theme}/{variant}.yml", "r") as f:
+        colors = yaml.full_load(f)["colors"]
+
+    set_xresources(colors)
+    set_rofi(colors)
+
+    os.system("polybar-msg cmd restart")
+
+
+def set_xresources(colors):
+    xresources = f"""\
+*color0: {colors["normal"]["black"]}
+*color8: {colors["bright"]["black"]}
+*color1: {colors["normal"]["red"]}
+*color9: {colors["bright"]["red"]}
+*color2: {colors["normal"]["green"]}
+*color10: {colors["bright"]["green"]}
+*color3: {colors["normal"]["yellow"]}
+*color11: {colors["bright"]["yellow"]}
+*color4: {colors["normal"]["blue"]}
+*color12: {colors["bright"]["blue"]}
+*color5: {colors["normal"]["magenta"]}
+*color13: {colors["bright"]["magenta"]}
+*color6: {colors["normal"]["cyan"]}
+*color14: {colors["bright"]["cyan"]}
+*color7: {colors["normal"]["white"]}
+*color15: {colors["bright"]["white"]}
+*background: {colors["primary"]["background"]}
+*foreground: {colors["primary"]["foreground"]}\n"""
+
+    with open(f"{HOME}/.Xresources", "w") as f:
+        f.write(xresources)
+
+
+def set_rofi(colors):
+    rofi = f"""\
+* {{
+    background:                      {colors["primary"]["background"]};
+    bordercolor:                     {colors["primary"]["foreground"]};
+    separatorcolor:                  #000000;
+    normal-background:               {colors["normal"]["black"]};
+    normal-foreground:               {colors["primary"]["foreground"]};
+    alternate-normal-foreground:     {colors["bright"]["black"]};
+    selected-normal-background:      {colors["normal"]["green"]};
+    selected-normal-foreground:      #eee8d5;
+    active-background:               {colors["normal"]["green"]};
+    active-foreground:               {colors["primary"]["foreground"]};
+    alternate-active-background:     {colors["normal"]["magenta"]};
+    selected-active-background:      #268bd2;
+    selected-active-foreground:      #fdf6e3;
+    urgent-background:               {colors["normal"]["yellow"]};
+    urgent-foreground:               #dc322f;
+    alternate-urgent-background:     #eee8d5;
+    selected-urgent-background:      {colors["normal"]["red"]};
+    selected-urgent-foreground:      #fdf6e3;
+    alternate-normal-foreground:     @normal-foreground;
+    alternate-urgent-foreground:     @urgent-foreground;
+    alternate-active-foreground:     @active-foreground;
+    foreground:                      @normal-foreground;
+}}\n"""
+
+    with open(f"{HOME}/.config/rofi/colors.rasi", "w") as f:
+        f.write(rofi)
+
+
+def main():
+    parser = ArgumentParser(prog="set-theme", description="Set a theme system-wide (e.g. terminal, window manager, etc.)")
+    parser.add_argument("theme", choices=["light", "dark"])
+    parser.add_argument("-s", "--select", action="store_true")
+
+    args = parser.parse_args()
+    os.environ["THEME"] = args.theme
+
+    if args.select:
+        variant = select_theme_variant(args.theme)
+    elif args.theme == "light":
+        variant = DEFAULT_LIGHT_THEME
+    else:
+        variant = DEFAULT_DARK_THEME
+
+    os.environ["THEME_VARIANT"] = variant
+
+    apply_theme(args.theme, variant)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,5 +1,0 @@
-#!/bin/sh
-
-wallpaper=$(find ~/Pictures/Wallpapers/* | shuf | head -n 1)
-echo "$wallpaper" > ~/.wallpaper
-swaybg --image "$wallpaper" --mode fill
