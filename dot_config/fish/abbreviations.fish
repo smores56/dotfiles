@@ -25,7 +25,8 @@ abbr -a lts "set-theme light --select"
 
 # dotfiles management
 abbr -a cdf "c ~/.dotfiles"
-abbr -a dfi "~/.dotfiles/install --quiet"
+abbr -a cm "chezmoi"
+abbr -a ca "chezmoi apply"
 
 # remote access
 abbr -a s "ssh smores@home.sammohr.dev -t"

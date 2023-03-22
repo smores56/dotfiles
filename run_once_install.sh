@@ -3,46 +3,46 @@
 set -e
 
 export GOPATH=~/.go
-export PATH=$GOPATH/current/bin:~/.bun/bin/bun:~/.cargo/bin:~/.local/bin/:$PATH
+export PATH=~/.go/current/bin:~/.cargo/bin:~/.pyenv/bin:~/.local/bin:$PATH
 
 PACKAGES=(
-  helix gopls # Editing
-  ouch unzip # Archiving
-  glow bat # Viewing files
-  github-cli lazygit delta # Git
-  zoxide exa ripgrep fd # Navigation
-  chafa lf trash-cli dua-cli # Files
-  python3 python3-pip rustup # Languages
   gcc moreutils cmake base-devel # Build tools
-  fish-shell opendoas jq zellij fzf sd # Shell
-  openssh openssl curl xh tailscale NetworkManager # Networking
+  fish-shell opendoas helix github-cli # Shell
+  openssh openssl openssl-devel curl tailscale NetworkManager # Networking
   xdg-desktop-portal xdg-user-dirs xdg-utils # XDG
-  bottom eva licensor vsv # Misc
+  vsv unzip chafa poppler # Misc
+  sqlite-devel xz liblzma-devel zlib zlib-devel # Libraries
+  libffi-devel bzip2-devel readline readline-devel # Libraries
 )
 
-# TODO: add flatpak-hosted terminal
 GRAPHICAL_PACKAGES=(
   bspwm sxhkd # Window Manager
   xorg-minimal elogind dbus-elogind-x11 # Session
   font-awesome6 font-iosevka fonts-roboto-ttf # Fonts
-  polybar feh picom scrot slock alacritty dunst rofi xsel # Misc
+  polybar feh picom scrot slock dunst rofi xsel # Misc
   pavucontrol bluez numlockx xbacklight # Peripherals
+  firefox vlc dolphin alacritty # Apps
 )
 
-FLATPAKS=(
-  app/org.mozilla.firefox/x86_64/stable
-  app/com.discordapp.Discord/x86_64/stable
-  app/org.videolan.VLC/x86_64/stable
-  app/org.kde.dolphin/x86_64/stable
-)
-FLATHUB_FLATPAKS=(
-  org.libreoffice.LibreOffice
-  org.cubocore.CoreFM
+RUST_PACKAGES=(
+  zoxide exa ripgrep sd # Navigation
+  zellij git-delta bat starship # Shell
+  bat trashy fd-find dua-cli ouch # Files
+  bottom eva licensor typeracer # Misc
 )
 
-RUST_PACKAGES=(typeracer)
-PYTHON_PACKAGES=(pyright protonvpn-cli yq python-rofi)
-GO_PACKAGES=(github.com/charmbracelet/gum@latest)
+PYTHON_PACKAGES=(
+  pyright protonvpn-cli jq yq python-rofi
+)
+GO_PACKAGES=(
+  github.com/charmbracelet/gum@latest
+  github.com/jesseduffield/lazygit@latest
+  github.com/charmbracelet/glow@latest
+  github.com/gokcehan/lf@latest
+  github.com/junegunn/fzf@latest
+  golang.org/x/tools/gopls@latest
+  github.com/srevinsaju/zap@latest
+)
 JS_PACKAGES=(
   yaml-language-server
   bash-language-server
@@ -65,36 +65,47 @@ if ! test -e /etc/doas.conf; then
 fi
 
 # Install official Void packages
-doas xbps-install -Sy "${PACKAGES[@]}"
+sudo xbps-install -Sy "${PACKAGES[@]}"
 
-# Install bun and packages
-if ! test -e ~/.bun/bin/bun; then
-  curl https://bun.sh/install | bash
-  bun install --global "${JS_PACKAGES[@]}"
+# Install Python and packages
+if ! which pyenv 2>/dev/null; then
+  curl https://pyenv.run | bash
 fi
+if ! which python 2>/dev/null; then
+  pyenv install 3.11
+  pyenv global 3.11
+fi
+pip install --quiet "${PYTHON_PACKAGES[@]}"
 
 # Install Rust and packages
-if ! test -e ~/.cargo/bin/cargo; then
-  rustup -y --no-modify-path --default-toolchain nightly \
+if ! which cargo 2>/dev/null; then
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
+    sh -s -- -y --no-modify-path --default-toolchain nightly \
     --component rust-src rust-analyzer
 fi
-cargo install "${RUST_PACKAGES[@]}"
+cargo install --quiet "${RUST_PACKAGES[@]}"
 
-# Install Python packages
-pip install "${PYTHON_PACKAGES[@]}"
+# Install fnm (node) and packages
+if ! which fnm 2>/dev/null; then
+  cargo install fnm
+fi
+if ! $(fnm list | grep lts-latest); then
+  fnm install --lts
+fi
+fnm exec --using=lts-latest npm install --global "${JS_PACKAGES[@]}"
 
 # Install tools from source
 for tool in "${TOOLS_FROM_SOURCE[@]}"; do
   name=$(basename "$tool")
-  if ! which $(basename $name); then
+  if ! which $(basename $name) 2>/dev/null; then
     rm -rf "/tmp/$name"
     git clone "$tool" "/tmp/$name"
-    doas make -C "/tmp/$name" install
+    sudo make -C "/tmp/$name" install
   fi
 done
 
 # Install golang and packages
-if ! test -e ~/.go/current/bin/go; then
+if ! which go 2>/dev/null; then
   curl -sSf https://raw.githubusercontent.com/owenthereal/goup/master/install.sh | \
     sh -s -- '--skip-prompt'
 fi
@@ -103,12 +114,9 @@ for package in "${GO_PACKAGES[@]}"; do
 done
 
 # Install fly bin
-if ! test -e ~/.fly/bin/flyctl; then
+if ! which fly 2>/dev/null; then
   curl -L https://fly.io/install.sh | sh
 fi
-
-# Install lean package manager
-cargo install --git https://github.com/leanprover/elan
 
 # Set fish as the default shell
 FISH_PATH=$(which fish)
@@ -116,7 +124,7 @@ if test "$SHELL" != "$FISH_PATH"; then
   if ! grep "$FISH_PATH" /etc/shells; then
     echo "$FISH_PATH" | sudo tee -a /etc/shells
   fi
-  chsh -s "$FISH_PATH"
+  sudo chsh -s "$FISH_PATH" $(whoami)
 fi
 
 # Copy public SSH keys from GitHub
@@ -126,17 +134,17 @@ fi
 
 # Set up tailscale
 if test "$(sv check tailscaled)" != "active"; then
-  doas vsv enable tailscaled
-  doas vsv start tailscaled
-  doas tailscale up
+  sudo vsv enable tailscaled
+  sudo vsv start tailscaled
+  sudo tailscale up
 fi
 
 if test -n "$DISPLAY"; then
   # Install GUI apps
-  doas xbps-install -Sy "${GRAPHICAL_PACKAGES[@]}"
-  flatpak install -y "${FLATPAKS[@]}"
-  doas flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-  flatpak install -y flathub "${FLATHUB_FLATPAKS[@]}"
+  sudo xbps-install -Sy "${GRAPHICAL_PACKAGES[@]}"
+
+  # Install Discord AppImage
+  zap install --github --from=srevinsaju/discord-appImage discord-appimage
 
   FONT_PATH=~/.local/share/fonts
   FONT_TMP_PATH=/tmp/CaskaydiaCove.zip
