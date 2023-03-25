@@ -9,9 +9,9 @@ PACKAGES=(
   python3 python3-pip go # Languages
   gcc moreutils cmake base-devel # Build tools
   fish-shell opendoas helix github-cli # Shell
-  openssh openssl openssl-devel curl tailscale NetworkManager # Networking
+  openssh openssl openssl-devel curl tailscale # Networking
   xdg-desktop-portal xdg-user-dirs xdg-utils # XDG
-  vsv unzip chafa poppler timg # Misc
+  vsv unzip chafa poppler file-devel # Misc
 )
 
 GRAPHICAL_PACKAGES=(
@@ -54,7 +54,7 @@ JS_PACKAGES=(
 
 TOOLS_FROM_SOURCE=(
   https://github.com/willeccles/f # Simple sysfetch
-  https://github.com/soystemd/lfutils # File previews
+  https://github.com/NikitaIvanovV/ctpv # File previews
 )
 
 # Allow doas usage without a password
@@ -68,7 +68,7 @@ fi
 sudo xbps-install -Sy "${PACKAGES[@]}"
 
 # Install Python packages
-pip install --quiet "${PYTHON_PACKAGES[@]}"
+pip install "${PYTHON_PACKAGES[@]}"
 
 # Install golang and packages
 for package in "${GO_PACKAGES[@]}"; do
@@ -81,7 +81,7 @@ if ! which cargo 2>/dev/null; then
     sh -s -- -y --no-modify-path --default-toolchain nightly \
     --component rust-src rust-analyzer
 fi
-cargo install --quiet "${RUST_PACKAGES[@]}"
+cargo install "${RUST_PACKAGES[@]}"
 
 # Install fnm (node) and packages
 if ! which fnm 2>/dev/null; then
@@ -95,9 +95,11 @@ fnm exec --using=lts-latest npm install --global "${JS_PACKAGES[@]}"
 # Install tools from source
 for tool in "${TOOLS_FROM_SOURCE[@]}"; do
   name=$(basename "$tool")
-  rm -rf "/tmp/$name"
-  git clone "$tool" "/tmp/$name"
-  sudo make -C "/tmp/$name" install
+  if ! which "$name" 2>/dev/null; then
+    sudo rm -rf "/tmp/$name"
+    git clone "$tool" "/tmp/$name"
+    sudo make -C "/tmp/$name" install
+  fi
 done
 
 # Install fly bin
