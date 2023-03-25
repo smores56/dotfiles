@@ -1,1 +1,1 @@
-fnm env --use-on-cd | source
+~/.cargo/bin/fnm env --use-on-cd | source

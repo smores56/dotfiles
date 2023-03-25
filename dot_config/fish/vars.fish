@@ -1,6 +1,6 @@
 set -xg GOPATH ~/.go
 set -xg PATH ~/.cargo/bin ~/.rustup/toolchains/*/bin ~/.local/bin \
-    ~/.go/bin ~/.fly/bin $PATH
+    ~/.go/bin ~/.fly/bin /usr/local/bin $PATH
 
 set -xg BAT_THEME ansi
 set -xg LS_COLORS (cat ~/.config/fish/ls-colors.txt)
