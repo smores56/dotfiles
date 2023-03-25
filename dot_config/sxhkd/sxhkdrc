@@ -160,12 +160,11 @@ super + shift + h
 
 # Screenshot
 Print
-  scrot ~/$(xdg-user-dir PICTURES)/Screenshot-$(date +%F_%T).png
+  sleep 1 && scrot ~/Pictures/Screenshot-$(date +%F_%T).png
 super + Print
-  screenshot
-  scrot ~/Pictures/Screenshot-$(date +%F_%T).png
-shift + Print
   scrot -s ~/Pictures/Screenshot-$(date +%F_%T).png
+shift + Print
+  sleep 1 && scrot -u ~/Pictures/Screenshot-$(date +%F_%T).png
 
 # Lock the screen
 super + l

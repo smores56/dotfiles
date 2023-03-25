@@ -10,9 +10,6 @@ zoxide init fish --cmd c | source
 # include abbreviations
 source ~/.config/fish/abbreviations.fish
 
-# set up pyenv
-pyenv init - | source
-
 # startup splashes
 if status --is-interactive
     # fetch sys info: https://github.com/willeccles/f

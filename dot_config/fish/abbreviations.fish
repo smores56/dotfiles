@@ -1,5 +1,6 @@
 # workflow apps
 abbr -a e "$EDITOR"
+abbr -a ef "$EDITOR (gum file .)"
 abbr -a l "exa --icons -lh"
 abbr -a t "zellij-picker"
 abbr -a a "mkdir -p"
@@ -24,7 +25,7 @@ abbr -a dts "set-theme dark --select"
 abbr -a lts "set-theme light --select"
 
 # dotfiles management
-abbr -a cdf "c ~/.dotfiles"
+abbr -a cdf "c ~/.local/share/chezmoi"
 abbr -a cm "chezmoi"
 abbr -a ca "chezmoi apply"
 

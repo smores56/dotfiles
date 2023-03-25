@@ -1,7 +1,6 @@
 set -xg GOPATH ~/.go
-set -xg PYENV_ROOT ~/.pyenv
 set -xg PATH ~/.cargo/bin ~/.rustup/toolchains/*/bin ~/.local/bin \
-    ~/.go/bin ~/.go/current/bin ~/.fly/bin ~/.bun/bin ~/.pyenv/bin $PATH
+    ~/.go/bin ~/.fly/bin $PATH
 
 set -xg BAT_THEME ansi
 set -xg LS_COLORS (cat ~/.config/fish/ls-colors.txt)

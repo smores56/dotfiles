@@ -3,16 +3,15 @@
 set -e
 
 export GOPATH=~/.go
-export PATH=~/.go/current/bin:~/.cargo/bin:~/.pyenv/bin:~/.local/bin:$PATH
+export PATH=~/.cargo/bin:~/.local/bin:$PATH
 
 PACKAGES=(
+  python3 python3-pip go # Languages
   gcc moreutils cmake base-devel # Build tools
   fish-shell opendoas helix github-cli # Shell
   openssh openssl openssl-devel curl tailscale NetworkManager # Networking
   xdg-desktop-portal xdg-user-dirs xdg-utils # XDG
-  vsv unzip chafa poppler # Misc
-  sqlite-devel xz liblzma-devel zlib zlib-devel # Libraries
-  libffi-devel bzip2-devel readline readline-devel # Libraries
+  vsv unzip chafa poppler timg # Misc
 )
 
 GRAPHICAL_PACKAGES=(
@@ -33,6 +32,7 @@ RUST_PACKAGES=(
 
 PYTHON_PACKAGES=(
   pyright protonvpn-cli jq yq python-rofi
+  asciimol
 )
 GO_PACKAGES=(
   github.com/charmbracelet/gum@latest
@@ -67,15 +67,13 @@ fi
 # Install official Void packages
 sudo xbps-install -Sy "${PACKAGES[@]}"
 
-# Install Python and packages
-if ! which pyenv 2>/dev/null; then
-  curl https://pyenv.run | bash
-fi
-if ! which python 2>/dev/null; then
-  pyenv install 3.11
-  pyenv global 3.11
-fi
+# Install Python packages
 pip install --quiet "${PYTHON_PACKAGES[@]}"
+
+# Install golang and packages
+for package in "${GO_PACKAGES[@]}"; do
+  go install "$package"
+done
 
 # Install Rust and packages
 if ! which cargo 2>/dev/null; then
@@ -97,20 +95,9 @@ fnm exec --using=lts-latest npm install --global "${JS_PACKAGES[@]}"
 # Install tools from source
 for tool in "${TOOLS_FROM_SOURCE[@]}"; do
   name=$(basename "$tool")
-  if ! which $(basename $name) 2>/dev/null; then
-    rm -rf "/tmp/$name"
-    git clone "$tool" "/tmp/$name"
-    sudo make -C "/tmp/$name" install
-  fi
-done
-
-# Install golang and packages
-if ! which go 2>/dev/null; then
-  curl -sSf https://raw.githubusercontent.com/owenthereal/goup/master/install.sh | \
-    sh -s -- '--skip-prompt'
-fi
-for package in "${GO_PACKAGES[@]}"; do
-  go install "$package"
+  rm -rf "/tmp/$name"
+  git clone "$tool" "/tmp/$name"
+  sudo make -C "/tmp/$name" install
 done
 
 # Install fly bin

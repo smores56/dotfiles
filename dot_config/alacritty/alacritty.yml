@@ -1,7 +1,0 @@
-font:
-  size: 8
-  normal:
-    family: CaskaydiaCove Nerd Font
- 
-import:
-  - ~/.config/alacritty/theme.yml
