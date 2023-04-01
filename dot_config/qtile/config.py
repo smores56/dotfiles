@@ -39,6 +39,7 @@ def get_color(*path: str, default: str) -> str:
 mod = "mod4"
 border_width = 4
 browser = ["flatpak", "run", "org.mozilla.firefox"]
+file_manager = ["flatpak", "run", "org.kde.dolphin"]
 terminal = guess_terminal()
 terminal_font = get_chezmoi_data("terminalFont", default="sans")
 
@@ -103,6 +104,7 @@ keys = [
     # Run applications
     Key([mod], "Return", lazy.spawn(terminal), desc="Launch terminal"),
     Key([mod], "b", lazy.spawn(browser), desc="Open a browser"),
+    Key([mod], "n", lazy.spawn(file_manager), desc="Open a file manager"),
     Key([mod], "d", lazy.run_extension(J4DmenuDesktop(**dmenu_props, dmenu_ignorecase=True))),
     Key([mod, "shift"], "d", lazy.run_extension(DmenuRun(**dmenu_props))),
     # Utilities
@@ -182,7 +184,7 @@ screens = [
                     highlight_method="line",
                     this_current_screen_border=yellow,
                 ),
-                widget.Prompt(foreground=blue),
+                widget.Prompt(foreground=green),
                 widget.WindowName(),
                 widget.PulseVolume(foreground=magenta),
                 widget.Backlight(foreground=yellow, backlight_name="intel_backlight"),

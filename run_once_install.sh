@@ -26,6 +26,7 @@ FLATHUB_PACKAGES=(
   org.videolan.VLC
   org.cubocore.CorePDF
   org.kde.dolphin
+  org.kicad.KiCad
 )
 
 RUST_PACKAGES=(
