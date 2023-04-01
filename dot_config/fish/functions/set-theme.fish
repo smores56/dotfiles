@@ -7,7 +7,7 @@ function set-theme --description "Set the system theme"
         return (error "theme must be `light` or `dark`")
     end
 
-    if test -n "$_flag_select"
+    if test -z "$_flag_select"
         if test $theme = "light"
             set variant "rose_pine_dawn"
         else
@@ -19,9 +19,9 @@ function set-theme --description "Set the system theme"
         or return (error "Must pick a variant")
     end
 
-    cp -sf ~/.config/lazygit/"$theme-config.yml" ~/.config/lazygit/config.yml
-    cp -sf ~/.config/alacritty/"$theme/$variant.yml" ~/.config/alacritty/theme.yml
-    cp -sf /lib/helix/runtime/themes/"$variant.toml" ~/.config/helix/themes/theme.toml
-    cp -sf ~/.config/alacritty/"$theme/$variant.yml" ~/.theme.yml
-    pueue add -- qtile cmd-obj -o cmd -f reload_config
+    ln -sf ~/.config/lazygit/"$theme-config.yml" ~/.config/lazygit/config.yml
+    ln -sf ~/.config/alacritty/"$theme/$variant.yml" ~/.config/alacritty/theme.yml
+    ln -sf /lib/helix/runtime/themes/"$variant.toml" ~/.config/helix/themes/theme.toml
+    ln -sf ~/.config/alacritty/"$theme/$variant.yml" ~/.theme.yml
+    pueue add &>/dev/null -- qtile cmd-obj -o cmd -f reload_config 
 end

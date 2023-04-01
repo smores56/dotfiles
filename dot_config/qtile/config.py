@@ -132,8 +132,8 @@ groups.append(ScratchPad("scratchpad", [
           -o window.dynamic_padding=true -e fish -c '{command[1]}'",
         x=0.35, y=0.35, width=0.3, height=0.3)
     for command in [
-        ("light theme", "set-theme light"),
-        ("dark theme", "set-theme dark"),
+        ("light theme", "set-theme light --select"),
+        ("dark theme", "set-theme dark --select"),
         ("power menu", "open-powermenu")
     ]
 ]))
@@ -170,10 +170,11 @@ screens = [
             [
                 widget.CurrentLayout(),
                 widget.GroupBox(
-                    inactive=gray,
-                    this_current_screen_border=normal_green,
-                    this_screen_border=normal_blue,
+                    inactive=normal_blue,
                     urgent_text=normal_red,
+                    highlight_color=gray,
+                    highlight_method="line",
+                    this_current_screen_border=normal_yellow,
                 ),
                 widget.Prompt(foreground=normal_blue),
                 widget.WindowName(),
