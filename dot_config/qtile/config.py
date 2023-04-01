@@ -41,8 +41,8 @@ border_width = 4
 browser = "firefox"
 terminal = guess_terminal()
 terminal_font = get_chezmoi_data("terminalFont", default="sans")
-background_color = get_color("primary", "background", default="#000000")
-foreground_color = get_color("primary", "foreground", default="#FFFFFF")
+
+
 normal_blue = get_color("normal", "blue", default="#0000CD")
 bright_blue = get_color("bright", "blue", default="#87CEEB")
 normal_yellow = get_color("normal", "yellow", default="#FEBE00")
@@ -50,6 +50,8 @@ normal_green = get_color("normal", "green", default="#02911F")
 normal_magenta = get_color("normal", "magenta", default="#02911F")
 normal_red = get_color("normal", "red", default="#B90E0A")
 gray = get_color("bright", "black", default="#484848")
+background_color = get_color("primary", "background", default="#000000")
+foreground_color = get_color("primary", "foreground", default="#FFFFFF")
 
 
 keys = [
@@ -178,6 +180,7 @@ screens = [
                 ),
                 widget.Prompt(foreground=normal_blue),
                 widget.WindowName(),
+                widget.PulseVolume(foreground=normal_magenta),
                 widget.Backlight(foreground=normal_yellow, backlight_name="intel_backlight"),
                 widget.Battery(foreground=normal_green, format="{char} {percent:2.0%} {hour:d}:{min:02d}"),
                 widget.Clock(format="%Y-%m-%d %a %I:%M %p"),

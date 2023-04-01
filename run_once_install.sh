@@ -16,7 +16,7 @@ PACKAGES=(
 GRAPHICAL_PACKAGES=(
   xorg-minimal emptty qtile scrot slock # Session
   bluez xbacklight udiskie xsel # Peripherals
-  feh firefox vlc dolphin alacritty evince # Apps
+  feh firefox vlc nemo alacritty evince # Apps
 )
 
 RUST_PACKAGES=(
@@ -142,7 +142,7 @@ if test -n "$DISPLAY"; then
   fi
 
   # Set default theme if missing
-  if ! test -e ~/.theme; then
-    set-theme dark
+  if ! test -e ~/.theme.yml; then
+    fish -c "set-theme dark"
   fi
 fi

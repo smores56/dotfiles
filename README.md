@@ -34,6 +34,8 @@ git clone git@github.com:smores56/dotfiles.git ~/.dotfiles
 
 If you want file syncronization with [pCloud][pcloud], you should install the app [from their site][install pcloud].
 
+<https://www.ifnull.org/articles/void_lock_screen_on_suspend/>
+
 
 [arch]: https://archlinux.org/
 [endeavouros]: https://endeavouros.com/
