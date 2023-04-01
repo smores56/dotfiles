@@ -1,6 +1,5 @@
 #!/bin/sh
 
-~/.cargo/bin/pueued &
 ~/.local/bin/pcloud &
 dunst &
 picom -b &
