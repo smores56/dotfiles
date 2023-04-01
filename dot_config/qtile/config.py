@@ -10,7 +10,7 @@ from libqtile.config import Click, Drag, Group, Key, Match, \
     Screen, ScratchPad, DropDown
 from libqtile.lazy import lazy
 from libqtile.utils import guess_terminal
-from libqtile.extension import DmenuRun
+from libqtile.extension import DmenuRun, J4DmenuDesktop
 
 
 def get_chezmoi_data(*path: str, default=None):
@@ -38,20 +38,30 @@ def get_color(*path: str, default: str) -> str:
 
 mod = "mod4"
 border_width = 4
-browser = "firefox"
+browser = ["flatpak", "run", "org.mozilla.firefox"]
 terminal = guess_terminal()
 terminal_font = get_chezmoi_data("terminalFont", default="sans")
 
 
-normal_blue = get_color("normal", "blue", default="#0000CD")
-bright_blue = get_color("bright", "blue", default="#87CEEB")
-normal_yellow = get_color("normal", "yellow", default="#FEBE00")
-normal_green = get_color("normal", "green", default="#02911F")
-normal_magenta = get_color("normal", "magenta", default="#02911F")
-normal_red = get_color("normal", "red", default="#B90E0A")
+red = get_color("normal", "red", default="#B90E0A")
+blue = get_color("normal", "blue", default="#0000CD")
 gray = get_color("bright", "black", default="#484848")
+green = get_color("normal", "green", default="#02911F")
+yellow = get_color("normal", "yellow", default="#FEBE00")
+magenta = get_color("normal", "magenta", default="#02911F")
 background_color = get_color("primary", "background", default="#000000")
 foreground_color = get_color("primary", "foreground", default="#FFFFFF")
+
+
+dmenu_props = {
+    "dmenu_prompt": ">",
+    "dmenu_bottom": True,
+    "dmenu_font": terminal_font,
+    "background": background_color,
+    "foreground": foreground_color,
+    "selected_background": blue,
+    "selected_foreground": background_color,
+}
 
 
 keys = [
@@ -93,15 +103,8 @@ keys = [
     # Run applications
     Key([mod], "Return", lazy.spawn(terminal), desc="Launch terminal"),
     Key([mod], "b", lazy.spawn(browser), desc="Open a browser"),
-    Key([mod], "d", lazy.run_extension(DmenuRun(
-        dmenu_prompt=">",
-        dmenu_bottom=True,
-        dmenu_font=terminal_font,
-        background=background_color,
-        foreground=foreground_color,
-        selected_background=normal_blue,
-        selected_foreground=background_color,
-    ))),
+    Key([mod], "d", lazy.run_extension(J4DmenuDesktop(**dmenu_props, dmenu_ignorecase=True))),
+    Key([mod, "shift"], "d", lazy.run_extension(DmenuRun(**dmenu_props))),
     # Utilities
     Key([mod], "l", lazy.spawn("slock"), desc="Lock the screen"),
     Key([mod], "p", lazy.group["scratchpad"].dropdown_toggle("power menu")),
@@ -142,8 +145,8 @@ groups.append(ScratchPad("scratchpad", [
 
 
 layout_settings={
-    "border_focus": normal_yellow,
-    "border_normal": normal_blue,
+    "border_focus": yellow,
+    "border_normal": blue,
     "border_width": border_width,
     "margin": border_width*2,
 }
@@ -172,17 +175,18 @@ screens = [
             [
                 widget.CurrentLayout(),
                 widget.GroupBox(
-                    inactive=normal_blue,
-                    urgent_text=normal_red,
+                    active=yellow,
+                    inactive=blue,
+                    urgent_text=red,
                     highlight_color=gray,
                     highlight_method="line",
-                    this_current_screen_border=normal_yellow,
+                    this_current_screen_border=yellow,
                 ),
-                widget.Prompt(foreground=normal_blue),
+                widget.Prompt(foreground=blue),
                 widget.WindowName(),
-                widget.PulseVolume(foreground=normal_magenta),
-                widget.Backlight(foreground=normal_yellow, backlight_name="intel_backlight"),
-                widget.Battery(foreground=normal_green, format="{char} {percent:2.0%} {hour:d}:{min:02d}"),
+                widget.PulseVolume(foreground=magenta),
+                widget.Backlight(foreground=yellow, backlight_name="intel_backlight"),
+                widget.Battery(foreground=green, format="{char} {percent:2.0%} {hour:d}:{min:02d}"),
                 widget.Clock(format="%Y-%m-%d %a %I:%M %p"),
                 widget.Systray(),
             ],
@@ -207,8 +211,8 @@ follow_mouse_focus = True
 bring_front_click = False
 cursor_warp = False
 floating_layout = layout.Floating(
-    border_focus=normal_magenta,
-    border_normal=normal_green,
+    border_focus=magenta,
+    border_normal=green,
     border_width=border_width,
     float_rules=[
         # Run the utility of `xprop` to see the wm class and name of an X client.

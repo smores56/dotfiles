@@ -4,7 +4,7 @@ source ~/.config/fish/vars.fish
 # set up plugins
 source ~/.config/fish/fundle.fish
 
-# Set up fuzzing directory changing
+# set up fuzzing directory changing
 zoxide init fish --cmd c | source
 
 # include abbreviations

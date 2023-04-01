@@ -9,14 +9,23 @@ PACKAGES=(
   python3 python3-pip go # Languages
   gcc moreutils cmake base-devel # Build tools
   fish-shell opendoas helix github-cli git # Shell
-  openssh openssl openssl-devel curl tailscale # Networking
-  vsv unzip chafa poppler file-devel # Misc
+  openssh openssl openssl-devel curl # Networking
+  unzip chafa poppler file-devel # Misc
 )
 
 GRAPHICAL_PACKAGES=(
   xorg-minimal emptty qtile scrot slock # Session
   bluez xbacklight udiskie xsel # Peripherals
-  feh firefox vlc nemo alacritty evince # Apps
+  feh alacritty flatpak dmenu j4-dmenu-desktop # Apps
+)
+
+FLATHUB_PACKAGES=(
+  org.mozilla.firefox
+  com.discordapp.Discord
+  org.libreoffice.LibreOffice
+  org.videolan.VLC
+  org.cubocore.CorePDF
+  org.kde.dolphin
 )
 
 RUST_PACKAGES=(
@@ -37,7 +46,6 @@ GO_PACKAGES=(
   github.com/gokcehan/lf@latest
   github.com/junegunn/fzf@latest
   golang.org/x/tools/gopls@latest
-  github.com/srevinsaju/zap@latest
 )
 JS_PACKAGES=(
   yaml-language-server
@@ -115,19 +123,27 @@ fi
 # Copy public SSH keys from GitHub
 curl -L https://github.com/smores56.keys -o ~/.ssh/authorized_keys
 
-# Set up tailscale
-if test "$(sv check tailscaled)" != "active"; then
-  sudo vsv enable tailscaled
-  sudo vsv start tailscaled
-  sudo tailscale up
+# Install tailscale
+if ! which tailscale 2>/dev/null; then
+  curl -fsSL https://tailscale.com/install.sh | sh
 fi
+
+# enable services
+for service in dbus tailscaled udevd; do
+  if test -d /etc/sv/$service; then
+    sudo ln -sf /etc/sv/$service /var/service/
+    sudo sv up $service
+  fi
+done
+
+# Set up tailscale
+sudo tailscale up
 
 if test -n "$DISPLAY"; then
   # Install GUI apps
   sudo xbps-install -Sy "${GRAPHICAL_PACKAGES[@]}"
-
-  # Install Discord AppImage
-  zap install --github --from=srevinsaju/discord-appImage discord-appimage
+  sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+  sudo flatpak install --assumeyes flathub "${FLATHUB_PACKAGES[@]}"
 
   FONT_PATH=~/.local/share/fonts
   FONT_TMP_PATH=/tmp/CaskaydiaCove.zip
@@ -140,6 +156,14 @@ if test -n "$DISPLAY"; then
     unzip -o "$FONT_TMP_PATH" -d "$FONT_PATH"
     fc-cache -f
   fi
+
+  # enable services
+  for service in emptty acpid; do
+    if test -d /etc/sv/$service; then
+      sudo ln -sf /etc/sv/$service /var/service/
+      sudo sv up $service
+    fi
+  done
 
   # Set default theme if missing
   if ! test -e ~/.theme.yml; then

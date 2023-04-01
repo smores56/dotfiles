@@ -6,4 +6,4 @@ xrdb -merge ~/.Xresources
 
 Environment=xorg
 
-exec qtile start
+exec dbus-run-session qtile start
