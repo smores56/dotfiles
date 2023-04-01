@@ -1,0 +1,9 @@
+#!/bin/sh
+
+xrdb -merge ~/.Xresources
+
+. /etc/profile
+
+Environment=xorg
+
+exec qtile start

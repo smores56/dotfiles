@@ -8,19 +8,15 @@ export PATH=~/.cargo/bin:~/.local/bin:$PATH
 PACKAGES=(
   python3 python3-pip go # Languages
   gcc moreutils cmake base-devel # Build tools
-  fish-shell opendoas helix github-cli # Shell
+  fish-shell opendoas helix github-cli git # Shell
   openssh openssl openssl-devel curl tailscale # Networking
-  xdg-desktop-portal xdg-user-dirs xdg-utils # XDG
   vsv unzip chafa poppler file-devel # Misc
 )
 
 GRAPHICAL_PACKAGES=(
-  bspwm sxhkd # Window Manager
-  xorg-minimal elogind dbus-elogind-x11 # Session
-  font-awesome6 font-iosevka fonts-roboto-ttf # Fonts
-  polybar feh picom scrot slock dunst rofi xsel # Misc
-  pavucontrol bluez numlockx xbacklight # Peripherals
-  firefox vlc dolphin alacritty # Apps
+  xorg-minimal emptty qtile scrot slock # Session
+  bluez xbacklight udiskie xsel # Peripherals
+  feh firefox vlc dolphin alacritty evince # Apps
 )
 
 RUST_PACKAGES=(
@@ -31,8 +27,8 @@ RUST_PACKAGES=(
 )
 
 PYTHON_PACKAGES=(
-  pyright protonvpn-cli jq yq python-rofi
-  asciimol
+  protonvpn-cli jq yq python-rofi
+  asciimol mypy python-lsp-server
 )
 GO_PACKAGES=(
   github.com/charmbracelet/gum@latest
@@ -117,9 +113,7 @@ if test "$SHELL" != "$FISH_PATH"; then
 fi
 
 # Copy public SSH keys from GitHub
-if ! test -e ~/.ssh/authorized_keys; then
-  curl -L https://github.com/smores56.keys -o ~/.ssh/authorized_keys
-fi
+curl -L https://github.com/smores56.keys -o ~/.ssh/authorized_keys
 
 # Set up tailscale
 if test "$(sv check tailscaled)" != "active"; then
@@ -148,7 +142,7 @@ if test -n "$DISPLAY"; then
   fi
 
   # Set default theme if missing
-  if fish -c 'test -z "$THEME"'; then
+  if ! test -e ~/.theme; then
     set-theme dark
   fi
 fi

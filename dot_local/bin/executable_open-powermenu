@@ -1,27 +1,18 @@
 #!/bin/env bash
 
 # Options for powermenu
-lock="......Lock"
+lock=".....Lock"
 logout=".....Logout"
-shutdown="....Shutdown"
-reboot="....Reboot"
-sleep="....Sleep"
+shutdown=".....Shutdown"
+reboot=".....Reboot"
+sleep=".....Sleep"
 
 # Get answer from user via rofi
 selected_option=$(echo "$lock
 $logout
 $sleep
 $reboot
-$shutdown" | rofi -dmenu\
-                  -i\
-                  -p "Power"\
-                  -config "~/.config/rofi/powermenu.rasi"\
-                  -font "Symbols Nerd Font 12"\
-                  -width "15"\
-                  -lines 5\
-                  -line-margin 3\
-                  -line-padding 10\
-                  -scrollbar-width "0" )
+$shutdown" | gum choose --header="Power Options")
 
 # Do something based on selected option
 if [ "$selected_option" == "$lock" ]
@@ -29,7 +20,7 @@ then
     slock
 elif [ "$selected_option" == "$logout" ]
 then
-    bspc quit
+    pkill qtile
 elif [ "$selected_option" == "$shutdown" ]
 then
     doas poweroff
