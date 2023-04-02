@@ -108,6 +108,9 @@ keys = [
     Key([mod], "n", lazy.spawn(file_manager), desc="Open a file manager"),
     Key([mod], "d", lazy.run_extension(J4DmenuDesktop(**dmenu_props, dmenu_ignorecase=True))),
     Key([mod, "shift"], "d", lazy.run_extension(DmenuRun(**dmenu_props))),
+    # Screenshots
+    Key([], "Print", lazy.spawn("sleep 1 && scrot ~/Pictures/Screenshot-$(date +%F_%T).png", shell=True)),
+    Key([mod], "Print", lazy.spawn("scrot -s ~/Pictures/Screenshot-$(date +%F_%T).png", shell=True)),
     # Utilities
     Key([mod], "l", lazy.spawn("slock"), desc="Lock the screen"),
     Key([mod], "p", lazy.group["scratchpad"].dropdown_toggle("power menu")),
