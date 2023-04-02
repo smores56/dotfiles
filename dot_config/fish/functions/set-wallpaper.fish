@@ -3,5 +3,7 @@ function set-wallpaper --description "Set the desktop background image"
     or return (error "Must choose a wallpaper")
 
     ln -sf "$wallpaper" ~/.wallpaper
-    nohup qtile cmd-obj -o cmd -f reload_config > /dev/null &
+    gum spin sleep 1 &
+    nohup 2>/dev/null qtile cmd-obj -o cmd -f reload_config &
+    wait gum
 end

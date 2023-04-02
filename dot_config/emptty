@@ -5,6 +5,7 @@ xss-lock slock &
 
 . /etc/profile
 
+# Allows use of file opener from flatpaks
 XDG_CURRENT_DESKTOP=LXQt
 Environment=xorg
 

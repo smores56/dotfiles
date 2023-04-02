@@ -3,6 +3,7 @@
 import os
 import json
 import yaml
+import glob
 import subprocess
 
 from libqtile import bar, layout, widget, hook
@@ -84,7 +85,7 @@ keys = [
     Key([mod, "control"], "Right", lazy.layout.grow_right(), desc="Grow window to the right"),
     Key([mod, "control"], "Down", lazy.layout.grow_down(), desc="Grow window down"),
     Key([mod, "control"], "Up", lazy.layout.grow_up(), desc="Grow window up"),
-    Key([mod], "n", lazy.layout.normalize(), desc="Reset all window sizes"),
+    Key([mod], "z", lazy.layout.normalize(), desc="Reset all window sizes"),
     # Toggle between split and unsplit sides of stack.
     # Split = all windows displayed
     # Unsplit = 1 window displayed, like Max layout, but still with
@@ -112,6 +113,7 @@ keys = [
     Key([mod], "p", lazy.group["scratchpad"].dropdown_toggle("power menu")),
     Key([mod], "h", lazy.group["scratchpad"].dropdown_toggle("dark theme")),
     Key([mod, "shift"], "h", lazy.group["scratchpad"].dropdown_toggle("light theme")),
+    Key([mod], "k", lazy.group["scratchpad"].dropdown_toggle("pick wallpaper"))
 ]
 
 
@@ -141,6 +143,7 @@ groups.append(ScratchPad("scratchpad", [
     for command in [
         ("light theme", "set-theme light --select"),
         ("dark theme", "set-theme dark --select"),
+        ("pick wallpaper", "set-wallpaper"),
         ("power menu", "open-powermenu")
     ]
 ]))
@@ -169,10 +172,12 @@ widget_defaults = dict(
 extension_defaults = widget_defaults.copy()
 
 
+wallpaper = next(glob.iglob(os.path.expanduser("~/.wallpaper")), None)
+wallpaper_config = { "wallpaper": wallpaper, "wallpaper_mode": "fill" } if wallpaper else {}
+backlight_name = next((card.rsplit("/")[-1] for card in glob.iglob("/sys/class/backlight/*")), None)
+has_battery = len(glob.glob("/sys/class/power_supply/*")) > 0
 screens = [
     Screen(
-        wallpaper='~/.background.jpg',
-        wallpaper_mode='fill',
         bottom=bar.Bar(
             [
                 widget.CurrentLayout(),
@@ -187,14 +192,17 @@ screens = [
                 widget.Prompt(foreground=green),
                 widget.WindowName(),
                 widget.PulseVolume(foreground=magenta),
-                widget.Backlight(foreground=yellow, backlight_name="intel_backlight"),
-                widget.Battery(foreground=green, format="{char} {percent:2.0%} {hour:d}:{min:02d}"),
+                widget.Backlight(foreground=yellow, backlight_name=backlight_name)
+                    if backlight_name else widget.Spacer(length=0),
+                widget.Battery(foreground=green, format="{char} {percent:2.0%} {hour:d}:{min:02d}")
+                    if has_battery else widget.Spacer(length=0),
                 widget.Clock(format="%Y-%m-%d %a %I:%M %p"),
                 widget.Systray(),
             ],
             24,
             background=background_color,
         ),
+        **wallpaper_config,
     ),
 ]
 
@@ -211,7 +219,7 @@ dgroups_key_binder = None
 dgroups_app_rules = []  # type: list
 follow_mouse_focus = True
 bring_front_click = False
-cursor_warp = False
+cursor_warp = True
 floating_layout = layout.Floating(
     border_focus=magenta,
     border_normal=green,
@@ -231,5 +239,5 @@ floating_layout = layout.Floating(
 
 @hook.subscribe.startup_once
 def autostart():
-    home = os.path.expanduser('~/.config/qtile/autostart.sh')
+    home = os.path.expanduser("~/.config/qtile/autostart.sh")
     subprocess.Popen([home])

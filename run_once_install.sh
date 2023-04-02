@@ -15,7 +15,7 @@ PACKAGES=(
 
 GRAPHICAL_PACKAGES=(
   emptty qtile scrot slock xss-lock # WM
-  xorg-minimal xdg-desktop-portal-lxqt # Session
+  xorg xrdb dbus xdg-desktop-portal-lxqt # Session
   feh alacritty flatpak dmenu j4-dmenu-desktop # Apps
   bluez xbacklight udiskie xsel # Peripherals
 )
@@ -62,6 +62,16 @@ TOOLS_FROM_SOURCE=(
   https://github.com/willeccles/f # Simple sysfetch
   https://github.com/NikitaIvanovV/ctpv # File previews
 )
+
+enable_services() {
+  for service in $@; do
+    if test -d /etc/sv/$service; then
+      sudo ln -sf /etc/sv/$service /var/service/
+      sleep 1
+      sudo sv up $service
+    fi
+  done
+}
 
 # Allow doas usage without a password
 if ! test -e /etc/doas.conf; then
@@ -130,13 +140,8 @@ if ! which tailscale 2>/dev/null; then
   curl -fsSL https://tailscale.com/install.sh | sh
 fi
 
-# enable services
-for service in dbus tailscaled udevd; do
-  if test -d /etc/sv/$service; then
-    sudo ln -sf /etc/sv/$service /var/service/
-    sudo sv up $service
-  fi
-done
+# enable headless services
+enable_services dbus tailscaled udevd
 
 # Set up tailscale
 sudo tailscale up
@@ -159,13 +164,8 @@ if test $(chezmoi data | jq ".isHeadless") = "false"; then
     fc-cache -f
   fi
 
-  # enable services
-  for service in emptty acpid; do
-    if test -d /etc/sv/$service; then
-      sudo ln -sf /etc/sv/$service /var/service/
-      sudo sv up $service
-    fi
-  done
+  # enable diplay-based services
+  enable_services emptyy acpid
 
   # Enable slock on sleep/close lid
   ZZZ_SLOCK=/etc/zzz.d/suspend/slock
