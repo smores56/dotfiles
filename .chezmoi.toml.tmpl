@@ -1,6 +1,9 @@
 {{- $isLaptop := promptBoolOnce . "isLaptop" "Is this a laptop" -}}
 
 [data]
+name = {{ promptStringOnce . "name" "What's your name" | quote }}
+email = {{ promptStringOnce . "email" "What's your email" | quote }}
 isLaptop = {{ $isLaptop }}
+isHeadless = {{ promptBoolOnce . "isHeadless" "Is this a headless install" }}
 terminalFont = "CaskaydiaCove Nerd Font"
 terminalFontSize = {{ if $isLaptop -}} 8 {{- else -}} 12 {{- end }}

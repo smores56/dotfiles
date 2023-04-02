@@ -8,15 +8,16 @@ export PATH=~/.cargo/bin:~/.local/bin:$PATH
 PACKAGES=(
   python3 python3-pip go # Languages
   gcc moreutils cmake base-devel # Build tools
-  fish-shell opendoas helix github-cli git # Shell
+  fish-shell opendoas helix github-cli git jq # Shell
   openssh openssl openssl-devel curl # Networking
   unzip chafa poppler file-devel # Misc
 )
 
 GRAPHICAL_PACKAGES=(
-  xorg-minimal emptty qtile scrot slock # Session
-  bluez xbacklight udiskie xsel # Peripherals
+  emptty qtile scrot slock xss-lock # WM
+  xorg-minimal xdg-desktop-portal-lxqt # Session
   feh alacritty flatpak dmenu j4-dmenu-desktop # Apps
+  bluez xbacklight udiskie xsel # Peripherals
 )
 
 FLATHUB_PACKAGES=(
@@ -33,12 +34,11 @@ RUST_PACKAGES=(
   zoxide exa ripgrep sd # Navigation
   zellij git-delta bat starship # Shell
   bat trashy fd-find dua-cli ouch # Files
-  bottom eva licensor typeracer # Misc
+  bottom eva licensor typeracer taplo-cli # Misc
 )
 
 PYTHON_PACKAGES=(
-  protonvpn-cli jq yq python-rofi
-  asciimol mypy python-lsp-server
+  protonvpn-cli asciimol mypy python-lsp-server
 )
 GO_PACKAGES=(
   github.com/charmbracelet/gum@latest
@@ -140,7 +140,7 @@ done
 # Set up tailscale
 sudo tailscale up
 
-if test -n "$DISPLAY"; then
+if test $(chezmoi data | jq ".isHeadless") = "false"; then
   # Install GUI apps
   sudo xbps-install -Sy "${GRAPHICAL_PACKAGES[@]}"
   sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
@@ -165,6 +165,13 @@ if test -n "$DISPLAY"; then
       sudo sv up $service
     fi
   done
+
+  # Enable slock on sleep/close lid
+  ZZZ_SLOCK=/etc/zzz.d/suspend/slock
+  if ! test -e "$ZZZ_SLOCK"; then
+    echo "#!/bin/sh\nxset s activate\nsleep 3s" | \
+      sudo tee -a "$ZZZ_SLOCK"
+  fi
 
   # Set default theme if missing
   if ! test -e ~/.theme.yml; then

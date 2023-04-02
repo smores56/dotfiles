@@ -1,8 +1,8 @@
 [init]
     defaultBranch = main
 [user]
-    email = "sam@sammohr.dev"
-    name = "Sam Mohr"
+    name = {{ .name | quote }}
+    email = {{ .email | quote }}
 [core]
     excludesFile = ~/.gitignore
     pager = delta

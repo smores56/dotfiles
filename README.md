@@ -1,7 +1,7 @@
-# Dotfiles
+Dotfiles
+========
 
-This folder contains scripts to set up my [BSPWM][bspwm] environment on 
-[EndeavourOS][endeavouros], an [Arch Linux][arch] distro.
+This folder contains scripts to set up my [Qtile][qtile] environment on [Void Linux][void linux].
 
 I use [Alacritty][alacritty] as my terminal emulator, [Fish][fish] for my shell,
 [Helix][helix] for my editor, and [Zellij][zellij] for multitasking, so most of
@@ -10,42 +10,36 @@ to want already installed everywhere.
 
 ## Install
 
-I use [DotBot][dotbot] to manage my dotfiles, which runs pretty much everything off
-of the [install.conf.yaml](./install.conf.yaml) file.
+I use [chezmoi][chezmoi] to manage my dotfiles, and I have a [bootstrap](./bootstrap)
+script that runs a full setup on new machines. After making sure you have `sh`, `git`,
+and `curl` installed, just run:
 
-Besides having [git][git] and some version of [Python installed][install python],
-you'll need to be able to clone the repo locally, should `ssh-keygen` after and add
-the new key to your GitHub account with:
-
-```bash
-ssh-keygen -t ed25519 -b 4096 -C <computer name>
-# Upload to GitHub manually, or run the following after installing the `github-cli`
-gh ssh-key add <public key file> -t <computer name>
 ```
-
-You can then install everything with:
-
-```bash
-git clone git@github.com:smores56/dotfiles.git ~/.dotfiles
-~/.dotfiles/install
+curl -sSfL bootstrap.sammohr.dev | sh
 ```
 
 ## Post-Install
 
 If you want file syncronization with [pCloud][pcloud], you should install the app [from their site][install pcloud].
 
-<https://www.ifnull.org/articles/void_lock_screen_on_suspend/>
+You can set an autologin username for the [emptty][emptty] login manager
+in the system-wide config as shown in its [README][emptty conf]. This only works if
+you add `$USER` to the group `nopasswdlogin`:
+
+```
+sudo groupadd nopasswdlogin
+sudo usermod -a -G nopasswdlogin $USER
+```
 
 
-[arch]: https://archlinux.org/
-[endeavouros]: https://endeavouros.com/
-[bspwm]: https://github.com/baskerville/bspwm
-[install python]: https://www.python.org/downloads/
-[git]: https://git-scm.com/
-[dotbot]: https://github.com/anishathalye/dotbot
+[void linux]: https://voidlinux.org/
+[qtile]: http://www.qtile.org/
+[chezmoi]: https://www.chezmoi.io/
 [alacritty]: https://github.com/alacritty/alacritty
 [fish]: https://fishshell.com
 [helix]: https://helix-editor.com
 [zellij]: https://zellij.dev
+[emptty]: https://github.com/tvrzna/emptty
+[emptty conf]: https://github.com/tvrzna/emptty#etcempttyconf
 [pcloud]: https://www.pcloud.com
 [install pcloud]: https://www.pcloud.com/download-free-online-cloud-file-storage.html

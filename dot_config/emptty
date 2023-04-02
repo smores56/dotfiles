@@ -1,9 +1,11 @@
 #!/bin/sh
 
 xrdb -merge ~/.Xresources
+xss-lock slock &
 
 . /etc/profile
 
+XDG_CURRENT_DESKTOP=LXQt
 Environment=xorg
 
 exec dbus-run-session qtile start
