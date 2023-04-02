@@ -49,6 +49,7 @@ GO_PACKAGES=(
   golang.org/x/tools/gopls@latest
 )
 JS_PACKAGES=(
+  yarn
   yaml-language-server
   bash-language-server
   svelte-language-server
