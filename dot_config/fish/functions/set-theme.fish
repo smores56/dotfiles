@@ -23,5 +23,5 @@ function set-theme --description "Set the system theme"
     ln -sf ~/.config/alacritty/"$theme/$variant.yml" ~/.config/alacritty/theme.yml
     ln -sf /lib/helix/runtime/themes/"$variant.toml" ~/.config/helix/themes/theme.toml
     ln -sf ~/.config/alacritty/"$theme/$variant.yml" ~/.theme.yml
-    pkill -SIGUSR1 qtile
+    nohup qtile cmd-obj -o cmd -f reload_config > /dev/null &
 end
