@@ -10,7 +10,7 @@ PACKAGES=(
   gcc moreutils cmake base-devel # Build tools
   fish-shell opendoas helix github-cli git jq # Shell
   openssh openssl openssl-devel curl # Networking
-  unzip chafa poppler file-devel # Misc
+  unzip chafa poppler file-devel alacritty-terminfo # Misc
 )
 
 GRAPHICAL_PACKAGES=(

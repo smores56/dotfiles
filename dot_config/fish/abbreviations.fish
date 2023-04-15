@@ -30,6 +30,7 @@ abbr -a cm "chezmoi"
 abbr -a ca "chezmoi apply"
 
 # remote access
-abbr -a s "ssh smores@home.sammohr.dev -t"
-abbr -a sa "ssh smores@api.sammohr.dev -t"
+abbr -a sl "ssh smores@sammohr.dev -t"
+abbr -a sm "ssh smores@home.sammohr.dev -t"
+abbr -a sc "ssh smores@campfire.sammohr.dev -t"
 abbr -a pf "port-forward smores@home.sammohr.dev"
