@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 export BINDIR=~/.local/bin
 export PATH=~/.go/bin:~/.local/bin:$PATH
 
@@ -14,12 +16,12 @@ fi
 
 # Log in to GitHub via CLI
 if ! test -e ~/.config/gh/hosts.yml; then
-  gh auth login --git-protocol=ssh
+  gh auth login --git-protocol=ssh --scopes=admin:public_key
 fi
 
 # Add SSH key to GitHub
 PUBLIC_KEY=$(cat ~/.ssh/id_ed25519.pub | cut -d " " -f 2)
-if ! gh ssh-key list | grep "$PUBLIC_KEY" 1>/dev/null; then
+if ! curl -L https://github.com/smores56.keys | grep "$PUBLIC_KEY" 1>/dev/null; then
   gh ssh-key add ~/.ssh/id_ed25519.pub -t "$(hostname)"
 fi
 

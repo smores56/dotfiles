@@ -10,7 +10,7 @@ PACKAGES=(
   gcc moreutils cmake base-devel # Build tools
   fish-shell opendoas helix github-cli git jq # Shell
   openssh openssl openssl-devel curl # Networking
-  unzip chafa poppler file-devel # Misc
+  unzip chafa poppler file-devel ntp # Misc
 )
 
 GRAPHICAL_PACKAGES=(
@@ -28,6 +28,7 @@ FLATHUB_PACKAGES=(
   org.cubocore.CorePDF
   org.kde.dolphin
   org.kicad.KiCad
+  org.gimp.GIMP
 )
 
 RUST_PACKAGES=(
@@ -134,6 +135,7 @@ fi
 
 # Copy public SSH keys from GitHub
 curl -L https://github.com/smores56.keys -o ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
 
 # Install tailscale
 if ! which tailscale 2>/dev/null; then
@@ -141,7 +143,7 @@ if ! which tailscale 2>/dev/null; then
 fi
 
 # enable headless services
-enable_services dbus tailscaled udevd
+enable_services dbus tailscaled udevd ntpd
 
 # Set up tailscale
 sudo tailscale up

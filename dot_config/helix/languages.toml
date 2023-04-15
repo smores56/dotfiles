@@ -5,3 +5,7 @@ config.rust-analyzer.diagnostics.disabled = ["unresolved-proc-macro"]
 [[language]]
 name = "java"
 indent = { tab-width = 4, unit = "    " }
+
+[[language]]
+name = "tsx"
+auto-format = true
