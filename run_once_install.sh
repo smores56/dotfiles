@@ -6,18 +6,15 @@ export GOPATH=~/.go
 export PATH=~/.cargo/bin:~/.local/bin:$PATH
 
 PACKAGES=(
-  python3 python3-pip go # Languages
+  python3 python-pip go # Languages
   gcc moreutils cmake base-devel # Build tools
-  fish-shell opendoas helix github-cli git jq # Shell
-  openssh openssl openssl-devel curl # Networking
-  unzip chafa poppler file-devel ntp  alacritty-terminfo # Misc
+  fish opendoas helix github-cli git jq # Shell
+  openssh openssl curl # Networking
+  unzip chafa poppler # Misc
 )
 
 GRAPHICAL_PACKAGES=(
-  emptty qtile scrot slock xss-lock # WM
-  xorg xrdb dbus xdg-desktop-portal-lxqt # Session
-  feh alacritty flatpak dmenu j4-dmenu-desktop # Apps
-  bluez xbacklight udiskie xsel # Peripherals
+  feh alacritty flatpak dmenu j4-dmenu-desktop xsel
 )
 
 FLATHUB_PACKAGES=(
@@ -64,16 +61,6 @@ TOOLS_FROM_SOURCE=(
   https://github.com/NikitaIvanovV/ctpv # File previews
 )
 
-enable_services() {
-  for service in $@; do
-    if test -d /etc/sv/$service; then
-      sudo ln -sf /etc/sv/$service /var/service/
-      sleep 1
-      sudo sv up $service
-    fi
-  done
-}
-
 # Allow doas usage without a password
 if ! test -e /etc/doas.conf; then
   echo "permit nopass :wheel" | sudo tee -a /etc/doas.conf
@@ -81,8 +68,8 @@ if ! test -e /etc/doas.conf; then
   sudo chown root /etc/doas.conf
 fi
 
-# Install official Void packages
-sudo xbps-install -Sy "${PACKAGES[@]}"
+# Install official Arch packages
+sudo pacman -Sy --noconfirm "${PACKAGES[@]}"
 
 # Install Python packages
 pip install "${PYTHON_PACKAGES[@]}"
@@ -134,6 +121,7 @@ if test "$SHELL" != "$FISH_PATH"; then
 fi
 
 # Copy public SSH keys from GitHub
+mkdir -p ~/.ssh
 curl -L https://github.com/smores56.keys -o ~/.ssh/authorized_keys
 chmod 600 ~/.ssh/authorized_keys
 
@@ -142,15 +130,14 @@ if ! which tailscale 2>/dev/null; then
   curl -fsSL https://tailscale.com/install.sh | sh
 fi
 
-# enable headless services
-enable_services dbus tailscaled udevd ntpd
-
 # Set up tailscale
+sudo systemctl enable tailscaled
+sudo systemctl start tailscaled
 sudo tailscale up
 
 if test $(chezmoi data | jq ".isHeadless") = "false"; then
   # Install GUI apps
-  sudo xbps-install -Sy "${GRAPHICAL_PACKAGES[@]}"
+  sudo pacman -Sy --noconfirm "${GRAPHICAL_PACKAGES[@]}"
   sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
   sudo flatpak install --assumeyes flathub "${FLATHUB_PACKAGES[@]}"
 
@@ -164,16 +151,6 @@ if test $(chezmoi data | jq ".isHeadless") = "false"; then
     curl -L "$FONT_URL" -o "$FONT_TMP_PATH"
     unzip -o "$FONT_TMP_PATH" -d "$FONT_PATH"
     fc-cache -f
-  fi
-
-  # enable diplay-based services
-  enable_services emptyy acpid
-
-  # Enable slock on sleep/close lid
-  ZZZ_SLOCK=/etc/zzz.d/suspend/slock
-  if ! test -e "$ZZZ_SLOCK"; then
-    echo "#!/bin/sh\nxset s activate\nsleep 3s" | \
-      sudo tee -a "$ZZZ_SLOCK"
   fi
 
   # Set default theme if missing
