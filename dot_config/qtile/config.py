@@ -115,19 +115,26 @@ for i in groups:
     )
 
 
-groups.append(ScratchPad("scratchpad", [
-    DropDown(
-        command[0],
+def dropdown_builder(name, command, large=False):
+    if large:
+        config = dict(x=0.2, y=0.2, width=0.6, height=0.6)
+    else:
+        config = dict(x=0.35, y=0.35, width=0.3, height=0.3)
+
+    return DropDown(
+        name,
         f"alacritty -o window.padding.x=10 -o window.padding.y=10 \
-          -o window.dynamic_padding=true -e fish -c '{command[1]}'",
-        x=0.35, y=0.35, width=0.3, height=0.3)
-    for command in [
-        ("light theme", "set-theme light --select"),
-        ("dark theme", "set-theme dark --select"),
-        ("pick wallpaper", "set-wallpaper"),
-        ("power menu", "open-powermenu"),
-        ("app launcher", "gyr")
-    ]
+          -o window.dynamic_padding=true -e fish -c '{command}'",
+        **config
+    )
+
+
+groups.append(ScratchPad("scratchpad", [
+    dropdown_builder("light theme", "set-theme light --select"),
+    dropdown_builder("dark theme", "set-theme dark --select"),
+    dropdown_builder("pick wallpaper", "set-wallpaper"),
+    dropdown_builder("power menu", "open-powermenu"),
+    dropdown_builder("app launcher", "gyr", large=True)
 ]))
 
 
