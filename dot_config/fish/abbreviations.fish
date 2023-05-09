@@ -13,10 +13,10 @@ abbr -a gc "gh repo clone"
 abbr -a / "fd --type f"
 abbr -a // "sk --ansi -i -c 'rg --color=always --line-number \"{}\"'"
 
-# Void Linux
-abbr -a xq "doas xbps-query"
-abbr -a xr "doas xbps-remove"
-abbr -a xi "doas xbps-install"
+# Arch Linux
+abbr -a pi "doas pacman -Sy"
+abbr -a pr "doas pacman -R"
+abbr -a pq "doas pacman -Q"
 
 # theming
 abbr -a dt "set-theme dark"

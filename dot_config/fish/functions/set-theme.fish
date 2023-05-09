@@ -19,9 +19,10 @@ function set-theme --description "Set the system theme"
         or return (error "Must pick a variant")
     end
 
+    mkdir -p ~/.config/helix/themes/
     ln -sf ~/.config/lazygit/"$theme-config.yml" ~/.config/lazygit/config.yml
     ln -sf ~/.config/alacritty/"$theme/$variant.yml" ~/.config/alacritty/theme.yml
     ln -sf /lib/helix/runtime/themes/"$variant.toml" ~/.config/helix/themes/theme.toml
     ln -sf ~/.config/alacritty/"$theme/$variant.yml" ~/.theme.yml
-    nohup qtile cmd-obj -o cmd -f reload_config > /dev/null &
+    qtile cmd-obj -o cmd -f reload_config
 end

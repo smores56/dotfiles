@@ -14,17 +14,6 @@ from libqtile.utils import guess_terminal
 from libqtile.extension import DmenuRun, J4DmenuDesktop
 
 
-def get_chezmoi_data(*path: str, default=None):
-    try:
-        process = subprocess.run(["chezmoi", "data"], capture_output=True)
-        data = json.loads(process.stdout.decode("utf-8"))
-        for segment in path:
-            data = data[segment]
-        return data
-    except:
-        return default
-
-
 def get_color(*path: str, default: str) -> str:
     try:
         with open(os.path.expanduser("~/.theme.yml"), "r") as f:
@@ -39,10 +28,11 @@ def get_color(*path: str, default: str) -> str:
 
 mod = "mod4"
 border_width = 4
-browser = ["flatpak", "run", "org.mozilla.firefox"]
-file_manager = ["flatpak", "run", "org.kde.dolphin"]
+margin_width = 7
+browser = "firefox"
+file_manager = "thunar"
 terminal = guess_terminal()
-terminal_font = get_chezmoi_data("terminalFont", default="sans")
+bar_font = "Cascadia Code Bold"
 
 
 red = get_color("normal", "red", default="#B90E0A")
@@ -53,17 +43,6 @@ yellow = get_color("normal", "yellow", default="#FEBE00")
 magenta = get_color("normal", "magenta", default="#02911F")
 background_color = get_color("primary", "background", default="#000000")
 foreground_color = get_color("primary", "foreground", default="#FFFFFF")
-
-
-dmenu_props = {
-    "dmenu_prompt": ">",
-    "dmenu_bottom": True,
-    "dmenu_font": terminal_font,
-    "background": background_color,
-    "foreground": foreground_color,
-    "selected_background": blue,
-    "selected_foreground": background_color,
-}
 
 
 keys = [
@@ -106,14 +85,13 @@ keys = [
     Key([mod], "Return", lazy.spawn(terminal), desc="Launch terminal"),
     Key([mod], "b", lazy.spawn(browser), desc="Open a browser"),
     Key([mod], "n", lazy.spawn(file_manager), desc="Open a file manager"),
-    Key([mod], "d", lazy.run_extension(J4DmenuDesktop(**dmenu_props, dmenu_ignorecase=True))),
-    Key([mod, "shift"], "d", lazy.run_extension(DmenuRun(**dmenu_props))),
     # Screenshots
     Key([], "Print", lazy.spawn("sleep 1 && scrot ~/Pictures/Screenshot-$(date +%F_%T).png", shell=True)),
     Key([mod], "Print", lazy.spawn("scrot -s ~/Pictures/Screenshot-$(date +%F_%T).png", shell=True)),
     # Utilities
     Key([mod], "l", lazy.spawn("slock"), desc="Lock the screen"),
     Key([mod], "p", lazy.group["scratchpad"].dropdown_toggle("power menu")),
+    Key([mod], "d", lazy.group["scratchpad"].dropdown_toggle("app launcher")),
     Key([mod], "h", lazy.group["scratchpad"].dropdown_toggle("dark theme")),
     Key([mod, "shift"], "h", lazy.group["scratchpad"].dropdown_toggle("light theme")),
     Key([mod], "k", lazy.group["scratchpad"].dropdown_toggle("pick wallpaper"))
@@ -147,7 +125,8 @@ groups.append(ScratchPad("scratchpad", [
         ("light theme", "set-theme light --select"),
         ("dark theme", "set-theme dark --select"),
         ("pick wallpaper", "set-wallpaper"),
-        ("power menu", "open-powermenu")
+        ("power menu", "open-powermenu"),
+        ("app launcher", "gyr")
     ]
 ]))
 
@@ -156,7 +135,7 @@ layout_settings={
     "border_focus": yellow,
     "border_normal": blue,
     "border_width": border_width,
-    "margin": border_width*2,
+    "margin": margin_width,
 }
 layouts = [
     layout.Bsp(**layout_settings),
@@ -167,10 +146,11 @@ layouts = [
 
 
 widget_defaults = dict(
-    font=terminal_font,
+    font=bar_font,
     foreground=foreground_color,
-    fontsize=15,
-    padding=5,
+    fontsize=16,
+    padding_x=5,
+    padding_y=12,
 )
 extension_defaults = widget_defaults.copy()
 
@@ -202,7 +182,8 @@ screens = [
                 widget.Clock(format="%Y-%m-%d %a %I:%M %p"),
                 widget.Systray(),
             ],
-            24,
+            32,
+            margin=margin_width,
             background=background_color,
         ),
         **wallpaper_config,

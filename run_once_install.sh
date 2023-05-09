@@ -14,30 +14,23 @@ PACKAGES=(
 )
 
 GRAPHICAL_PACKAGES=(
-  feh alacritty flatpak dmenu j4-dmenu-desktop xsel
-)
-
-FLATHUB_PACKAGES=(
-  org.mozilla.firefox
-  com.discordapp.Discord
-  org.libreoffice.LibreOffice
-  org.videolan.VLC
-  org.cubocore.CorePDF
-  org.kde.dolphin
-  org.kicad.KiCad
-  org.gimp.GIMP
+  xsel xorg-xbacklight # Tools
+  ttf-cascadia-code-nerd ttf-nerd-fonts-symbols # Fonts
+  discord firefox vlc evince thunar alacritty feh # Apps
+  kicad gimp libreoffice-still # Apps
 )
 
 RUST_PACKAGES=(
   zoxide exa ripgrep sd # Navigation
   zellij git-delta bat starship # Shell
   bat trashy fd-find dua-cli ouch # Files
-  bottom eva licensor typeracer taplo-cli # Misc
+  bottom eva licensor typeracer taplo-cli gyr # Misc
 )
 
 PYTHON_PACKAGES=(
   protonvpn-cli asciimol mypy python-lsp-server
 )
+
 GO_PACKAGES=(
   github.com/charmbracelet/gum@latest
   github.com/jesseduffield/lazygit@latest
@@ -46,6 +39,7 @@ GO_PACKAGES=(
   github.com/junegunn/fzf@latest
   golang.org/x/tools/gopls@latest
 )
+
 JS_PACKAGES=(
   yarn
   yaml-language-server
@@ -131,27 +125,15 @@ if ! which tailscale 2>/dev/null; then
 fi
 
 # Set up tailscale
-sudo systemctl enable tailscaled
-sudo systemctl start tailscaled
-sudo tailscale up
+if ! sudo systemctl is-active tailscaled; then
+  sudo systemctl enable tailscaled
+  sudo systemctl start tailscaled
+  sudo tailscale up
+fi
 
 if test $(chezmoi data | jq ".isHeadless") = "false"; then
   # Install GUI apps
   sudo pacman -Sy --noconfirm "${GRAPHICAL_PACKAGES[@]}"
-  sudo flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-  sudo flatpak install --assumeyes flathub "${FLATHUB_PACKAGES[@]}"
-
-  FONT_PATH=~/.local/share/fonts
-  FONT_TMP_PATH=/tmp/CaskaydiaCove.zip
-  FONT_URL=https://github.com/ryanoasis/nerd-fonts/releases/download/v2.2.2/CascadiaCode.zip
-  FONT_NAME="Caskaydia Cove Nerd Font Complete"
-
-  # Install CaskaydiaCove Font
-  if ! (fc-list | grep "$FONT_NAME" 1>/dev/null); then
-    curl -L "$FONT_URL" -o "$FONT_TMP_PATH"
-    unzip -o "$FONT_TMP_PATH" -d "$FONT_PATH"
-    fc-cache -f
-  fi
 
   # Set default theme if missing
   if ! test -e ~/.theme.yml; then
