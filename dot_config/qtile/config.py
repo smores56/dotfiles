@@ -188,6 +188,7 @@ screens = [
                     if has_battery else widget.Spacer(length=0),
                 widget.Clock(format="%Y-%m-%d %a %I:%M %p"),
                 widget.Systray(),
+                widget.Spacer(length=4),
             ],
             32,
             margin=margin_width,
