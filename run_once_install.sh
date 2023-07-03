@@ -10,11 +10,11 @@ PACKAGES=(
   gcc moreutils cmake base-devel # Build tools
   fish opendoas helix github-cli git jq # Shell
   openssh openssl curl # Networking
-  unzip chafa poppler # Misc
+  unzip chafa mypy python-lsp-server # Misc
 )
 
 GRAPHICAL_PACKAGES=(
-  xsel xorg-xbacklight # Tools
+  xsel acpilight playerctl # Tools
   ttf-cascadia-code-nerd ttf-nerd-fonts-symbols # Fonts
   discord firefox vlc evince thunar alacritty feh # Apps
   kicad gimp libreoffice-still # Apps
@@ -25,10 +25,6 @@ RUST_PACKAGES=(
   zellij git-delta bat starship # Shell
   bat trashy fd-find dua-cli ouch # Files
   bottom eva licensor typeracer taplo-cli gyr # Misc
-)
-
-PYTHON_PACKAGES=(
-  protonvpn-cli asciimol mypy python-lsp-server
 )
 
 GO_PACKAGES=(
@@ -64,9 +60,6 @@ fi
 
 # Install official Arch packages
 sudo pacman -Sy --noconfirm "${PACKAGES[@]}"
-
-# Install Python packages
-pip install "${PYTHON_PACKAGES[@]}"
 
 # Install golang and packages
 for package in "${GO_PACKAGES[@]}"; do

@@ -88,6 +88,16 @@ keys = [
     # Screenshots
     Key([], "Print", lazy.spawn("sleep 1 && scrot ~/Pictures/Screenshot-$(date +%F_%T).png", shell=True)),
     Key([mod], "Print", lazy.spawn("scrot -s ~/Pictures/Screenshot-$(date +%F_%T).png", shell=True)),
+    # Brightness
+    Key([], 'XF86MonBrightnessUp',   lazy.spawn("xbacklight -inc 5")),
+    Key([], 'XF86MonBrightnessDown', lazy.spawn("xbacklight -dec 5")),
+    # Audio
+    Key([], 'XF86AudioMute', lazy.spawn("pactl set-sink-mute 0 toggle")),
+    Key([], 'XF86AudioRaiseVolume', lazy.spawn("pactl set-sink-volume 0 +5%")),
+    Key([], 'XF86AudioLowerVolume', lazy.spawn("pactl set-sink-volume 0 -5%")),
+    Key([], 'XF86AudioPlay', lazy.spawn("playerctl play-pause")),
+    Key([], 'XF86AudioNext', lazy.spawn("playerctl next")),
+    Key([], 'XF86AudioPrev', lazy.spawn("playerctl previous")),
     # Utilities
     Key([mod], "l", lazy.spawn("slock"), desc="Lock the screen"),
     Key([mod], "p", lazy.group["scratchpad"].dropdown_toggle("power menu")),
