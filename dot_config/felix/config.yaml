@@ -1,0 +1,5 @@
+syntax_highlight: true
+color:
+  dir_fg: LightCyan
+  file_fg: LightWhite
+  symlink_fg: LightYellow

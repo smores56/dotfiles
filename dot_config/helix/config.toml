@@ -1,5 +1,5 @@
 # Use system theme
-theme = "theme"
+theme = "rose_pine_moon"
 
 [editor]
 cursorline = true

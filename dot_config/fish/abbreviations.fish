@@ -13,10 +13,9 @@ abbr -a gc "gh repo clone"
 abbr -a / "fd --type f"
 abbr -a // "sk --ansi -i -c 'rg --color=always --line-number \"{}\"'"
 
-# Arch Linux
-abbr -a pi "doas pacman -Sy"
-abbr -a pr "doas pacman -R"
-abbr -a pq "doas pacman -Q"
+# package management
+abbr -a pa "sudo apk add"
+abbr -a pd "sudo apk del"
 
 # theming
 abbr -a dt "set-theme dark"
