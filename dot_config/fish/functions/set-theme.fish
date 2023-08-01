@@ -22,7 +22,12 @@ function set-theme --description "Set the system theme"
     mkdir -p ~/.config/helix/themes/
     ln -sf ~/.config/lazygit/"$theme-config.yml" ~/.config/lazygit/config.yml
     ln -sf ~/.config/alacritty/"$theme/$variant.yml" ~/.config/alacritty/theme.yml
-    ln -sf /lib/helix/runtime/themes/"$variant.toml" ~/.config/helix/themes/theme.toml
     ln -sf ~/.config/alacritty/"$theme/$variant.yml" ~/.theme.yml
-    qtile cmd-obj -o cmd -f reload_config
+
+    if test (uname) = "Darkin"
+        ln -sf /opt/homebrew/opt/helix/libexec/runtime/themes/"$variant.toml" ~/.config/helix/themes/theme.toml
+    else
+        ln -sf /lib/helix/runtime/themes/"$variant.toml" ~/.config/helix/themes/theme.toml
+        qtile cmd-obj -o cmd -f reload_config
+    end
 end

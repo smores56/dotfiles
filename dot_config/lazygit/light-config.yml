@@ -1,3 +1,9 @@
+os:
+  edit: helix -- {{filename}}
+  editAtLine: helix -- {{filename}}:{{line}}
+  editAtLineAndWait: helix -- {{filename}}:{{line}}
+  editInTerminal: true
+
 git:
   paging:
     colorArg: always

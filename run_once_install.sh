@@ -5,25 +5,37 @@ set -e
 export GOPATH=~/.go
 export PATH=~/.cargo/bin:~/.local/bin:$PATH
 
-PACKAGES=(
+ARCH_PACKAGES=(
   python3 python-pip go # Languages
   gcc moreutils cmake base-devel # Build tools
-  fish opendoas helix github-cli git jq # Shell
+  fish helix github-cli git jq # Shell
   openssh openssl curl # Networking
   unzip chafa mypy python-lsp-server # Misc
 )
 
-GRAPHICAL_PACKAGES=(
+OSX_PACKAGES=(
+  go gcc fish trash-cli tailscale
+  moreutils cmake # Build tools
+  fish helix gh jq # Shell
+  openssh openssl curl # Networking
+  unzip chafa mypy python-lsp-server # Misc
+)
+
+GRAPHICAL_ARCH_PACKAGES=(
   xsel acpilight playerctl # Tools
   ttf-cascadia-code-nerd ttf-nerd-fonts-symbols # Fonts
   discord firefox vlc evince thunar alacritty feh # Apps
   kicad gimp libreoffice-still # Apps
 )
 
+GRAPHICAL_OSX_PACKAGES=(
+  alacritty
+)
+
 RUST_PACKAGES=(
   zoxide exa ripgrep sd # Navigation
   zellij git-delta bat starship # Shell
-  bat trashy fd-find dua-cli ouch # Files
+  bat fd-find dua-cli ouch # Files
   bottom eva licensor typeracer taplo-cli gyr # Misc
 )
 
@@ -51,15 +63,19 @@ TOOLS_FROM_SOURCE=(
   https://github.com/NikitaIvanovV/ctpv # File previews
 )
 
-# Allow doas usage without a password
-if ! test -e /etc/doas.conf; then
-  echo "permit nopass :wheel" | sudo tee -a /etc/doas.conf
-  sudo usermod -a -G wheel "$(whoami)"
-  sudo chown root /etc/doas.conf
-fi
+# TODO: allow password-less sudo?
 
-# Install official Arch packages
-sudo pacman -Sy --noconfirm "${PACKAGES[@]}"
+# Install system packages
+if test "$(uname)" = "Darwin"; then
+  # Install homebrew
+  if ! which /opt/homebrew/bin/brew 2>/dev/null; then
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  fi
+
+  brew install "${OSX_PACKAGES[@]}"
+else
+  sudo pacman -Sy --noconfirm "${ARCH_PACKAGES[@]}"
+fi
 
 # Install golang and packages
 for package in "${GO_PACKAGES[@]}"; do
@@ -89,7 +105,7 @@ for tool in "${TOOLS_FROM_SOURCE[@]}"; do
   if ! which "$name" 2>/dev/null; then
     sudo rm -rf "/tmp/$name"
     git clone "$tool" "/tmp/$name"
-    sudo make -C "/tmp/$name" install
+    sudo CFLAGS="-L/opt/homebrew/lib -I/opt/homebrew/include" make -C "/tmp/$name" install
   fi
 done
 
@@ -118,7 +134,7 @@ if ! which tailscale 2>/dev/null; then
 fi
 
 # Set up tailscale
-if ! sudo systemctl is-active tailscaled; then
+if test "$(uname)" != "Darwin" && ! sudo systemctl is-active tailscaled; then
   sudo systemctl enable tailscaled
   sudo systemctl start tailscaled
   sudo tailscale up
@@ -126,7 +142,11 @@ fi
 
 if test $(chezmoi data | jq ".isHeadless") = "false"; then
   # Install GUI apps
-  sudo pacman -Sy --noconfirm "${GRAPHICAL_PACKAGES[@]}"
+  if test "$(uname)" = "Darwin"; then
+    brew install "${GRAPHICAL_OSX_PACKAGES[@]}"
+  else
+    sudo pacman -Sy --noconfirm "${GRAPHICAL_ARCH_PACKAGES[@]}"
+  fi
 
   # Set default theme if missing
   if ! test -e ~/.theme.yml; then
