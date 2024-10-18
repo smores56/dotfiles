@@ -10,22 +10,27 @@ to want already installed everywhere.
 
 ## Install
 
-I use [chezmoi][chezmoi] to manage my dotfiles, and I install my tools from a container
+I use [chezmoi][chezmoi] to manage my dotfiles, and I install my tools in a container
 using [toolbx][toolbx]. You should first ensure you have the following already installed:
 
 - git
 - curl
-- [toolbox](https://containertoolbx.org/install)
+- fish
+- [toolbx][install toolbx]
 
 Then run the following:
 
 ```sh
+# Install the toolbx container
+toolbox create --image ghcr.io/ublue-os/arch-distrobox:latest
+# Make toolbx simple to invoke
+echo 'alias enter="SHELL=/usr/sbin/fish toolbox enter arch-distrobox-latest"' >> ~/.bashrc
+# Enter the toolbx container
+toolbox enter arch-distrobox-latest
+# Install chezmoi
+sudo pacman -S --noconfirm chezmoi
 # Install dotfiles
-sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply smores56
-# Install the toolbox container
-toolbox create --image smores56/smores-arch-toolbox:latest
-# Make toolbox simple to invoke
-echo 'alias enter="SHELL=/usr/sbin/fish toolbox enter smores-arch-toolbox-latest"' >> ~/.bashrc
+chezmoi init --apply smores56
 ```
 
 ## Post-Install
@@ -57,6 +62,7 @@ If you want file syncronization with [pCloud][pcloud], you should install the ap
 
 
 [toolbx]: https://containertoolbx.org/
+[install toolbx]: https://containertoolbx.org/install
 [chezmoi]: https://www.chezmoi.io/
 [alacritty]: https://github.com/alacritty/alacritty
 [fish]: https://fishshell.com

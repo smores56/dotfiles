@@ -1,0 +1,39 @@
+FROM ghcr.io/ublue-os/arch-distrobox:latest
+
+LABEL com.github.containers.toolbox="true" \
+      name="smores-arch-toolbox" \
+      version="latest" \
+      usage="This image is meant to be used with the toolbox(1) command" \
+      summary="Image for creating Arch Toolbx containers"
+
+# Install Arch packages
+# USER nobody
+RUN paru -S --noconfirm --needed \
+  python3 python-pip go rust fnm-bin terraform $(: Languages) \
+  # gcc moreutils cmake base-devel               $(: Build tools) \
+  zoxide ripgrep sd fzf                        $(: Navigation) \
+  zellij yazi glow helix                       $(: Explore) \
+  openssh openssl curl bandwhich               $(: Networking) \
+  # bat fd dua-cli ouch file trash-cli           $(: Files) \
+  # k9s docker-compose oxker-bin                 $(: Containers) \
+  # fish pfetch-rs-bin eza                       $(: Shell) \
+  # zip unzip ouch jq                            $(: Processing) \
+  # gnupg pinentry xsel wl-clipboard gum         $(: Shell I/O) \
+  # git git-lfs github-cli git-delta difftastic lazygit gitui $(: Git) \
+  # bottom eva tokei cbonsai-git typeracer-bin aws-cli-v2     $(: Misc) \
+  mypy python-lsp-server rust-analyzer taplo-cli            $(: LSP) \
+  gopls typst-lsp typstyle-bin marksman nixpkgs-fmt nim-fmt $(: LSP)
+
+
+# Install JS packages
+RUN fnm install --lts && \
+  fnm exec --using=lts-latest npm install --global \
+  yarn \
+  yaml-language-server \
+  bash-language-server \
+  svelte-language-server \
+  @prisma/language-server \
+  typescript-language-server \
+  vscode-langservers-extracted \
+  graphql-language-service-cli \
+  dockerfile-language-server-nodejs
