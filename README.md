@@ -25,7 +25,7 @@ sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply smores56
 # Install the toolbox container
 toolbox create --image smores56/smores-arch-toolbox:latest
 # Make toolbox simple to invoke
-echo 'alias enter "SHELL=/bin/sbin/fish toolbox enter smores-arch-toolbox"' >> ~/.bashrc
+echo 'alias enter="SHELL=/usr/sbin/fish toolbox enter smores-arch-toolbox-latest"' >> ~/.bashrc
 ```
 
 ## Post-Install

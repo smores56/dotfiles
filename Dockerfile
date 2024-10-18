@@ -36,3 +36,9 @@ RUN fnm install --lts && \
   vscode-langservers-extracted \
   graphql-language-service-cli \
   dockerfile-language-server-nodejs
+
+# Clear out /home
+USER root
+RUN sudo userdel -rf builder && \
+  sudo rm -rf /home/* /var/home/* && \
+  sudo mkdir /media
