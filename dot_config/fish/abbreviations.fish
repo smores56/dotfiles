@@ -2,11 +2,11 @@
 abbr -a e "$EDITOR"
 abbr -a ef "$EDITOR (gum file .)"
 abbr -a l "exa --icons -lh"
-abbr -a t "zellij-picker"
+abbr -a t zellij
 abbr -a a "mkdir -p"
-abbr -a f "lfcd"
-abbr -a b "bat"
-abbr -a g "lazygit"
+abbr -a f yazi
+abbr -a b bat
+abbr -a g lazygit
 abbr -a gc "gh repo clone"
 
 # searching
@@ -26,11 +26,12 @@ abbr -a lts "set-theme light --select"
 
 # dotfiles management
 abbr -a cdf "c ~/.local/share/chezmoi"
-abbr -a cm "chezmoi"
+abbr -a cm chezmoi
 abbr -a ca "chezmoi apply"
 
 # remote access
-abbr -a sl "ssh smores@sammohr.dev -t"
-abbr -a sm "ssh smores@home.sammohr.dev -t"
-abbr -a sc "ssh smores@campfire.sammohr.dev -t"
+abbr -a sl "ssh smoresnet -t fish"
+abbr -a sm "ssh smortress -t fish"
+abbr -a sc "ssh campfire -t fish"
+abbr -a st "ssh (tailscale-hosts | fzf) -t fish"
 abbr -a pf "port-forward smores@home.sammohr.dev"

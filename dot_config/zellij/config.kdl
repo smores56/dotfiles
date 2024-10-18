@@ -1,4 +1,5 @@
 default_shell "fish"
+session_serialization false
 
 ui {
     pane_frames {

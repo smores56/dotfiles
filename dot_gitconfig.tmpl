@@ -6,6 +6,12 @@
 [core]
     excludesFile = ~/.gitignore
     pager = delta
+[push]
+    default = simple
+[pull]
+    rebase = false
+[init]
+    defaultBranch = main
 [diff]
     colorMoved = default
 [pager]
@@ -18,7 +24,7 @@
     line-numbers = true
 [interactive]
     diffFilter = delta --color-only
-[pull]
-    rebase = false
 [safe]
     directory = *
+[commit]
+    gpgsign = true

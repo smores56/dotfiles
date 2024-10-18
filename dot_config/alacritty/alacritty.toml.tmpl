@@ -1,0 +1,13 @@
+import = ["~/.config/alacritty/theme.toml"]
+
+[shell]
+program = "/bin/sbin/fish"
+args = ["-c", "toolbox enter smores-arch-toolbox"]
+
+[window]
+decorations = "None"
+blue = true
+
+[font]
+size = {{ .terminalFontSize }}
+normal = { family = {{ .terminalFont | quote }} } 

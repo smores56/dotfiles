@@ -12,10 +12,8 @@ source ~/.config/fish/abbreviations.fish
 
 # startup splashes
 if status --is-interactive
-    # fetch sys info: https://github.com/willeccles/f
-    f
+    pfetch
 
     # set custom prompt
     set fish_greeting
-    starship init fish | source
 end

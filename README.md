@@ -1,7 +1,7 @@
 Dotfiles
 ========
 
-This folder contains scripts to set up my [Qtile][qtile] environment on [Void Linux][void linux].
+This repo contains config for my Linux environment.
 
 I use [Alacritty][alacritty] as my terminal emulator, [Fish][fish] for my shell,
 [Helix][helix] for my editor, and [Zellij][zellij] for multitasking, so most of
@@ -10,36 +10,57 @@ to want already installed everywhere.
 
 ## Install
 
-I use [chezmoi][chezmoi] to manage my dotfiles, and I have a [bootstrap](./bootstrap)
-script that runs a full setup on new machines. After making sure you have `sh`, `git`,
-and `curl` installed, just run:
+I use [chezmoi][chezmoi] to manage my dotfiles, and I install my tools from a container
+using [toolbx][toolbx]. You should first ensure you have the following already installed:
 
-```
-curl -sSfL bootstrap.sammohr.dev | sh
+- git
+- curl
+- [toolbox](https://containertoolbx.org/install)
+
+Then run the following:
+
+```sh
+# Install dotfiles
+sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply smores56
+# Install the toolbox container
+toolbox create --image smores56/smores-arch-toolbox:latest
+# Make toolbox simple to invoke
+echo 'alias enter "SHELL=/bin/sbin/fish toolbox enter smores-arch-toolbox"' >> ~/.bashrc
 ```
 
 ## Post-Install
 
+You'll probably want to set up your SSH key and GitHub access like this:
+
+```sh
+# Create SSH key
+if ! test -e ~/.ssh/id_ed25519.pub; then
+  mkdir -p ~/.ssh
+  ssh-keygen -t ed25519 -b 4096 -C $(hostname)
+fi
+
+# Log in to GitHub via CLI
+gh auth login --git-protocol=ssh --scopes=admin:public_key
+
+# Add SSH key to GitHub
+PUBLIC_KEY=$(cat ~/.ssh/id_ed25519.pub | cut -d " " -f 2)
+if ! curl -L https://github.com/smores56.keys | grep "$PUBLIC_KEY" 1>/dev/null; then
+  gh ssh-key add ~/.ssh/id_ed25519.pub -t "$(hostname)"
+fi
+
+# Use SSH auth for dotfiles repo
+cd $(chezmoi source-path)
+git remote set-url origin git@github.com:smores56/dotfiles.git
+```
+
 If you want file syncronization with [pCloud][pcloud], you should install the app [from their site][install pcloud].
 
-You can set an autologin username for the [emptty][emptty] login manager
-in the system-wide config as shown in its [README][emptty conf]. This only works if
-you add `$USER` to the group `nopasswdlogin`:
 
-```
-sudo groupadd nopasswdlogin
-sudo usermod -a -G nopasswdlogin $USER
-```
-
-
-[void linux]: https://voidlinux.org/
-[qtile]: http://www.qtile.org/
+[toolbx]: https://containertoolbx.org/
 [chezmoi]: https://www.chezmoi.io/
 [alacritty]: https://github.com/alacritty/alacritty
 [fish]: https://fishshell.com
 [helix]: https://helix-editor.com
 [zellij]: https://zellij.dev
-[emptty]: https://github.com/tvrzna/emptty
-[emptty conf]: https://github.com/tvrzna/emptty#etcempttyconf
 [pcloud]: https://www.pcloud.com
 [install pcloud]: https://www.pcloud.com/download-free-online-cloud-file-storage.html
