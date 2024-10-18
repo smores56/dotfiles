@@ -8,25 +8,21 @@ LABEL com.github.containers.toolbox="true" \
 
 # Install Arch packages
 RUN yay -S --noconfirm --needed \
-  python3 python-pip go rust terraform fnm-bin $(: Languages) \
+  # terraform docker github-cli nixpkgs-fmt nil-git eza
+  python3 python-pip go rust fnm-bin           $(: Languages) \
   gcc moreutils cmake base-devel               $(: Build tools) \
-  zoxide eza ripgrep sd fzf                    $(: Navigation) \
+  zoxide ripgrep sd fzf                        $(: Navigation) \
   zellij yazi glow helix                       $(: Explore) \
   openssh openssl curl bandwhich               $(: Networking) \
   bat fd dua-cli ouch file trash-cli           $(: Files) \
-  k9s docker docker-compose oxker              $(: Containers) \
+  k9s docker-compose oxker                     $(: Containers) \
   fish pfetch-rs-bin                           $(: Shell) \
   zip unzip ouch jq                            $(: Processing) \
   gnupg pinentry xsel wl-clipboard gum         $(: Shell I/O) \
-  git git-lfs github-cli git-delta difftastic lazygit gitui   $(: Git) \
+  git git-lfs git-delta difftastic lazygit gitui              $(: Git) \
   bottom eva taplo-cli tokei cbonsai typeracer-bin aws-cli-v2 $(: Misc) \
-  # Editor tools
-  nixpkgs-fmt nil-git mypy python-lsp-server      $(: LSP) \
-  rust-analyzer gopls typst-lsp typstyle marksman $(: LSP) \
-  # GUI
-  ttf-cascadia-code-nerd ttf-nerd-fonts-symbols   $(: Fonts) \
-  discord firefox vlc evince thunar alacritty feh $(: Apps) \
-  kicad gimp libreoffice-still                    $(: Apps)
+  mypy python-lsp-server      $(: LSP) \
+  rust-analyzer gopls typst-lsp typstyle marksman $(: LSP)
 
 # Install JS packages
 RUN fnm install --lts && \
