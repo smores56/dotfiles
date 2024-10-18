@@ -42,14 +42,14 @@ RUN paru -S --noconfirm --needed \
   zellij yazi glow helix                       $(: Explore) \
   openssh openssl curl bandwhich               $(: Networking) \
   bat fd dua-cli ouch file trash-cli           $(: Files) \
-  k9s docker-compose oxker                     $(: Containers) \
+  k9s docker-compose oxker-bin                 $(: Containers) \
   fish pfetch-rs-bin                           $(: Shell) \
   zip unzip ouch jq                            $(: Processing) \
   gnupg pinentry xsel wl-clipboard gum         $(: Shell I/O) \
-  git git-lfs git-delta difftastic lazygit gitui              $(: Git) \
-  bottom eva taplo-cli tokei cbonsai typeracer-bin aws-cli-v2 $(: Misc) \
-  mypy python-lsp-server      $(: LSP) \
-  rust-analyzer gopls typst-lsp typstyle marksman $(: LSP)
+  git git-lfs git-delta difftastic lazygit gitui        $(: Git) \
+  bottom eva tokei cbonsai-git typeracer-bin aws-cli-v2 $(: Misc) \
+  mypy python-lsp-server rust-analyzer taplo-cli        $(: LSP) \
+  gopls typst-lsp typstyle-bin marksman                 $(: LSP)
 
 # Install JS packages
 RUN fnm install --lts && \
