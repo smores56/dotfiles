@@ -1,4 +1,24 @@
-FROM docker.io/imrehg/archlinux-makepkg:latest
+#########
+# Builder
+#########
+FROM archlinux AS base
+
+RUN pacman -Syuq --noconfirm git base-devel sudo
+
+RUN echo "Defaults         lecture = never" > /etc/sudoers.d/privacy \
+  && echo "%wheel ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/wheel
+
+RUN useradd -m -G wheel builder && \
+  cd /home/builder && \
+  sudo -su builder git clone https://aur.archlinux.org/paru.git && \
+  sudo -su builder makepkg -s --noconfirm -D paru && \
+  mv * /tmp/paru && \
+  userdel builder -rf
+
+#########
+# Runtime
+#########
+FROM archlinux
 
 LABEL com.github.containers.toolbox="true" \
       name="smores-arch-toolbox" \
@@ -6,8 +26,15 @@ LABEL com.github.containers.toolbox="true" \
       usage="This image is meant to be used with the toolbox(1) command" \
       summary="Image for creating Arch Toolbx containers"
 
+RUN pacman -Syuq --noconfirm git base-devel sudo namcap openssh \
+ && rm -rf /var/cache/pacman/pkg/*
+
+COPY --from=base /tmp/paru/*.pkg.tar.* /tmp/pkg/
+
+RUN sudo pacman -U --noconfirm /tmp/pkg/*.pkg.tar.*
+
 # Install Arch packages
-RUN yay -S --noconfirm --needed \
+RUN paru -S --noconfirm --needed \
   # terraform docker github-cli nixpkgs-fmt nil-git eza
   python3 python-pip go rust fnm-bin           $(: Languages) \
   gcc moreutils cmake base-devel               $(: Build tools) \
@@ -36,9 +63,3 @@ RUN fnm install --lts && \
   vscode-langservers-extracted \
   graphql-language-service-cli \
   dockerfile-language-server-nodejs
-
-# Clear out /home
-USER root
-RUN sudo userdel -rf builder && \
-  sudo rm -rf /home/* /var/home/* && \
-  sudo mkdir /media
