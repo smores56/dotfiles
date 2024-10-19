@@ -1,12 +1,13 @@
 import = ["~/.config/alacritty/theme.toml"]
 
 [shell]
-program = "/usr/sbin/fish"
-args = ["-c", "toolbox enter arch-distrobox-latest"]
+program = "/usr/bin/fish"
+args = ["-c", "SHELL=/usr/sbin/fish toolbox enter arch-distrobox-latest"]
 
 [window]
 decorations = "None"
-blue = true
+blur = true
+padding = { x = 4, y = 4 }
 
 [font]
 size = {{ .terminalFontSize }}
