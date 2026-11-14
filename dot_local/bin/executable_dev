@@ -130,9 +130,11 @@ if [ -d "$git_config_dir" ]; then
     append --volume; append "$git_config_dir:/home/dev/.config/git:$ro_opts"
 fi
 
-# The agent socket is the only cryptographic access the container gets: it can
-# sign and fetch, it cannot read or copy the key.
-if [ -n "${SSH_AUTH_SOCK:-}" ]; then
+# The agent socket is the only cryptographic access the container gets, and it
+# is opt-in: an arbitrary repository image can use a forwarded agent to push to
+# every remote the operator key reaches. Set DEV_SSH_AGENT=1 for a trusted
+# checkout only.
+if [ "${DEV_SSH_AGENT:-0}" = 1 ] && [ -n "${SSH_AUTH_SOCK:-}" ]; then
     append --volume; append "$SSH_AUTH_SOCK:$SSH_AUTH_SOCK"
     append --env; append "SSH_AUTH_SOCK=$SSH_AUTH_SOCK"
 fi

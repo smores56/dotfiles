@@ -277,7 +277,7 @@ in_run_sub() { run_block | grep -qF -- "$1"; }
 
 : > "$DEV_FAKE_LOG"
 (cd "$dev_repo" && PATH="$fake:$PATH" DEV_ENGINE=engine GH_TOKEN=ghp_secret \
-    GITHUB_TOKEN=ghs_secret SSH_AUTH_SOCK=$agent_sock sh "$DEV") >/dev/null 2>&1
+    GITHUB_TOKEN=ghs_secret SSH_AUTH_SOCK=$agent_sock DEV_SSH_AGENT=1 sh "$DEV") >/dev/null 2>&1
 
 DESC="dev does not start a probe container"
 assert test "$(grep -c '^=== invocation' "$DEV_FAKE_LOG")" -eq 2
