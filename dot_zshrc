@@ -1,0 +1,27 @@
+# macOS login shell. It must keep the same PATH order and mise activation as
+# ~/.config/fish/conf.d/env.fish, because tools should behave identically
+# whichever shell the terminal or a script ends up using.
+
+export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+if [ -d /opt/homebrew/bin ]; then
+  export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
+  export HOMEBREW_NO_ANALYTICS=1
+  export HOMEBREW_NO_AUTO_UPDATE=1
+fi
+
+export EDITOR=hx
+export VISUAL=hx
+export PAGER=less
+export LESS=-FRX
+export BAT_THEME=ansi
+
+if (( $+commands[mise] )); then
+  eval "$(mise activate zsh)"
+fi
+
+HISTFILE=$HOME/.zsh_history
+HISTSIZE=10000
+SAVEHIST=10000
+setopt append_history hist_ignore_dups hist_ignore_space share_history
+
+autoload -Uz compinit && compinit -i

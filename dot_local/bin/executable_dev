@@ -1,0 +1,151 @@
+#!/bin/sh
+# dev: run the current repository inside its development container.
+#
+# The repository's own Containerfile is the canonical development contract;
+# when a repository has none, the shared image in ~/.config/containers is used
+# so a fresh checkout still gets a usable shell. Podman is preferred, Docker
+# works the same way, and no engine socket is ever mounted: build and test
+# containers are not privileged children of the host daemon.
+set -eu
+
+usage() {
+    cat <<'EOF'
+usage: dev [--build] [--engine podman|docker] [--] [command ...]
+
+  --build     rebuild the image from the repository's Containerfile first
+  --engine    container engine to use (default: $DEV_ENGINE, else podman,
+              else docker)
+  command     command to run instead of an interactive shell
+
+environment:
+  DEV_ENGINE  container engine override
+  DEV_IMAGE   image tag override (default: dev-<repository>:local)
+EOF
+}
+
+msg() { printf 'dev: %s\n' "$*" >&2; }
+die() { msg "$1"; exit 1; }
+
+build_only=false
+engine=""
+while [ $# -gt 0 ]; do
+    case $1 in
+        --build|-b) build_only=true; shift ;;
+        --engine) [ $# -ge 2 ] || die "--engine needs a value"; engine=$2; shift 2 ;;
+        --engine=*) engine=${1#*=}; shift ;;
+        -h|--help) usage; exit 0 ;;
+        --) shift; break ;;
+        *) break ;;
+    esac
+done
+# Everything left in "$@" is the command to run inside the container.
+
+root=$(git rev-parse --show-toplevel 2>/dev/null) || die "run inside a git repository"
+
+if [ -z "$engine" ]; then
+    if [ -n "${DEV_ENGINE:-}" ]; then
+        engine=$DEV_ENGINE
+    elif command -v podman >/dev/null 2>&1; then
+        engine=podman
+    elif command -v docker >/dev/null 2>&1; then
+        engine=docker
+    else
+        die "neither podman nor docker is installed"
+    fi
+fi
+command -v "$engine" >/dev/null 2>&1 || die "engine not found: $engine"
+
+# Repositories get their own image tag so two projects cannot silently share a
+# build. A repository that wants the shared one sets DEV_IMAGE.
+repo_name=$(basename "$root" | tr '[:upper:]' '[:lower:]')
+image=${DEV_IMAGE:-dev-$repo_name:local}
+
+containerfile=""
+context=""
+for candidate in "$root/Containerfile" "$root/Containerfile.dev" "$root/containers/Containerfile"; do
+    if [ -f "$candidate" ]; then
+        containerfile=$candidate
+        context=$root
+        break
+    fi
+done
+if [ -z "$containerfile" ]; then
+    config_home=${XDG_CONFIG_HOME:-$HOME/.config}
+    containerfile=$config_home/containers/Containerfile.dev
+    context=$config_home/containers
+    [ -f "$containerfile" ] || die "no Containerfile for $root and no $containerfile"
+fi
+
+if $build_only || ! "$engine" image inspect "$image" >/dev/null 2>&1; then
+    msg "building $image from $containerfile"
+    "$engine" build -t "$image" -f "$containerfile" "$context"
+    if $build_only; then exit 0; fi
+fi
+
+# Build the run command as a properly single-quoted string. Positional
+# parameters cannot be prepended in POSIX sh, and the command to run lives
+# there, so the prefix is assembled textually and expanded once.
+quote() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
+
+run_args=" run --rm -it"
+append() { run_args="$run_args $(quote "$1")"; }
+append_literal() { run_args="$run_args $1"; }
+
+append --workdir; append "$root"
+append --hostname; append dev
+append --env; append HOME=/home/dev
+append --env; append "TERM=${TERM:-xterm-256color}"
+
+# SELinux relabelling is what makes the mount usable on Fedora Atomic; Docker
+# and macOS ignore the :Z suffix, so only ask podman on Linux.
+if [ "$engine" = podman ] && [ "$(uname -s)" = Linux ]; then
+    append_literal --userns=keep-id:uid=1000,gid=1000
+    append --volume; append "$root:$root:Z"
+else
+    append --user; append "$(id -u):$(id -g)"
+    append --volume; append "$root:$root"
+fi
+
+# Credentials and signing keys are mounted read-only, never copied in.
+if [ -f "$HOME/.gitconfig" ]; then
+    append --volume; append "$HOME/.gitconfig:/home/dev/.gitconfig:ro"
+fi
+if [ -d "${XDG_CONFIG_HOME:-$HOME/.config}/git" ]; then
+    append --volume; append "${XDG_CONFIG_HOME:-$HOME/.config}/git:/home/dev/.config/git:ro"
+fi
+if [ -d "$HOME/.ssh" ]; then
+    append --volume; append "$HOME/.ssh:/home/dev/.ssh:ro"
+fi
+if [ -n "${SSH_AUTH_SOCK:-}" ]; then
+    append --volume; append "$SSH_AUTH_SOCK:$SSH_AUTH_SOCK"
+    append --env; append "SSH_AUTH_SOCK=$SSH_AUTH_SOCK"
+fi
+if [ -n "${GH_TOKEN:-}" ]; then append_literal '--env GH_TOKEN'; fi
+if [ -n "${GITHUB_TOKEN:-}" ]; then append_literal '--env GITHUB_TOKEN'; fi
+
+# Tool installs and caches live on a volume shared across repositories.
+append --volume; append dev-mise:/home/dev/.local/share/mise
+append --env; append "MISE_TRUSTED_CONFIG_PATHS=$root"
+
+# A gitdir outside the checkout (the clean-bare root, when working inside a
+# branch worktree) must be visible at the same path inside the container.
+common_dir=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)
+if [ -n "$common_dir" ]; then
+    case $common_dir in
+        "$root"/*) ;;
+        *) append --volume; append "$common_dir:$common_dir" ;;
+    esac
+fi
+
+append_literal "$(quote "$image")"
+
+if [ $# -eq 0 ]; then
+    if "$engine" run --rm "$image" sh -c 'command -v fish' >/dev/null 2>&1; then
+        append_literal 'fish'
+    else
+        append_literal 'sh'
+    fi
+fi
+
+eval "set -- $(quote "$engine") $run_args \"\$@\""
+exec "$@"

@@ -1,1 +1,3 @@
+# Repository documentation and tests are not dotfiles.
 README.md
+tests

@@ -1,0 +1,98 @@
+#!/bin/sh
+# chezmoi run_once: machine bootstrap, executed once per machine after the
+# managed files are applied. Idempotent: every step first checks whether the
+# work is already done, so a re-run after a partial failure is safe.
+#
+# It uses the network (package manager, mise) but never stores or prints a
+# secret. The shell works before this runs; this only adds packages.
+set -u
+
+PROFILE={{ .profile | quote }}
+IS_HEADLESS={{ .is_headless }}
+
+printf 'Bootstrapping the %s profile.\n' "$PROFILE"
+
+print_followups() {
+    cat <<'EOF'
+
+Manual follow-ups, once per machine:
+  1. GitHub access
+       gh auth login --git-protocol ssh
+       ssh-keygen -t ed25519 -C "$(hostname)"    # skip if the key exists
+       gh ssh-key add ~/.ssh/id_ed25519.pub -t "$(hostname)"
+  2. Tool versions
+       mise install
+       mise ls
+  3. Verify the dotfiles
+       chezmoi diff
+  4. Verify the checkout layout
+       repos list
+       worktrees list
+EOF
+}
+
+{{ if eq .chezmoi.os "linux" -}}
+# ---------------------------------------------------------------- Fedora Atomic
+if command -v rpm-ostree >/dev/null 2>&1; then
+    OSTREE=1
+else
+    OSTREE=0
+fi
+
+# rpm-ostree layers need a reboot; dnf is used on non-atomic Fedora only.
+PACKAGES="fish zsh gh git git-lfs just jq yq ripgrep fd-find bat eza shellcheck podman"
+missing=""
+for pkg in $PACKAGES; do
+    rpm -q "$pkg" >/dev/null 2>&1 || missing="$missing $pkg"
+done
+if [ -n "$missing" ]; then
+    printf 'Installing:%s\n' "$missing"
+    if [ "$OSTREE" = 1 ]; then
+        sudo rpm-ostree install $missing
+    elif command -v dnf >/dev/null 2>&1; then
+        sudo dnf install -y $missing
+    else
+        printf 'No supported package manager; install these manually:%s\n' "$missing"
+    fi
+fi
+
+# GUI applications come from Flathub; headless machines skip them entirely.
+if [ "$IS_HEADLESS" != "true" ] && command -v flatpak >/dev/null 2>&1; then
+    flatpak remote-add --if-not-exists --user flathub \
+        https://flathub.org/repo/flathub.flatpakrepo || true
+    for app in md.obsidian.Obsidian; do
+        flatpak info --user "$app" >/dev/null 2>&1 \
+            || flatpak install --user -y --noninteractive flathub "$app" \
+            || printf 'Flathub install failed for %s; install it by hand.\n' "$app"
+    done
+fi
+
+# mise has no Fedora Atomic package that works without a reboot, so use the
+# release installer, which only writes ~/.local/bin/mise.
+if ! command -v mise >/dev/null 2>&1; then
+    curl -fsSL https://mise.run -o /tmp/mise-install.sh
+    MISE_INSTALL_PATH="$HOME/.local/bin/mise" sh /tmp/mise-install.sh
+    rm -f /tmp/mise-install.sh
+fi
+
+if [ "$OSTREE" = 1 ]; then
+    printf '\nLayered packages take effect after a reboot: systemctl reboot\n'
+fi
+{{ else if eq .chezmoi.os "darwin" -}}
+# ---------------------------------------------------------------------- macOS
+if ! command -v brew >/dev/null 2>&1; then
+    printf 'Homebrew is required: install it from https://brew.sh, then re-run chezmoi apply.\n'
+else
+    FORMULAE="fish zsh git git-lfs gh just mise ripgrep fd bat eza jq yq shellcheck yamllint kubeconform actionlint helix zellij lazygit yazi uv deno podman"
+    missing=""
+    for formula in $FORMULAE; do
+        brew list --formula "$formula" >/dev/null 2>&1 || missing="$missing $formula"
+    done
+    if [ -n "$missing" ]; then
+        printf 'Installing:%s\n' "$missing"
+        brew install $missing
+    fi
+fi
+{{ end -}}
+
+print_followups

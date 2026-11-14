@@ -1,0 +1,3 @@
+# Worktrees created by `worktrees new` live inside the repository directory,
+# so they must never appear as untracked files.
+.worktrees/

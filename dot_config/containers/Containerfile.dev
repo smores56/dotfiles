@@ -1,0 +1,40 @@
+# Development image used by `~/.local/bin/dev` when a repository has no
+# Containerfile of its own. Fedora matches the Fedora Atomic host, so package
+# names and SELinux behaviour are the same as on the laptop.
+#
+# Bump the base tag and MISE_VERSION together, deliberately, like the pins in
+# ~/.config/mise/config.toml.
+FROM registry.fedoraproject.org/fedora:43
+
+ARG MISE_VERSION=v2026.11.8
+
+ENV LANG=C.UTF-8 \
+    SHELL=/usr/bin/fish \
+    MISE_DATA_DIR=/home/dev/.local/share/mise \
+    MISE_YES=1 \
+    MISE_TRUSTED_CONFIG_PATHS=/
+
+RUN dnf -y install --setopt=install_weak_deps=False \
+        bash bat ca-certificates curl diffutils eza fd-find findutils fish \
+        gh git git-lfs gzip jq just less make man-db openssh-clients \
+        procps-ng python3 python3-pip ripgrep shellcheck tar unzip util-linux uv \
+        which xz yq zsh \
+    && dnf -y clean all \
+    && rm -rf /var/cache/dnf
+
+# mise from its pinned release: the installer verifies the release checksum and
+# installs a single static binary, so there is no second package source.
+RUN curl -fsSL https://mise.run -o /tmp/mise-install.sh \
+    && MISE_VERSION="$MISE_VERSION" MISE_INSTALL_PATH=/usr/local/bin/mise sh /tmp/mise-install.sh \
+    && rm -f /tmp/mise-install.sh
+
+# 1777 keeps the home usable when the engine maps an arbitrary host uid onto
+# the container (Docker without keep-id); volumes cover the writable subdirs.
+RUN useradd --create-home --uid 1000 dev \
+    && mkdir -p /home/dev/.local/share/mise /home/dev/.config \
+    && chown -R dev:dev /home/dev \
+    && chmod 1777 /home/dev
+
+USER 1000
+WORKDIR /home/dev
+CMD ["fish"]

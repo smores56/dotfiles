@@ -1,9 +1,46 @@
-{{- $isLaptop := promptBoolOnce . "isLaptop" "Is this a laptop" -}}
+{{- $name := promptStringOnce . "name" "Your full name" -}}
+{{- $email := promptStringOnce . "email" "Your email" -}}
+{{- $profile := promptStringOnce . "profile" "Machine profile (personal or work)" -}}
+{{- if not (has $profile (list "personal" "work")) -}}
+{{- fail "profile must be 'personal' or 'work'" -}}
+{{- end -}}
+{{- $isLaptop := promptBoolOnce . "is_laptop" "Is this a laptop" -}}
+{{- $isHeadless := promptBoolOnce . "is_headless" "Is this a headless machine (no GUI apps)" -}}
 
+# Rendered once by `chezmoi init`, then edited in place: the prompts above only
+# run for values this file does not already hold. Everything below the prompted
+# keys is data the templates read; change it here, not in the templates.
 [data]
-name = {{ promptStringOnce . "name" "What's your name" | quote }}
-email = {{ promptStringOnce . "email" "What's your email" | quote }}
-isLaptop = {{ $isLaptop }}
-isHeadless = {{ promptBoolOnce . "isHeadless" "Is this a headless install" }}
-terminalFont = "CaskaydiaCove Nerd Font"
-terminalFontSize = {{ if eq .chezmoi.os "darwin" -}} 16 {{- else if $isLaptop -}} 12 {{- else -}} 16 {{- end }}
+    name = {{ $name | quote }}
+    email = {{ $email | quote }}
+    profile = {{ $profile | quote }}
+    is_laptop = {{ $isLaptop }}
+    is_headless = {{ $isHeadless }}
+
+    # Checkout root shared by `repos`, `worktrees`, and the git includeIf rules.
+    repos_root = "~/repos"
+    personal_owner = "smores56"
+    personal_signing_key = "~/.ssh/id_ed25519.pub"
+
+    # Work identity. Empty work_email reuses email; list every owner whose
+    # checkouts must sign and commit as work (owner names, not paths).
+    work_email = ""
+    work_signing_key = "~/.ssh/id_ed25519.pub"
+    work_owners = []
+
+    # How changes land: local merges on a personal machine, PRs on a work one.
+    flow = {{ if eq $profile "work" }}{{ quote "pr" }}{{ else }}{{ quote "local" }}{{ end }}
+
+[data.linux]
+    package_manager = "rpm-ostree"
+    homebrew_prefix = "/home/linuxbrew/.linuxbrew"
+    shell = "fish"
+    terminal = "cosmic-term"
+    font = "JetBrainsMono Nerd Font"
+
+[data.macos]
+    package_manager = "brew"
+    homebrew_prefix = "/opt/homebrew"
+    shell = "zsh"
+    terminal = "Terminal"
+    font = "JetBrainsMono Nerd Font"

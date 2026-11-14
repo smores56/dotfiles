@@ -1,0 +1,4 @@
+# Managed by chezmoi; included for work checkouts only.
+[user]
+    email = {{ if .work_email }}{{ .work_email | quote }}{{ else }}{{ .email | quote }}{{ end }}
+    signingkey = {{ .work_signing_key | quote }}

@@ -1,10 +1,8 @@
-# Use system theme
-theme = "theme"
-
 [editor]
 cursorline = true
 bufferline = "multiple"
 color-modes = true
+true-color = true
 
 [editor.lsp]
 display-messages = true

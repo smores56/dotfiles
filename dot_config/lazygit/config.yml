@@ -1,0 +1,14 @@
+# Portable lazygit config: the same file works on Fedora Atomic and macOS.
+os:
+  edit: hx -- {{filename}}
+  editAtLine: hx -- {{filename}}:{{line}}
+  editAtLineAndWait: hx -- {{filename}}:{{line}}
+  editInTerminal: true
+
+gui:
+  theme:
+    selectedLineBgColor:
+      - underline
+    selectedRangeBgColor:
+      - underline
+  nerdFontsVersion: "3"
