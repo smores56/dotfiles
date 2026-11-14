@@ -10,6 +10,11 @@ set -u
 PROFILE={{ .profile | quote }}
 IS_HEADLESS={{ .is_headless }}
 
+# The mise release the installer is allowed to fetch; the installer verifies the
+# downloaded tarball against this release's published sha256. Keep in step with
+# dot_config/containers/Containerfile.dev and dot_config/mise/config.toml.
+MISE_VERSION=v2026.11.8
+
 printf 'Bootstrapping the %s profile.\n' "$PROFILE"
 
 print_followups() {
@@ -31,7 +36,8 @@ Manual follow-ups, once per machine:
 EOF
 }
 
-{{ if eq .chezmoi.os "linux" -}}
+{{ $os := get . "os" | default .chezmoi.os -}}
+{{ if eq $os "linux" -}}
 # ---------------------------------------------------------------- Fedora Atomic
 if command -v rpm-ostree >/dev/null 2>&1; then
     OSTREE=1
@@ -40,7 +46,9 @@ else
 fi
 
 # rpm-ostree layers need a reboot; dnf is used on non-atomic Fedora only.
-PACKAGES="fish zsh gh git git-lfs just jq yq ripgrep fd-find bat eza shellcheck podman"
+# zellij and yazi have no Fedora package; mise installs them (see
+# dot_config/mise/config.toml). The Nerd font is the packaged Caskaydia Mono NF.
+PACKAGES="fish zsh gh git git-lfs just jq yq ripgrep fd-find bat eza shellcheck podman helix lazygit cascadia-mono-nf-fonts"
 missing=""
 for pkg in $PACKAGES; do
     rpm -q "$pkg" >/dev/null 2>&1 || missing="$missing $pkg"
@@ -67,23 +75,33 @@ if [ "$IS_HEADLESS" != "true" ] && command -v flatpak >/dev/null 2>&1; then
     done
 fi
 
-# mise has no Fedora Atomic package that works without a reboot, so use the
-# release installer, which only writes ~/.local/bin/mise.
+# mise has no Fedora Atomic package that works without a reboot, so install it
+# from the pinned release. The installer downloads the release tarball and
+# verifies it against the published sha256 before unpacking; it runs out of a
+# private mktemp directory, so no predictable path is ever executed.
 if ! command -v mise >/dev/null 2>&1; then
-    curl -fsSL https://mise.run -o /tmp/mise-install.sh
-    MISE_INSTALL_PATH="$HOME/.local/bin/mise" sh /tmp/mise-install.sh
-    rm -f /tmp/mise-install.sh
+    mise_tmp=$(mktemp -d) || exit 1
+    if curl -fsSL https://mise.run -o "$mise_tmp/install.sh"; then
+        MISE_VERSION="$MISE_VERSION" MISE_INSTALL_PATH="$HOME/.local/bin/mise" \
+            sh "$mise_tmp/install.sh" \
+            || printf 'mise install failed; install it by hand.\n'
+    else
+        printf 'could not download the mise installer; install it by hand.\n'
+    fi
+    rm -rf "$mise_tmp"
 fi
 
 if [ "$OSTREE" = 1 ]; then
     printf '\nLayered packages take effect after a reboot: systemctl reboot\n'
 fi
-{{ else if eq .chezmoi.os "darwin" -}}
+{{ else if eq $os "darwin" -}}
 # ---------------------------------------------------------------------- macOS
 if ! command -v brew >/dev/null 2>&1; then
     printf 'Homebrew is required: install it from https://brew.sh, then re-run chezmoi apply.\n'
 else
-    FORMULAE="fish zsh git git-lfs gh just mise ripgrep fd bat eza jq yq shellcheck yamllint kubeconform actionlint helix zellij lazygit yazi uv deno podman"
+    # zellij and yazi come from mise on both OSes, so their pinned versions are
+    # the only ones that ever run.
+    FORMULAE="fish zsh git git-lfs gh just mise ripgrep fd bat eza jq yq shellcheck yamllint kubeconform actionlint helix lazygit uv deno podman"
     missing=""
     for formula in $FORMULAE; do
         brew list --formula "$formula" >/dev/null 2>&1 || missing="$missing $formula"
@@ -91,6 +109,16 @@ else
     if [ -n "$missing" ]; then
         printf 'Installing:%s\n' "$missing"
         brew install $missing
+    fi
+
+    # A Nerd font is what the terminal and helix are configured for; a headless
+    # machine has no terminal that would use it.
+    if [ "$IS_HEADLESS" != "true" ]; then
+        for cask in font-jetbrains-mono-nerd-font; do
+            brew list --cask "$cask" >/dev/null 2>&1 \
+                || brew install --cask "$cask" \
+                || printf 'Cask install failed for %s; install it by hand.\n' "$cask"
+        done
     fi
 fi
 {{ end -}}

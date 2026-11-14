@@ -8,11 +8,12 @@ FROM registry.fedoraproject.org/fedora:43
 
 ARG MISE_VERSION=v2026.11.8
 
+# No MISE_TRUSTED_CONFIG_PATHS here: `dev` sets it to the checkout it mounts,
+# so one repository's mise config is never trusted by default.
 ENV LANG=C.UTF-8 \
     SHELL=/usr/bin/fish \
     MISE_DATA_DIR=/home/dev/.local/share/mise \
-    MISE_YES=1 \
-    MISE_TRUSTED_CONFIG_PATHS=/
+    MISE_YES=1
 
 RUN dnf -y install --setopt=install_weak_deps=False \
         bash bat ca-certificates curl diffutils eza fd-find findutils fish \

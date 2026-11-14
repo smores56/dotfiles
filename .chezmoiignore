@@ -1,3 +1,4 @@
-# Repository documentation and tests are not dotfiles.
+# Repository documentation, tests, and CI are not dotfiles.
 README.md
 tests
+.github

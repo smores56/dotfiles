@@ -4,7 +4,9 @@
 
 export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
 if [ -d /opt/homebrew/bin ]; then
-  export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
+  # Appended, not prepended: the wrappers in ~/.local/bin and the mise shims
+  # must win over a Homebrew formula of the same name.
+  export PATH="$PATH:/opt/homebrew/bin:/opt/homebrew/sbin"
   export HOMEBREW_NO_ANALYTICS=1
   export HOMEBREW_NO_AUTO_UPDATE=1
 fi

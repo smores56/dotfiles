@@ -24,7 +24,10 @@
 
 [fetch]
     prune = true
-    pruneTags = true
+    # Deleting a stale remote-tracking branch is safe; deleting a tag is not.
+    # Tags are release markers and may be local-only, so they never follow a
+    # prune.
+    pruneTags = false
 
 [rebase]
     autosquash = true

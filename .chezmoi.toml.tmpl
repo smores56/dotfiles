@@ -31,12 +31,18 @@
     # How changes land: local merges on a personal machine, PRs on a work one.
     flow = {{ if eq $profile "work" }}{{ quote "pr" }}{{ else }}{{ quote "local" }}{{ end }}
 
+    # Overridable copy of the host OS, so tests can render the macOS branch of
+    # run_once_install.sh on a Linux machine and vice versa. That template falls
+    # back to .chezmoi.os when the key is absent, so older configs keep working.
+    os = {{ .chezmoi.os | quote }}
+
 [data.linux]
     package_manager = "rpm-ostree"
     homebrew_prefix = "/home/linuxbrew/.linuxbrew"
     shell = "fish"
     terminal = "cosmic-term"
-    font = "JetBrainsMono Nerd Font"
+    # Fedora ships the patched font as cascadia-mono-nf-fonts.
+    font = "Cascadia Mono NF"
 
 [data.macos]
     package_manager = "brew"

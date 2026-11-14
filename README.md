@@ -34,10 +34,12 @@ whether the machine is a laptop or headless. Answers live in
 `~/.config/chezmoi/chezmoi.toml`, which you can edit afterwards (for example to
 add work owners to `work_owners`).
 
-`run_once_install.sh` then layers the remaining packages with `rpm-ostree`,
-installs GUI apps from Flathub unless the machine is headless, and installs
-`mise` into `~/.local/bin`. Reboot when it says so and read the follow-ups it
-prints.
+`run_once_install.sh` then layers the remaining packages with `rpm-ostree`
+(including `helix`, `lazygit`, and the Caskaydia Mono NF font), installs GUI
+apps from Flathub unless the machine is headless, and installs `mise` into
+`~/.local/bin` from a checksum-verified release download. `zellij` and `yazi`
+have no Fedora package, so `mise install` provides them. Reboot when it says so
+and read the follow-ups it prints.
 
 ### macOS
 
@@ -49,7 +51,8 @@ chezmoi init --apply smores56
 ```
 
 `run_once_install.sh` installs the formulae (including `mise`, `podman`,
-`helix`, `zellij`, `lazygit`, `yazi`) with Homebrew, then prints follow-ups.
+`helix`, `lazygit`), the JetBrains Mono Nerd Font, and then prints follow-ups;
+`zellij` and `yazi` come from `mise install` on both OSes.
 
 ### Follow-ups on either OS
 
@@ -70,7 +73,7 @@ SSH key (`gpg.format = ssh`), and the key path comes from the chezmoi data
 | File | Target | Purpose |
 | --- | --- | --- |
 | `.chezmoi.toml.tmpl` | `~/.config/chezmoi/chezmoi.toml` | Prompts (name, email, profile, laptop, headless) and per-OS data (`linux`, `macos`) |
-| `.chezmoiignore` | — | Keeps `README.md` and `tests/` out of the home directory |
+| `.chezmoiignore` | — | Keeps `README.md`, `tests/`, and `.github/` out of the home directory |
 | `dot_gitconfig.tmpl` | `~/.gitconfig` | Global identity, SSH commit signing, `pull.rebase`, `smores.*` settings, owner-keyed includes |
 | `dot_config/git/ignore` | `~/.config/git/ignore` | Ignores `.worktrees/` so worktrees never show up as untracked |
 | `dot_config/git/personal.inc.tmpl` | `~/.config/git/personal.inc` | Personal email and signing key |
@@ -90,7 +93,8 @@ SSH key (`gpg.format = ssh`), and the key path comes from the chezmoi data
 | `dot_local/bin/executable_dev` | `~/.local/bin/dev` | Development container entrypoint |
 | `dot_config/containers/Containerfile.dev` | `~/.config/containers/Containerfile.dev` | Shared Fedora dev image |
 | `run_once_install.sh.tmpl` | executed once by `chezmoi apply` | Per-OS package bootstrap, idempotent |
-| `tests/check.sh` | — | Parses every script and config; not applied |
+| `tests/check.sh` | — | Parses every script and config, runs the behavioral tests; not applied |
+| `tests/cli.sh` | — | Behavioral tests for `repos`, `worktrees`, and `dev`; not applied |
 
 ## `repos`, `worktrees`, and `dev`
 
@@ -120,8 +124,9 @@ checked-out branch. `REPOS_ROOT` overrides the root.
 ```sh
 worktrees list
 worktrees new --slug add-gizmo --ticket ABC-123 --type feat
-worktrees prune --dry-run
-worktrees prune --min-age 7d
+worktrees prune                        # dry run: report only
+worktrees prune --apply                # remove what the dry run reported
+worktrees prune --apply --min-age 7d   # only worktrees idle for a week
 ```
 
 `new` renders the branch name from `git config smores.branchTemplate` (default
@@ -135,9 +140,14 @@ stdout:
 {"branch":"smores/ABC-123-add-gizmo","path":"/home/you/repos/github.com/owner/project/.worktrees/smores-ABC-123-add-gizmo","ticket":"ABC-123","base":"origin/main"}
 ```
 
-`prune` removes worktrees (and merged branches) whose commits are already
-contained in the default branch, using ancestry, empty-diff, and merge-tree
-tree comparison. Dirty or locked worktrees are never removed.
+`prune` reports worktrees (and merged branches) whose commits are already
+contained in the default branch, using ancestry, empty-diff, and merge-tree tree
+comparison. Nothing is deleted without `--apply`, dirty or locked worktrees are
+never removed, and a branch is only deleted with `-d`, so unmerged commits
+survive; `--force` is what allows `-D` for a branch whose content is already in
+the target. Age comes from the per-worktree gitdir, tags are never deleted, and
+without a default branch (`origin/HEAD`, `main`, or `master`) prune does
+nothing.
 
 ### `dev`
 
@@ -152,11 +162,15 @@ dev --engine docker ...  # pick the engine explicitly
 `Containerfile` when present; otherwise it builds
 `~/.config/containers/Containerfile.dev`. It mounts the checkout at the same
 absolute path (linked worktrees keep working), preserves your uid/gid
-(`--userns=keep-id` on Podman, `--user` on Docker), relabels the mount for
-SELinux on Fedora Atomic, mounts `~/.gitconfig`, `~/.config/git`, and `~/.ssh`
-read-only, forwards the SSH agent and `GH_TOKEN` if set, and mounts a shared
-`dev-mise` volume for tool installs. No container engine socket is ever
-mounted. `DEV_IMAGE` overrides the image tag (`dev-<repo>:local` by default).
+(`--userns=keep-id` on Podman, `--user` on Docker), relabels the mounts for
+SELinux on Fedora Atomic, and mounts `~/.gitconfig` and `~/.config/git`
+read-only. Credentials stay on the host: `~/.ssh` is never mounted and
+`GH_TOKEN`/`GITHUB_TOKEN` are never forwarded; only the SSH agent socket is
+passed in, and each repository gets its own `dev-mise` volume so one
+checkout's tool installs cannot land on another's PATH. `--tty` behaviour
+follows the terminal: `-i`/`-t` are added only when a terminal is attached, and
+no probe container is started. No container engine socket is ever mounted.
+`DEV_IMAGE` overrides the image tag (`dev-<repo>:local` by default).
 
 ## Migration note: no Nix
 
@@ -177,13 +191,19 @@ evaluated with Nix:
 ## Checks
 
 ```sh
-tests/check.sh                # sh/zsh/fish syntax, TOML parse, templates, lints
+tests/check.sh                # syntax, TOML, both OS templates, lints, behavior
 tests/check.sh --shellcheck   # also run shellcheck when installed
 ```
 
 The template checks render with a throwaway chezmoi config, so the script is
 safe to run before this machine has ever been set up; without chezmoi installed
-they are skipped instead of failing.
+they are skipped instead of failing. Both OS branches of `run_once_install.sh`
+are rendered, so a macOS-only syntax error is caught on a Linux machine.
+`tests/cli.sh` exercises `repos`, `worktrees`, and `dev` against throwaway
+repositories and a fake container engine: cloning and pull, prune's
+merged/unmerged/dirty/age/tag behaviour, and the container argument assembly.
+`.github/workflows/check.yml` runs the same suite with shellcheck on every push
+to `main` and every pull request.
 
 [chezmoi]: https://www.chezmoi.io/
 [mise]: https://mise.jdx.dev/

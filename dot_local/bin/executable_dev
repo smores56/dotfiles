@@ -6,6 +6,10 @@
 # so a fresh checkout still gets a usable shell. Podman is preferred, Docker
 # works the same way, and no engine socket is ever mounted: build and test
 # containers are not privileged children of the host daemon.
+#
+# Credentials never cross the boundary: ~/.ssh is not mounted and no token is
+# passed in. The SSH agent socket is forwarded, so signing and fetch work while
+# the private keys stay on the host; git configuration is mounted read-only.
 set -eu
 
 usage() {
@@ -15,7 +19,7 @@ usage: dev [--build] [--engine podman|docker] [--] [command ...]
   --build     rebuild the image from the repository's Containerfile first
   --engine    container engine to use (default: $DEV_ENGINE, else podman,
               else docker)
-  command     command to run instead of an interactive shell
+  command     command to run instead of the image's default command
 
 environment:
   DEV_ENGINE  container engine override
@@ -87,7 +91,12 @@ fi
 # there, so the prefix is assembled textually and expanded once.
 quote() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 
-run_args=" run --rm -it"
+run_args=" run --rm"
+# Interactive only when a terminal is attached: a piped or CI invocation must
+# not allocate a TTY, or the container blocks waiting for input that never
+# arrives.
+if [ -t 0 ]; then run_args="$run_args -i"; fi
+if [ -t 1 ]; then run_args="$run_args -t"; fi
 append() { run_args="$run_args $(quote "$1")"; }
 append_literal() { run_args="$run_args $1"; }
 
@@ -99,53 +108,58 @@ append --env; append "TERM=${TERM:-xterm-256color}"
 # SELinux relabelling is what makes the mount usable on Fedora Atomic; Docker
 # and macOS ignore the :Z suffix, so only ask podman on Linux.
 if [ "$engine" = podman ] && [ "$(uname -s)" = Linux ]; then
+    selinux=true
     append_literal --userns=keep-id:uid=1000,gid=1000
     append --volume; append "$root:$root:Z"
 else
+    selinux=false
     append --user; append "$(id -u):$(id -g)"
     append --volume; append "$root:$root"
 fi
+if $selinux; then ro_opts=ro,Z; rw_opts=Z; else ro_opts=ro; rw_opts=""; fi
 
-# Credentials and signing keys are mounted read-only, never copied in.
+# Git identity and configuration are mounted read-only: the container needs
+# the settings, not the credentials. ~/.ssh is deliberately absent, and
+# GH_TOKEN/GITHUB_TOKEN are deliberately not forwarded — a container that can
+# read a token can push anywhere that token reaches.
 if [ -f "$HOME/.gitconfig" ]; then
-    append --volume; append "$HOME/.gitconfig:/home/dev/.gitconfig:ro"
+    append --volume; append "$HOME/.gitconfig:/home/dev/.gitconfig:$ro_opts"
 fi
-if [ -d "${XDG_CONFIG_HOME:-$HOME/.config}/git" ]; then
-    append --volume; append "${XDG_CONFIG_HOME:-$HOME/.config}/git:/home/dev/.config/git:ro"
+git_config_dir=${XDG_CONFIG_HOME:-$HOME/.config}/git
+if [ -d "$git_config_dir" ]; then
+    append --volume; append "$git_config_dir:/home/dev/.config/git:$ro_opts"
 fi
-if [ -d "$HOME/.ssh" ]; then
-    append --volume; append "$HOME/.ssh:/home/dev/.ssh:ro"
-fi
+
+# The agent socket is the only cryptographic access the container gets: it can
+# sign and fetch, it cannot read or copy the key.
 if [ -n "${SSH_AUTH_SOCK:-}" ]; then
     append --volume; append "$SSH_AUTH_SOCK:$SSH_AUTH_SOCK"
     append --env; append "SSH_AUTH_SOCK=$SSH_AUTH_SOCK"
 fi
-if [ -n "${GH_TOKEN:-}" ]; then append_literal '--env GH_TOKEN'; fi
-if [ -n "${GITHUB_TOKEN:-}" ]; then append_literal '--env GITHUB_TOKEN'; fi
 
-# Tool installs and caches live on a volume shared across repositories.
-append --volume; append dev-mise:/home/dev/.local/share/mise
+# Tool installs are per repository. A shared volume would put one checkout's
+# mise shims and binaries on another checkout's PATH, and either container
+# could rewrite the other's tools. The trusted config path is the checkout
+# itself, never a parent or /.
+repo_slug=$(printf '%s' "$repo_name" | tr -c 'a-z0-9_.-' '-')
+volume_name=dev-mise-$repo_slug-$(printf '%s' "$root" | cksum | cut -d ' ' -f 1)
+append --volume; append "$volume_name:/home/dev/.local/share/mise"
 append --env; append "MISE_TRUSTED_CONFIG_PATHS=$root"
 
 # A gitdir outside the checkout (the clean-bare root, when working inside a
-# branch worktree) must be visible at the same path inside the container.
+# branch worktree) must be visible at the same path inside the container, and
+# git writes to it, so it is mounted read-write with the SELinux label.
 common_dir=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)
 if [ -n "$common_dir" ]; then
     case $common_dir in
         "$root"/*) ;;
-        *) append --volume; append "$common_dir:$common_dir" ;;
+        *) append --volume; append "$common_dir:$common_dir${rw_opts:+:$rw_opts}" ;;
     esac
 fi
 
 append_literal "$(quote "$image")"
-
-if [ $# -eq 0 ]; then
-    if "$engine" run --rm "$image" sh -c 'command -v fish' >/dev/null 2>&1; then
-        append_literal 'fish'
-    else
-        append_literal 'sh'
-    fi
-fi
+# With no command the image's own CMD runs. No probe container: asking the
+# engine whether fish exists starts a second container on every invocation.
 
 eval "set -- $(quote "$engine") $run_args \"\$@\""
 exec "$@"

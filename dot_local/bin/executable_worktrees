@@ -19,13 +19,16 @@ usage() {
 usage: worktrees [list]
        worktrees new --slug <slug> [--task <text>] [--ticket <KEY>]
                      [--type <type>] [--base <ref>] [--dry-run]
-       worktrees prune [--dry-run] [--min-age <0s|Nm|Nh|Nd>]
+       worktrees prune [--apply] [--force] [--min-age <0s|Nm|Nh|Nd>]
 
   list    print the path of every worktree; the bare gitdir is skipped
   new     create <repo>/.worktrees/<branch with / replaced by -> and print
           JSON: {"branch":...,"path":...,"ticket":...,"base":...}
-  prune   remove worktrees (and merged branches) whose commits are already in
-          the default branch
+  prune   report worktrees and merged branches whose commits are already in
+          the default branch. Nothing is deleted without --apply; branches go
+          through -d, so unmerged commits survive, and --force is what allows
+          -D for a branch whose content is already in the target. Tags are
+          never deleted.
 
 branch template:
   smores.branchTemplate            e.g. smores/{slug} or {type}/{ticket}-{slug}
@@ -80,6 +83,13 @@ current_worktree() {
     git rev-parse --show-toplevel 2>/dev/null || true
 }
 
+# Resolves a path through symlinks so two spellings of the same directory
+# compare equal.
+canonical() {
+    [ -n "$1" ] || return 1
+    (cd "$1" 2>/dev/null && pwd -P)
+}
+
 worktree_branch() {
     git -C "$1" symbolic-ref --quiet --short HEAD 2>/dev/null || true
 }
@@ -88,17 +98,18 @@ ref_sha() {
     git rev-parse --verify --quiet "$1^{commit}" 2>/dev/null || true
 }
 
-# The default branch as origin sees it, falling back to the usual names and
-# then to whatever HEAD points at.
+# The default branch as origin sees it, falling back to the usual names. No
+# HEAD fallback: a repository without any of these has no target to compare
+# against, and pruning against HEAD would delete worktrees on a detached ref.
 default_ref() {
     local ref
     ref=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null) || ref=""
     if [ -n "$ref" ]; then printf '%s\n' "$ref"; return 0; fi
-    if git rev-parse --verify --quiet refs/remotes/origin/main >/dev/null; then printf 'origin/main\n'; return 0; fi
-    if git rev-parse --verify --quiet refs/remotes/origin/master >/dev/null; then printf 'origin/master\n'; return 0; fi
-    if git rev-parse --verify --quiet refs/heads/main >/dev/null; then printf 'main\n'; return 0; fi
-    if git rev-parse --verify --quiet refs/heads/master >/dev/null; then printf 'master\n'; return 0; fi
-    printf 'HEAD\n'
+    if git rev-parse --verify --quiet 'refs/remotes/origin/main^{commit}' >/dev/null 2>&1; then printf 'origin/main\n'; return 0; fi
+    if git rev-parse --verify --quiet 'refs/remotes/origin/master^{commit}' >/dev/null 2>&1; then printf 'origin/master\n'; return 0; fi
+    if git rev-parse --verify --quiet 'refs/heads/main^{commit}' >/dev/null 2>&1; then printf 'main\n'; return 0; fi
+    if git rev-parse --verify --quiet 'refs/heads/master^{commit}' >/dev/null 2>&1; then printf 'master\n'; return 0; fi
+    return 1
 }
 
 render_branch() {
@@ -197,9 +208,11 @@ create_new() {
     path=$root/.worktrees/$name
 
     if [ -z "$base" ]; then
-        git fetch --prune origin >/dev/null 2>&1 \
+        # Never --prune-tags: a tag that exists only locally must survive a
+        # fetch, whatever fetch.pruneTags says in the machine's gitconfig.
+        git fetch --prune --no-prune-tags origin >/dev/null 2>&1 \
             || printf 'worktrees new: fetch failed; using local refs\n' >&2
-        default=$(default_ref)
+        default=$(default_ref) || default=HEAD
         base=$default
     fi
 
@@ -243,10 +256,13 @@ integrated_reason() {
     return 1
 }
 
+# Only -d is safe by default: it refuses to delete a branch whose commits are
+# not in the default branch. A branch whose content is already in the target
+# but whose commits are not ancestors needs -D, which --force alone may pass.
 delete_flag_for() {
     case $1 in
         ancestor|same-commit|no-added-changes) printf '%s\n' -d ;;
-        *) printf '%s\n' -D ;;
+        *) return 0 ;;
     esac
 }
 
@@ -271,11 +287,12 @@ duration_seconds() {
 }
 
 worktree_age_seconds() {
-    local path="$1" git_dir meta
+    local path="$1" git_dir
+    # The per-worktree gitdir (<common>/worktrees/<name>), not the common dir:
+    # the common dir is as old as the repository and says nothing about when
+    # this worktree last saw activity.
     git_dir=$(git -C "$path" rev-parse --absolute-git-dir 2>/dev/null) || return 1
-    meta=$git_dir
-    [ -f "$git_dir/commondir" ] && meta=$git_dir/$(cat "$git_dir/commondir" 2>/dev/null)
-    stat -c '%Y' "$meta" 2>/dev/null || stat -f '%m' "$meta" 2>/dev/null || return 1
+    stat -c '%Y' "$git_dir" 2>/dev/null || stat -f '%m' "$git_dir" 2>/dev/null || return 1
 }
 
 branch_age_seconds() {
@@ -283,14 +300,16 @@ branch_age_seconds() {
 }
 
 prune_worktrees() {
-    local dry_run=false min_age=0s
+    local apply=false force=false min_age=0s
     local min_age_secs now current main target target_branch
     local path branch reason delete_flag age created
     local checked_out orphan
 
     while [ $# -gt 0 ]; do
         case $1 in
-            --dry-run) dry_run=true; shift ;;
+            --apply) apply=true; shift ;;
+            --dry-run) apply=false; shift ;;
+            --force) force=true; shift ;;
             --min-age) [ $# -ge 2 ] || die "worktrees prune: --min-age needs a value" 2; min_age=$2; shift 2 ;;
             --min-age=*) min_age=${1#--min-age=}; shift ;;
             -h|--help) usage; exit 0 ;;
@@ -301,71 +320,100 @@ prune_worktrees() {
     git rev-parse --git-dir >/dev/null 2>&1 || die "worktrees prune: not inside a git repository"
     min_age_secs=$(duration_seconds "$min_age") || exit 2
     now=$(date +%s)
-    current=$(current_worktree)
-    main=$(main_worktree)
-    target=$(default_ref)
+    # Symlinks are resolved on both sides: `git worktree list` prints the real
+    # path while a shell started through a symlink reports the other spelling.
+    current=$(canonical "$(current_worktree)") || current=""
+    main=$(canonical "$(main_worktree)") || main=""
+    target=$(default_ref) || target=""
+    if [ -z "$target" ]; then
+        printf 'worktrees prune: no default branch (origin/HEAD, origin/main, origin/master, main, master); nothing to prune against\n' >&2
+        return 0
+    fi
     target_branch=${target#origin/}
 
-    git fetch --prune origin >/dev/null 2>&1 || printf 'worktrees prune: fetch failed; using local refs\n' >&2
+    # No --prune-tags: a local tag is not a stale remote ref, and pruning must
+    # never delete one. No tag ref is rewritten anywhere below either.
+    git fetch --prune --no-prune-tags origin >/dev/null 2>&1 \
+        || printf 'worktrees prune: fetch failed; using local refs\n' >&2
 
     list_worktrees | while IFS= read -r path; do
+        [ -n "$path" ] || continue
+        path=$(canonical "$path") || continue
         [ "$path" != "$main" ] || continue
         branch=$(worktree_branch "$path")
         [ -n "$branch" ] || continue
         [ "$branch" != "$target_branch" ] || continue
+        if [ "$path" = "$current" ]; then
+            printf 'worktrees prune: skip %s branch %s (current worktree)\n' "$path" "$branch" >&2
+            continue
+        fi
         reason=$(integrated_reason "$branch" "$target") || reason=""
         [ -n "$reason" ] || continue
         if [ "$min_age_secs" -gt 0 ]; then
-            created=$(worktree_age_seconds "$path" 2>/dev/null) || continue
+            created=$(worktree_age_seconds "$path" 2>/dev/null) || created=""
+            case $created in
+                ''|*[!0-9]*)
+                    printf 'worktrees prune: skip %s branch %s (no age evidence)\n' "$path" "$branch" >&2
+                    continue ;;
+            esac
             age=$(( now - created ))
             if [ "$age" -lt "$min_age_secs" ]; then
                 printf 'worktrees prune: skip %s branch %s (younger than %s)\n' "$path" "$branch" "$min_age" >&2
                 continue
             fi
         fi
-        if $dry_run; then
-            printf 'would-remove %s branch %s reason %s\n' "$path" "$branch" "$reason"
+        delete_flag=$(delete_flag_for "$reason")
+        if [ -z "$delete_flag" ] && ! $force; then
+            printf 'worktrees prune: skip %s branch %s (%s; use --force to delete)\n' "$path" "$branch" "$reason" >&2
             continue
         fi
-        if [ "$path" = "$current" ]; then
-            printf 'worktrees prune: skip %s branch %s (current worktree)\n' "$path" "$branch" >&2
+        if ! $apply; then
+            printf 'would-remove %s branch %s reason %s\n' "$path" "$branch" "$reason"
             continue
         fi
         if git worktree remove "$path" 2>/dev/null; then
             printf 'remove %s branch %s reason %s\n' "$path" "$branch" "$reason"
-            delete_flag=$(delete_flag_for "$reason")
+            [ -n "$delete_flag" ] || delete_flag=-D
             git branch "$delete_flag" "$branch" >/dev/null 2>&1 || true
         else
             printf 'worktrees prune: skip %s branch %s (dirty or locked)\n' "$path" "$branch" >&2
         fi
     done
 
-    # Branches whose worktree is already gone but whose commits are merged.
-    checked_out=$(list_worktrees | while IFS= read -r path; do worktree_branch "$path"; done)
+    # Branches whose worktree is already gone. Without a reflog there is no
+    # evidence the branch is stale, so it is left alone even with --apply.
+    checked_out=$(list_worktrees | while IFS= read -r path; do worktree_branch "$path"; done) || checked_out=""
     for orphan in $(git for-each-ref --format='%(refname:short)' refs/heads); do
         [ "$orphan" != "$target_branch" ] || continue
         printf '%s\n' "$checked_out" | grep -qx "$orphan" && continue
         reason=$(integrated_reason "$orphan" "$target") || reason=""
         [ -n "$reason" ] || continue
-        if [ "$min_age_secs" -gt 0 ]; then
-            created=$(branch_age_seconds "$orphan") || created=""
-            [ -n "$created" ] || continue
-            age=$(( now - created ))
-            if [ "$age" -lt "$min_age_secs" ]; then
-                printf 'worktrees prune: skip branch %s (younger than %s)\n' "$orphan" "$min_age" >&2
-                continue
-            fi
+        created=$(branch_age_seconds "$orphan") || created=""
+        case $created in
+            ''|*[!0-9]*)
+                printf 'worktrees prune: skip branch %s (no reflog evidence)\n' "$orphan" >&2
+                continue ;;
+        esac
+        age=$(( now - created ))
+        if [ "$age" -lt "$min_age_secs" ]; then
+            printf 'worktrees prune: skip branch %s (younger than %s)\n' "$orphan" "$min_age" >&2
+            continue
         fi
-        if $dry_run; then
+        delete_flag=$(delete_flag_for "$reason")
+        if [ -z "$delete_flag" ] && ! $force; then
+            printf 'worktrees prune: skip branch %s (%s; use --force to delete)\n' "$orphan" "$reason" >&2
+            continue
+        fi
+        if ! $apply; then
             printf 'would-remove branch-only %s reason %s\n' "$orphan" "$reason"
             continue
         fi
         printf 'remove branch-only %s reason %s\n' "$orphan" "$reason"
-        delete_flag=$(delete_flag_for "$reason")
+        [ -n "$delete_flag" ] || delete_flag=-D
         git branch "$delete_flag" "$orphan" >/dev/null 2>&1 || true
     done
 
-    if ! $dry_run; then git worktree prune; fi
+    if $apply; then git worktree prune; fi
 }
 
 case ${1-} in

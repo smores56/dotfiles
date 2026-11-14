@@ -31,6 +31,24 @@ die() { printf 'repos: %s\n' "$*" >&2; exit 1; }
 
 is_git_dir() { [ -d "$1/.git" ] || [ -f "$1/.git" ]; }
 
+# One path segment: no separators, no option-looking leading dash, and no `..`
+# that could walk out of the checkout root.
+plain_segment() {
+    case $1 in
+        ''|-*|.|..|*..*|*[!A-Za-z0-9_.-]*) return 1 ;;
+    esac
+    return 0
+}
+
+# A host only ever appears inside a directory name and a git URL, so it gets
+# the same treatment: single segment, no leading dash, no `..`.
+plain_host() {
+    case $1 in
+        ''|-*|.|*..*|*[!A-Za-z0-9.-]*) return 1 ;;
+    esac
+    return 0
+}
+
 # A linked worktree also carries a .git entry. Only repository directories are
 # listed, so anything nested inside another repository is skipped.
 nested_in_repo() {
@@ -79,24 +97,30 @@ parse_ref() {
             return 1 ;;
     esac
     rest=${rest%.git}
+    case $rest in */*/*) return 1 ;; esac
     owner=${rest%%/*}
     repo=${rest#*/}
-    repo=${repo%%/*}
-    [ -n "$host" ] || return 1
-    [ -n "$owner" ] || return 1
-    [ -n "$repo" ] && [ "$repo" != "$rest" ] || return 1
+    [ -n "$host" ] && plain_host "$host" || return 1
+    [ -n "$owner" ] && plain_segment "$owner" || return 1
+    [ "$repo" != "$rest" ] || return 1
+    plain_segment "$repo" || return 1
     printf '%s %s %s\n' "$host" "$owner" "$repo"
 }
 
 # A bare clone keeps every branch in refs/heads, and fetch refuses to update a
 # branch a worktree has checked out. Track remote branches instead so `git
-# fetch` stays safe once worktrees exist.
+# fetch` stays safe once worktrees exist, and record the upstream of every
+# branch so a checkout of any of them can `git pull` without a first push.
 track_remote_branches() {
     local gitdir="$1" branch ref
     branch=$(git --git-dir="$gitdir" symbolic-ref --quiet --short HEAD 2>/dev/null) || branch=""
-    for ref in $(git --git-dir="$gitdir" for-each-ref --format='%(refname:short)' refs/heads); do
-        git --git-dir="$gitdir" update-ref "refs/remotes/origin/$ref" "refs/heads/$ref"
-    done
+    git --git-dir="$gitdir" for-each-ref --format='%(refname:short)' refs/heads \
+        | while IFS= read -r ref; do
+            [ -n "$ref" ] || continue
+            git --git-dir="$gitdir" update-ref "refs/remotes/origin/$ref" "refs/heads/$ref"
+            git --git-dir="$gitdir" config "branch.$ref.remote" origin
+            git --git-dir="$gitdir" config "branch.$ref.merge" "refs/heads/$ref"
+        done
     if [ -n "$branch" ]; then
         git --git-dir="$gitdir" symbolic-ref "refs/remotes/origin/HEAD" "refs/remotes/origin/$branch"
     fi
@@ -118,6 +142,13 @@ ghq_supports_clean_bare() {
     ghq get --help 2>&1 | grep -q -- '--clean-bare'
 }
 
+# Removes whatever a failed clone either of the two paths left behind, so a
+# retry starts from nothing instead of tripping the "already exists" guard.
+cleanup_failed_get() {
+    rm -rf "${ROOT:?}/${1:?}/${2:?}/${3:?}"
+    rmdir "$ROOT/$1/$2" 2>/dev/null || true
+}
+
 get_repo() {
     local input="$1" ref host owner repo dest url checkout
 
@@ -135,14 +166,18 @@ get_repo() {
     mkdir -p "$ROOT/$host/$owner"
     url="git@$host:$owner/$repo.git"
 
+    # A failed clone leaves no half-populated checkout: ghq and git both create
+    # the destination before they can fail, so remove it the same way.
     if ghq_supports_clean_bare; then
-        GHQ_ROOT=$ROOT ghq get --clean-bare -p "$host/$owner/$repo" >&2 || die "ghq get failed: $host/$owner/$repo"
+        if ! GHQ_ROOT=$ROOT ghq get --clean-bare -p "$host/$owner/$repo" >&2; then
+            cleanup_failed_get "$host" "$owner" "$repo"
+            die "ghq get failed: $host/$owner/$repo"
+        fi
         checkout=$(checkout_default "$dest/.git" "$dest") || checkout=""
         track_remote_branches "$dest/.git"
     else
         if ! git clone --bare "$url" "$dest/.git"; then
-            rm -rf "$dest/.git"
-            rmdir "$dest" 2>/dev/null
+            cleanup_failed_get "$host" "$owner" "$repo"
             die "clone failed: $url"
         fi
         checkout=$(checkout_default "$dest/.git" "$dest") || checkout=""

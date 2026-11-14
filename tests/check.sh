@@ -36,6 +36,12 @@ for script in "$root"/dot_local/bin/executable_*; do
     syntax sh "$script"
 done
 
+if command -v bash >/dev/null 2>&1; then
+    syntax bash "$root/tests/cli.sh"
+else
+    skip "syntax tests/cli.sh (bash not installed)"
+fi
+
 # zsh is only installed on macOS; `sh -n` cannot parse zsh constructs.
 if command -v zsh >/dev/null 2>&1; then
     syntax zsh "$root/dot_zshrc"
@@ -110,24 +116,56 @@ else
             skip "toml generated chezmoi.toml (python3 tomllib missing)"
         fi
         for tmpl in dot_gitconfig.tmpl dot_config/git/personal.inc.tmpl \
-                    dot_config/git/work.inc.tmpl run_once_install.sh.tmpl; do
+                    dot_config/git/work.inc.tmpl; do
             if HOME=$chome XDG_CONFIG_HOME=$chome/.config chezmoi --source "$root" \
                     execute-template < "$root/$tmpl" > "$tmp/render" 2>"$tmp/err"; then
                 ok "template $tmpl"
-                case $tmpl in
-                    *.sh.tmpl)
-                        if sh -n "$tmp/render" 2>"$tmp/err"; then
-                            ok "syntax rendered $tmpl"
-                        else
-                            no "syntax rendered $tmpl"
-                            sed 's/^/     /' "$tmp/err" >&2
-                        fi ;;
-                esac
             else
                 no "template $tmpl"
                 sed 's/^/     /' "$tmp/err" >&2
             fi
         done
+
+        # The installer carries a branch per OS. Render both, so a syntax error
+        # in the branch the current machine cannot run is still caught here.
+        for os_name in linux darwin; do
+            cfg=$tmp/chezmoi-$os_name.toml
+            sed "s/^    os = \"[a-z]*\"/    os = \"$os_name\"/" "$generated" > "$cfg"
+            if HOME=$chome XDG_CONFIG_HOME=$chome/.config chezmoi --config "$cfg" \
+                    --source "$root" execute-template \
+                    < "$root/run_once_install.sh.tmpl" > "$tmp/install-$os_name.sh" 2>"$tmp/err"; then
+                ok "template run_once_install.sh.tmpl ($os_name)"
+                if sh -n "$tmp/install-$os_name.sh" 2>"$tmp/err"; then
+                    ok "syntax rendered run_once_install.sh.tmpl ($os_name)"
+                else
+                    no "syntax rendered run_once_install.sh.tmpl ($os_name)"
+                    sed 's/^/     /' "$tmp/err" >&2
+                fi
+            else
+                no "template run_once_install.sh.tmpl ($os_name)"
+                sed 's/^/     /' "$tmp/err" >&2
+            fi
+        done
+        if grep -q 'rpm-ostree' "$tmp/install-linux.sh" \
+                && ! grep -q 'brew install' "$tmp/install-linux.sh" \
+                && ! grep -q 'rpm-ostree' "$tmp/install-darwin.sh"; then
+            ok "the installer renders one branch per OS"
+        else
+            no "the installer renders one branch per OS"
+        fi
+
+        # A config written before the `os` key existed must still render: the
+        # template falls back to .chezmoi.os.
+        grep -v '^    os = ' "$generated" > "$tmp/chezmoi-legacy.toml"
+        if HOME=$chome XDG_CONFIG_HOME=$chome/.config chezmoi \
+                --config "$tmp/chezmoi-legacy.toml" --source "$root" execute-template \
+                < "$root/run_once_install.sh.tmpl" > "$tmp/install-legacy.sh" 2>"$tmp/err" \
+                && sh -n "$tmp/install-legacy.sh" 2>"$tmp/err"; then
+            ok "run_once_install.sh.tmpl renders without an os key"
+        else
+            no "run_once_install.sh.tmpl renders without an os key"
+            sed 's/^/     /' "$tmp/err" >&2
+        fi
     else
         no "chezmoi init (the init template did not render)"
         sed 's/^/     /' "$tmp/init.log" >&2
@@ -162,10 +200,25 @@ else
     ok "no secret material in managed files"
 fi
 
-if grep -qx 'README.md' "$root/.chezmoiignore" && grep -qx 'tests' "$root/.chezmoiignore"; then
-    ok ".chezmoiignore hides README.md and tests"
+if grep -qx 'README.md' "$root/.chezmoiignore" && grep -qx 'tests' "$root/.chezmoiignore" \
+        && grep -qx '.github' "$root/.chezmoiignore"; then
+    ok ".chezmoiignore hides README.md, tests, and .github"
 else
-    no ".chezmoiignore must hide README.md and tests"
+    no ".chezmoiignore must hide README.md, tests, and .github"
+fi
+
+# --- behavioral tests
+#
+# The wrappers are the parts that can destroy work, so they are exercised
+# against throwaway repositories rather than only parsed.
+if command -v git >/dev/null 2>&1 && command -v bash >/dev/null 2>&1; then
+    if bash "$root/tests/cli.sh"; then
+        ok "behavioral tests (tests/cli.sh)"
+    else
+        no "behavioral tests (tests/cli.sh)"
+    fi
+else
+    skip "behavioral tests (git or bash not installed)"
 fi
 
 # --- optional shellcheck
@@ -182,6 +235,12 @@ if $use_shellcheck; then
                 sed 's/^/     /' "$tmp/out" >&2
             fi
         done
+        if shellcheck -s bash "$root/tests/cli.sh" >"$tmp/out" 2>&1; then
+            ok "shellcheck tests/cli.sh"
+        else
+            no "shellcheck tests/cli.sh"
+            sed 's/^/     /' "$tmp/out" >&2
+        fi
     else
         skip "shellcheck (not installed)"
     fi
