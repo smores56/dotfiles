@@ -74,7 +74,7 @@ if [ -n "$missing" ]; then
 fi
 
 # GUI applications come from Flathub; headless machines skip them entirely.
-# This is the nix-config app set that has a maintained Flathub id. Discord is
+# This is the previous host app set that has a maintained Flathub id. Discord is
 # the stock client: Vencord's patcher is not a Flatpak and is left to the user.
 if [ "$IS_HEADLESS" != "true" ] && command -v flatpak >/dev/null 2>&1; then
     flatpak remote-add --if-not-exists --user flathub \

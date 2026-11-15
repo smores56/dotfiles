@@ -98,7 +98,7 @@ secret delivery. If a machine still needs per-owner PATs, put that decision in
 | File | Target | Purpose |
 | --- | --- | --- |
 | `.chezmoi.toml.tmpl` | `~/.config/chezmoi/chezmoi.toml` | Prompts (name, email, profile, work identity, laptop, headless) and per-OS data (`linux`, `macos`) |
-| `.chezmoiignore` | — | Keeps `README.md`, `tests/`, and `.github/` out of the home directory |
+| `.chezmoiignore` | — | Keeps `README.md`, `tests/`, `.github/`, the repository `Containerfile`/`dev`, and the repository ignore files out of the home directory |
 | `dot_gitconfig.tmpl` | `~/.gitconfig` | Global identity, SSH commit signing, delta pager, `smores.*` settings, owner-keyed and flat-work includes |
 | `dot_config/git/ignore` | `~/.config/git/ignore` | Ignores `.worktrees/` so worktrees never show up as untracked |
 | `dot_config/git/personal.inc.tmpl` | `~/.config/git/personal.inc` | Personal email, signing key, local flow and branch template |
@@ -139,6 +139,8 @@ secret delivery. If a machine still needs per-owner PATs, put that decision in
 | `run_once_install.sh.tmpl` | executed once by `chezmoi apply` | Per-OS package bootstrap, idempotent |
 | `tests/check.sh` | — | Parses every script and config, runs the behavioral tests; not applied |
 | `tests/cli.sh` | — | Behavioral tests for `repos`, `worktrees`, and `dev`; not applied |
+| `Containerfile` / `dev` | not applied | This repository's own digest-pinned check container and entrypoint |
+| `.gitignore` / `.containerignore` | not applied | Repository-only ignore files |
 
 ## `repos`, `worktrees`, and `dev`
 

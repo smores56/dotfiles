@@ -295,10 +295,14 @@ else
 fi
 
 if grep -qx 'README.md' "$root/.chezmoiignore" && grep -qx 'tests' "$root/.chezmoiignore" \
-        && grep -qx '.github' "$root/.chezmoiignore"; then
-    ok ".chezmoiignore hides README.md, tests, and .github"
+        && grep -qx '.github' "$root/.chezmoiignore" \
+        && grep -qx 'Containerfile' "$root/.chezmoiignore" \
+        && grep -qx 'dev' "$root/.chezmoiignore" \
+        && grep -qx '.containerignore' "$root/.chezmoiignore" \
+        && grep -qx '.gitignore' "$root/.chezmoiignore"; then
+    ok ".chezmoiignore hides every repository-only file"
 else
-    no ".chezmoiignore must hide README.md, tests, and .github"
+    no ".chezmoiignore must hide README.md, tests, .github, Containerfile, dev, and the ignore files"
 fi
 
 # --- behavioral tests
