@@ -23,11 +23,19 @@ RUN dnf -y install --setopt=install_weak_deps=False \
     && dnf -y clean all \
     && rm -rf /var/cache/dnf
 
-# mise from its pinned release: the installer verifies the release checksum and
-# installs a single static binary, so there is no second package source.
-RUN curl -fsSL https://mise.run -o /tmp/mise-install.sh \
-    && MISE_VERSION="$MISE_VERSION" MISE_INSTALL_PATH=/usr/local/bin/mise sh /tmp/mise-install.sh \
-    && rm -f /tmp/mise-install.sh
+# mise from its pinned release tarball: the release's published sha256 is
+# checked before unpacking, so no remote script runs and the artifact is fixed
+# by content, not by tag alone.
+RUN case "$(uname -m)" in \
+        x86_64) arch=linux-x64; sha=d2d5a46f507bba772686e2c8f2316b3a4439dac49a37a30db5c0e7bb077c5431 ;; \
+        aarch64) arch=linux-arm64; sha=b36da3c4892380325d44dee3678ba618de191254d8a4aed8011ee66b28a6cbd7 ;; \
+        *) echo "unsupported architecture for mise" >&2; exit 1 ;; \
+    esac \
+    && curl -fsSL "https://github.com/jdx/mise/releases/download/${MISE_VERSION}/mise-${MISE_VERSION}-${arch}.tar.gz" -o /tmp/mise.tar.gz \
+    && echo "${sha}  /tmp/mise.tar.gz" | sha256sum -c - \
+    && tar -xzf /tmp/mise.tar.gz -C /tmp \
+    && install -m 0755 /tmp/mise/bin/mise /usr/local/bin/mise \
+    && rm -rf /tmp/mise /tmp/mise.tar.gz
 
 # 1777 keeps the home usable when the engine maps an arbitrary host uid onto
 # the container (Docker without keep-id); volumes cover the writable subdirs.

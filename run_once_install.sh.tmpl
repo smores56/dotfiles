@@ -10,8 +10,8 @@ set -u
 PROFILE={{ .profile | quote }}
 IS_HEADLESS={{ .is_headless }}
 
-# The mise release the installer is allowed to fetch; the installer verifies the
-# downloaded tarball against this release's published sha256. Keep in step with
+# The mise release this file is allowed to fetch. The sha256 values below are
+# that release.s published checksums. Keep them in step with
 # dot_config/containers/Containerfile.dev and dot_config/mise/config.toml.
 MISE_VERSION=v2026.11.8
 
@@ -75,20 +75,35 @@ if [ "$IS_HEADLESS" != "true" ] && command -v flatpak >/dev/null 2>&1; then
     done
 fi
 
-# mise has no Fedora Atomic package that works without a reboot, so install it
-# from the pinned release. The installer downloads the release tarball and
-# verifies it against the published sha256 before unpacking; it runs out of a
-# private mktemp directory, so no predictable path is ever executed.
+# mise has no Fedora Atomic package that works without a reboot, so install the
+# pinned release tarball directly. Both the URL tag and the sha256 are fixed in
+# this file; a mismatch aborts before anything is unpacked, and no remote
+# script is ever executed. Keep the checksums in step with the release's
+# published SHASUMS256.txt and with dot_config/containers/Containerfile.dev.
 if ! command -v mise >/dev/null 2>&1; then
-    mise_tmp=$(mktemp -d) || exit 1
-    if curl -fsSL https://mise.run -o "$mise_tmp/install.sh"; then
-        MISE_VERSION="$MISE_VERSION" MISE_INSTALL_PATH="$HOME/.local/bin/mise" \
-            sh "$mise_tmp/install.sh" \
-            || printf 'mise install failed; install it by hand.\n'
+    case "$(uname -m)" in
+        x86_64) mise_arch=linux-x64
+                mise_sha=d2d5a46f507bba772686e2c8f2316b3a4439dac49a37a30db5c0e7bb077c5431 ;;
+        aarch64 | arm64) mise_arch=linux-arm64
+                mise_sha=b36da3c4892380325d44dee3678ba618de191254d8a4aed8011ee66b28a6cbd7 ;;
+        *) mise_arch="" ;;
+    esac
+    if [ -z "$mise_arch" ]; then
+        printf 'unsupported architecture for the pinned mise release; install it by hand.\n'
     else
-        printf 'could not download the mise installer; install it by hand.\n'
+        mise_tmp=$(mktemp -d) || exit 1
+        mise_url="https://github.com/jdx/mise/releases/download/${MISE_VERSION}/mise-${MISE_VERSION}-${mise_arch}.tar.gz"
+        if curl -fsSL "$mise_url" -o "$mise_tmp/mise.tar.gz" \
+            && echo "$mise_sha  $mise_tmp/mise.tar.gz" | sha256sum -c - >/dev/null 2>&1 \
+            && tar -xzf "$mise_tmp/mise.tar.gz" -C "$mise_tmp" \
+            && mkdir -p "$HOME/.local/bin"; then
+            install -m 0755 "$mise_tmp/mise/bin/mise" "$HOME/.local/bin/mise" \
+                || printf 'mise install failed; install it by hand.\n'
+        else
+            printf 'could not fetch or verify the pinned mise release; install it by hand.\n'
+        fi
+        rm -rf "$mise_tmp"
     fi
-    rm -rf "$mise_tmp"
 fi
 
 if [ "$OSTREE" = 1 ]; then
