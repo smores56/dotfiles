@@ -6,6 +6,18 @@
 {{- end -}}
 {{- $isLaptop := promptBoolOnce . "is_laptop" "Is this a laptop" -}}
 {{- $isHeadless := promptBoolOnce . "is_headless" "Is this a headless machine (no GUI apps)" -}}
+{{- $workEmail := "" -}}
+{{- $workOwners := list -}}
+{{- if eq $profile "work" -}}
+{{- $workEmail = promptStringOnce . "work_email" "Work email" -}}
+{{- $owners := promptStringOnce . "work_owners" "Work GitHub owners (space-separated)" -}}
+{{- if $owners -}}{{- $workOwners = compact (splitList " " $owners) -}}{{- end -}}
+{{- range $workOwners -}}
+{{- if not (regexMatch "^[A-Za-z0-9][A-Za-z0-9-]*$" .) -}}
+{{- fail "work_owners must be GitHub account names (letters, digits, hyphens)" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 
 # Rendered once by `chezmoi init`, then edited in place: the prompts above only
 # run for values this file does not already hold. Everything below the prompted
@@ -18,15 +30,25 @@
     is_headless = {{ $isHeadless }}
 
     # Checkout root shared by `repos`, `worktrees`, and the git includeIf rules.
-    repos_root = "~/repos"
+    # #660 moves active checkouts here; migration clones them fresh.
+    repos_root = "~/ghq"
     personal_owner = "smores56"
     personal_signing_key = "~/.ssh/id_ed25519.pub"
 
     # Work identity. Empty work_email reuses email; list every owner whose
     # checkouts must sign and commit as work (owner names, not paths).
-    work_email = ""
+    work_email = {{ $workEmail | quote }}
     work_signing_key = "~/.ssh/id_ed25519.pub"
-    work_owners = []
+    work_owners = {{ $workOwners | toJson }}
+
+    # Work repositories that the employer keeps flat (<dir>/<repo>) instead of
+    # below repos_root. Empty on personal machines so a stray ~/Blitzy tree
+    # never inherits the work flow.
+    work_flat_root = {{ if eq $profile "work" }}{{ quote "~/Blitzy" }}{{ else }}{{ quote "" }}{{ end }}
+
+    # Work branch naming mirrors nix-config's owner-keyed settings.
+    work_branch_template = "{ticket}-{slug}"
+    work_branch_template_unticketed = "{type}/{slug}"
 
     # How changes land: local merges on a personal machine, PRs on a work one.
     flow = {{ if eq $profile "work" }}{{ quote "pr" }}{{ else }}{{ quote "local" }}{{ end }}

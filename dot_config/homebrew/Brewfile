@@ -1,0 +1,17 @@
+tap "nikitabobko/tap"
+
+# kitty and AeroSpace come from Homebrew on macOS (the previous host reason still
+# holds: LaunchServices needs the real app bundle).
+cask "kitty"
+cask "nikitabobko/tap/aerospace"
+cask "brave-browser"
+cask "tailscale-app"
+cask "docker-desktop"
+
+cask "caffeine"
+cask "gitify"
+cask "nvidia-geforce-now"
+cask "steam"
+cask "desktoppr"
+
+cask "font-jetbrains-mono-nerd-font"

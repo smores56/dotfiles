@@ -1,10 +1,25 @@
 default_shell "fish"
 session_serialization false
+show_startup_tips false
 
 theme "catppuccin-mocha"
 
 ui {
     pane_frames {
         rounded_corners true
+    }
+}
+
+keybinds {
+    // ── Normal mode: Ctrl+Alt for all primary actions ─────────────
+    normal {
+        // Free Alt+arrows for terminal apps (maki word-jump, readline, etc.)
+        unbind "Alt Left" "Alt Right" "Alt Up" "Alt Down" "Ctrl q"
+
+        // Pane management
+        bind "Ctrl Alt Left"  { MoveFocusOrTab "Left"; }
+        bind "Ctrl Alt Right" { MoveFocusOrTab "Right"; }
+        bind "Ctrl Alt Down"  { MoveFocus "Down"; }
+        bind "Ctrl Alt Up"    { MoveFocus "Up"; }
     }
 }

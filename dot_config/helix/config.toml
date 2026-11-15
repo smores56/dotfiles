@@ -3,10 +3,25 @@ cursorline = true
 bufferline = "multiple"
 color-modes = true
 true-color = true
+completion-replace = true
+jump-label-alphabet = "sntgrwfmpvcldbxieahyouk"
+end-of-line-diagnostics = "hint"
 
 [editor.lsp]
 display-messages = true
 display-inlay-hints = false
+
+[editor.inline-diagnostics]
+cursor-line = "hint"
+
+[editor.auto-save]
+focus-lost = true
+
+[editor.auto-save.after-delay]
+enable = true
+
+[editor.smart-tab]
+enable = true
 
 [editor.file-picker]
 hidden = false
@@ -25,6 +40,14 @@ enable = true
 normal = "block"
 insert = "bar"
 select = "underline"
+
+[keys.normal]
+C-r = [
+    ":config-reload",
+    ":reload-all",
+    ":lsp-restart",
+]
+C-x = ":buffer-close"
 
 [keys.normal.space]
 s = ":write"

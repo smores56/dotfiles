@@ -49,6 +49,8 @@ make_repo() {
     git -C "$1" commit -qm one
 }
 
+json_path() { printf '%s' "$1" | sed -n 's/.*"path":"\([^"]*\)".*/\1/p'; }
+
 # --- repos get -------------------------------------------------------------
 
 mkdir -p "$tmp/remotes/acme"
@@ -92,6 +94,44 @@ assert_not env REPOS_ROOT="$repos_root" sh "$REPOS" get acme/missing
 DESC="a failed clone leaves no destination behind"
 assert_not test -e "$repos_root/github.com/acme/missing"
 
+# --- work flat root ---------------------------------------------------------
+mkdir -p "$tmp/remotes/blitzy-ai"
+git init -q --bare "$tmp/remotes/blitzy-ai/demo.git"
+git -C "$seed" push -q "$tmp/remotes/blitzy-ai/demo.git" main
+git -C "$tmp/remotes/blitzy-ai/demo.git" symbolic-ref HEAD refs/heads/main
+
+work_flat=$tmp/work-flat
+work_checkout=$(REPOS_ROOT=$repos_root REPOS_WORK_FLAT=$work_flat \
+    REPOS_WORK_OWNERS=blitzy-ai sh "$REPOS" get blitzy-ai/demo 2>"$tmp/work.err")
+DESC="repos get routes a work owner to the flat root"
+assert test "$work_checkout" = "$work_flat/demo/main"
+DESC="the flat work checkout has the default branch"
+assert test -f "$work_checkout/file"
+out=$(REPOS_ROOT=$repos_root REPOS_WORK_FLAT=$work_flat \
+    REPOS_WORK_OWNERS=blitzy-ai sh "$REPOS" list)
+case $out in
+    *"$work_flat/demo"*) ok "repos list includes the flat work checkout" ;;
+    *) no "repos list includes the flat work checkout" ;;
+esac
+
+# The same routing comes from git config, so a chezmoi-rendered machine needs
+# no exported environment.
+git config --global smores.workFlat "$work_flat"
+git config --global smores.workOwners "blitzy-ai"
+rm -rf "$work_flat/demo"
+work_checkout=$(REPOS_ROOT=$repos_root sh "$REPOS" get blitzy-ai/demo 2>"$tmp/work.err")
+DESC="repos get reads the flat root from git config"
+assert test "$work_checkout" = "$work_flat/demo/main"
+
+# GitHub names are case-insensitive; a flat root cannot hold both spellings.
+rm -rf "$work_flat/demo"
+mkdir -p "$work_flat/DEMO"
+DESC="repos get refuses a case-insensitive flat collision"
+assert_not env REPOS_ROOT="$repos_root" sh "$REPOS" get blitzy-ai/demo
+rm -rf "$work_flat/DEMO"
+git config --global --unset smores.workFlat
+git config --global --unset smores.workOwners
+
 # --- worktrees new / prune -------------------------------------------------
 
 seed=$tmp/seed-wt
@@ -103,7 +143,7 @@ wt_repo=$tmp/wt-repo
 git clone -q "$tmp/wt-remote.git" "$wt_repo"
 
 json=$(cd "$wt_repo" && sh "$WORKTREES" new --slug demo 2>/dev/null)
-wt=$wt_repo/.worktrees/smores-demo
+wt=$(json_path "$json")
 DESC="worktrees new creates the worktree"
 assert test -d "$wt"
 DESC="worktrees new reports branch and path"
@@ -136,9 +176,25 @@ assert_not git -C "$wt_repo" rev-parse -q --verify refs/heads/smores/demo
 DESC="prune keeps local-only tags even with fetch.pruneTags=true"
 assert git -C "$wt_repo" rev-parse -q --verify refs/tags/local-only
 
+# Two branches whose old `tr '/' '-'` spelling is identical must still get
+# separate worktree paths.
+collision_repo=$tmp/collision-repo
+make_repo "$collision_repo"
+git -C "$collision_repo" config smores.branchTemplate '{type}/{slug}'
+coll_json=$(cd "$collision_repo" && sh "$WORKTREES" new --type feat --slug foo-bar 2>/dev/null)
+coll_path=$(json_path "$coll_json")
+coll_json2=$(cd "$collision_repo" && sh "$WORKTREES" new --type feat-foo --slug bar 2>/dev/null)
+coll_path2=$(json_path "$coll_json2")
+DESC="worktree paths do not collide across slash positions"
+assert test "$coll_path" != "$coll_path2"
+DESC="both colliding branches got a worktree"
+assert test -d "$coll_path"
+DESC="the second colliding branch got a worktree"
+assert test -d "$coll_path2"
+
 # Unmerged work: the branch has commits the default branch never saw.
-(cd "$wt_repo" && sh "$WORKTREES" new --slug unmerged) >/dev/null 2>&1
-wtu=$wt_repo/.worktrees/smores-unmerged
+json=$(cd "$wt_repo" && sh "$WORKTREES" new --slug unmerged 2>/dev/null)
+wtu=$(json_path "$json")
 (cd "$wtu" && printf 'x\n' > x && git add x && git commit -qm x) >/dev/null 2>&1
 (cd "$wt_repo" && sh "$WORKTREES" prune --apply) >/dev/null 2>&1
 DESC="prune keeps an unmerged worktree"
@@ -147,8 +203,8 @@ DESC="prune keeps an unmerged branch"
 assert git -C "$wt_repo" rev-parse -q --verify refs/heads/smores/unmerged
 
 # Dirty worktree whose commits are merged: removing it would discard work.
-(cd "$wt_repo" && sh "$WORKTREES" new --slug dirty) >/dev/null 2>&1
-wtd=$wt_repo/.worktrees/smores-dirty
+json=$(cd "$wt_repo" && sh "$WORKTREES" new --slug dirty 2>/dev/null)
+wtd=$(json_path "$json")
 (cd "$wtd" && git commit -q --allow-empty -m dirty && printf 'dirty\n' > dirty) >/dev/null 2>&1
 git -C "$wt_repo" merge -q --no-ff smores/dirty -m merge-dirty
 git -C "$wt_repo" push -q origin main
@@ -181,8 +237,8 @@ DESC="prune --force removes a content-integrated branch"
 assert_not git -C "$wt_repo" rev-parse -q --verify refs/heads/smores/cherry
 
 # The worktree prune runs from must never be removed.
-(cd "$wt_repo" && sh "$WORKTREES" new --slug current) >/dev/null 2>&1
-wtc=$wt_repo/.worktrees/smores-current
+json=$(cd "$wt_repo" && sh "$WORKTREES" new --slug current 2>/dev/null)
+wtc=$(json_path "$json")
 (cd "$wtc" && git commit -q --allow-empty -m current) >/dev/null 2>&1
 git -C "$wt_repo" merge -q --no-ff smores/current -m merge-current
 git -C "$wt_repo" push -q origin main
@@ -199,8 +255,8 @@ esac
 if touch -d '2 hours ago' "$tmp" 2>/dev/null; then
     age_repo=$tmp/age-repo
     make_repo "$age_repo"
-    (cd "$age_repo" && sh "$WORKTREES" new --slug old) >/dev/null 2>&1
-    wta=$age_repo/.worktrees/smores-old
+    json=$(cd "$age_repo" && sh "$WORKTREES" new --slug old 2>/dev/null)
+    wta=$(json_path "$json")
     (cd "$wta" && git commit -q --allow-empty -m old) >/dev/null 2>&1
     git -C "$age_repo" merge -q --no-ff smores/old -m merge-old
     touch -d '2 hours ago' "$age_repo/.git"

@@ -10,6 +10,7 @@ if [ -d /opt/homebrew/bin ]; then
   export HOMEBREW_NO_ANALYTICS=1
   export HOMEBREW_NO_AUTO_UPDATE=1
 fi
+export PATH="$PATH:$HOME/.cargo/bin"
 
 export EDITOR=hx
 export VISUAL=hx
@@ -17,13 +18,83 @@ export PAGER=less
 export LESS=-FRX
 export BAT_THEME=ansi
 
+# The employer's flat work checkout root, when it exists (see `repos` and the
+# work includeIf in ~/.gitconfig).
+if [ -d "$HOME/Blitzy" ]; then
+  export BLITZY_REPOS_DIR="$HOME/Blitzy"
+fi
+
 if (( $+commands[mise] )); then
   eval "$(mise activate zsh)"
 fi
 
 HISTFILE=$HOME/.zsh_history
-HISTSIZE=10000
-SAVEHIST=10000
-setopt append_history hist_ignore_dups hist_ignore_space share_history
+HISTSIZE=50000
+SAVEHIST=50000
+setopt append_history hist_ignore_all_dups hist_ignore_space share_history
 
 autoload -Uz compinit && compinit -i
+zstyle ':completion:*' menu select
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=*'
+
+# Same command set as fish's conf.d/abbreviations.fish, for the work Mac.
+pick() {
+  if (( $# < 2 )); then
+    print -u2 'usage: pick <tv-channel> <command…>'
+    return 2
+  fi
+  local sel
+  sel=$(tv "$1") || return
+  sel=${sel%%$'\n'*}
+  [[ -n $sel ]] || return
+  shift
+  local -a cmd=("$@")
+  local replaced=0 i
+  for i in {1..$#cmd}; do
+    if [[ $cmd[i] == '{name}' ]]; then
+      cmd[i]=${sel:t}
+      replaced=1
+    fi
+  done
+  (( replaced )) || cmd+=("$sel")
+  "${cmd[@]}"
+}
+
+alias e='hx'
+alias ef='pick files hx'
+alias et='pick text hx'
+alias l='eza --icons --group-directories-first -lh'
+alias la='eza --icons --group-directories-first -lah'
+alias f='yazi'
+alias b='bat'
+alias g='lazygit'
+alias m='mkdir -p'
+alias t='zellij a -c main'
+alias gp='gh pr create'
+alias cm='chezmoi'
+alias ca='chezmoi apply'
+alias cdiff='chezmoi diff'
+alias cr='repos'
+alias cw='worktrees'
+alias dv='dev'
+alias r='pick repos c'
+alias w='pick worktrees c'
+alias wg='repos get'
+alias wn='worktrees new'
+alias wp='worktrees prune'
+alias wl='worktrees list'
+
+if (( $+commands[zoxide] )); then
+  eval "$(zoxide init zsh --cmd c)"
+fi
+
+# Homebrew's zsh plugins, when present. Syntax highlighting must load last.
+if [ -r /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh ]; then
+  source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+fi
+if [ -r /opt/homebrew/share/zsh-history-substring-search/zsh-history-substring-search.zsh ]; then
+  source /opt/homebrew/share/zsh-history-substring-search/zsh-history-substring-search.zsh
+fi
+if [ -r /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]; then
+  source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+fi

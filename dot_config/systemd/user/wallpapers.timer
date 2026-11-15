@@ -1,0 +1,8 @@
+[Unit]
+Description=Rotate wallpapers from the canonical tree
+
+[Timer]
+OnUnitInactiveSec=3h
+
+[Install]
+WantedBy=timers.target

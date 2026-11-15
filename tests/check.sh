@@ -36,6 +36,9 @@ for script in "$root"/dot_local/bin/executable_*; do
     syntax sh "$script"
 done
 
+# The repository's own canonical entrypoint is not managed, but must parse.
+[ -f "$root/dev" ] && syntax sh "$root/dev"
+
 if command -v bash >/dev/null 2>&1; then
     syntax bash "$root/tests/cli.sh"
 else
@@ -78,9 +81,29 @@ toml() {
     fi
 }
 
-for cfg in "$root"/dot_config/mise/config.toml "$root"/dot_config/helix/config.toml "$root"/dot_config/helix/languages.toml; do
+for cfg in "$root"/dot_config/mise/config.toml "$root"/dot_config/helix/config.toml "$root"/dot_config/helix/languages.toml "$root"/dot_aerospace.toml; do
     [ -f "$cfg" ] && toml "$cfg"
 done
+
+# AeroSpace's root keys must not fall under [exec.env-vars]; toml.load alone
+# would accept the misplaced table.
+if python3 -c 'import tomllib' >/dev/null 2>&1; then
+    if python3 - "$root/dot_aerospace.toml" <<'PY'
+import sys, tomllib
+with open(sys.argv[1], "rb") as handle:
+    config = tomllib.load(handle)
+assert "default-root-container-layout" in config
+assert "after-startup-command" in config
+assert "default-root-container-layout" not in config.get("exec", {}).get("env-vars", {})
+PY
+    then
+        ok "aerospace root settings are top-level"
+    else
+        no "aerospace root settings are top-level"
+    fi
+else
+    skip "aerospace root settings (python3 tomllib missing)"
+fi
 
 # --- templates
 #
@@ -116,15 +139,86 @@ else
             skip "toml generated chezmoi.toml (python3 tomllib missing)"
         fi
         for tmpl in dot_gitconfig.tmpl dot_config/git/personal.inc.tmpl \
-                    dot_config/git/work.inc.tmpl; do
+                    dot_config/git/work.inc.tmpl dot_cargo/config.toml.tmpl \
+                    dot_config/ntfy/client.yml.tmpl \
+                    run_after_allowed_signers.sh.tmpl \
+                    run_onchange_after_macos_defaults.sh.tmpl \
+                    run_onchange_after_ntfy.sh.tmpl \
+                    run_onchange_after_wallpapers.sh.tmpl \
+                    dot_Library/LaunchAgents/dev.sammohr.ntfy-subscribe.plist.tmpl \
+                    dot_Library/LaunchAgents/dev.sammohr.wallpapers.plist.tmpl; do
             if HOME=$chome XDG_CONFIG_HOME=$chome/.config chezmoi --source "$root" \
                     execute-template < "$root/$tmpl" > "$tmp/render" 2>"$tmp/err"; then
                 ok "template $tmpl"
+                case $tmpl in
+                    *.sh.tmpl)
+                        if sh -n "$tmp/render" 2>"$tmp/err"; then
+                            ok "syntax rendered $tmpl"
+                        else
+                            no "syntax rendered $tmpl"
+                            sed 's/^/     /' "$tmp/err" >&2
+                        fi
+                        ;;
+                    *.plist.tmpl)
+                        if python3 -c 'import plistlib' >/dev/null 2>&1; then
+                            if python3 -c 'import plistlib, sys; plistlib.load(open(sys.argv[1], "rb"))' "$tmp/render" 2>"$tmp/err"; then
+                                ok "plist rendered $tmpl"
+                            else
+                                no "plist rendered $tmpl"
+                                sed 's/^/     /' "$tmp/err" >&2
+                            fi
+                        else
+                            skip "plist rendered $tmpl (python3 plistlib missing)"
+                        fi
+                        ;;
+                esac
             else
                 no "template $tmpl"
                 sed 's/^/     /' "$tmp/err" >&2
             fi
-        done
+                done
+
+        # A work-profile init must render the owner-keyed work settings, not
+        # just the personal defaults.
+        work_home=$tmp/work-home
+        mkdir -p "$work_home/.config"
+        if HOME=$work_home XDG_CONFIG_HOME=$work_home/.config chezmoi init \
+                --source "$root" --destination "$tmp/work-dest" --no-tty \
+                --promptString "Your full name=Test User" \
+                --promptString "Your email=test@example.com" \
+                --promptString "Machine profile (personal or work)=work" \
+                --promptString "Work email=work@example.com" \
+                --promptString "Work GitHub owners (space-separated)=blitzy-ai blitzy-platform" \
+                --promptBool "Is this a laptop=true" \
+                --promptBool "Is this a headless machine (no GUI apps)=false" \
+                >"$tmp/work-init.log" 2>&1; then
+            work_cfg=$work_home/.config/chezmoi/chezmoi.toml
+            if HOME=$work_home XDG_CONFIG_HOME=$work_home/.config chezmoi \
+                    --config "$work_cfg" --source "$root" execute-template \
+                    < "$root/dot_gitconfig.tmpl" > "$tmp/work-gitconfig" 2>"$tmp/err" \
+                && grep -q 'repos_root = "~/ghq"' "$work_cfg" \
+                && grep -q 'gitdir:~/ghq/github.com/blitzy-ai/' "$tmp/work-gitconfig" \
+                && grep -q 'gitdir:~/Blitzy/' "$tmp/work-gitconfig"; then
+                ok "work profile renders owner and flat-root includes"
+            else
+                no "work profile renders owner and flat-root includes"
+                sed 's/^/     /' "$tmp/err" >&2
+            fi
+            if HOME=$work_home XDG_CONFIG_HOME=$work_home/.config chezmoi \
+                    --config "$work_cfg" --source "$root" execute-template \
+                    < "$root/dot_config/git/work.inc.tmpl" > "$tmp/work-inc" 2>"$tmp/err" \
+                && grep -q 'flow = "pr"' "$tmp/work-inc" \
+                && grep -q 'branchTemplate = "{ticket}-{slug}"' "$tmp/work-inc" \
+                && grep -q 'branchTemplateUnticketed = "{type}/{slug}"' "$tmp/work-inc"; then
+                ok "work include renders flow and ticket branch templates"
+            else
+                no "work include renders flow and ticket branch templates"
+                sed 's/^/     /' "$tmp/err" >&2
+            fi
+        else
+            no "chezmoi work-profile init"
+            sed 's/^/     /' "$tmp/work-init.log" >&2
+        fi
 
         # The installer carries a branch per OS. Render both, so a syntax error
         # in the branch the current machine cannot run is still caught here.

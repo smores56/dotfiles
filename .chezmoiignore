@@ -2,3 +2,7 @@
 README.md
 tests
 .github
+Containerfile
+dev
+.containerignore
+.gitignore

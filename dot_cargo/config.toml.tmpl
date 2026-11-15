@@ -1,0 +1,15 @@
+{{ if eq .chezmoi.os "darwin" -}}
+# Managed by chezmoi. nix-config's cargo fix for the work Mac: rustup's cargo
+# shim mixes rustc versions in one build, so pin rustc/rustdoc to one stable
+# toolchain and use Apple clang for the macOS SDK.
+[build]
+rustc = "{{ .chezmoi.homeDir }}/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+rustdoc = "{{ .chezmoi.homeDir }}/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustdoc"
+
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "linker=/usr/bin/clang"]
+
+[env]
+CC = { value = "/usr/bin/clang", force = true }
+CXX = { value = "/usr/bin/clang++", force = true }
+{{ end -}}

@@ -4,14 +4,22 @@
 # Layout: $REPOS_ROOT/<host>/<owner>/<repo> is the repository directory. The
 # bare gitdir sits at <repo>/.git and the default branch is checked out at
 # <repo>/<default-branch>; extra worktrees live under <repo>/.worktrees (see
-# the `worktrees` wrapper). A plain clone produced by an older ghq still lists
-# and fetches fine — the layout is detected by git itself.
+# the `worktrees` wrapper). Work owners may instead use an employer's flat
+# <WORK_FLAT>/<repo> layout while they are migrated (see `git config
+# smores.workFlat` / `smores.workOwners`). A plain clone produced by an older
+# ghq still lists and fetches fine — the layout is detected by git itself.
 #
 # Needs: git. ghq is optional; when it offers --clean-bare it does the clone.
 set -u
 
-ROOT=${REPOS_ROOT:-$HOME/repos}
+ROOT=${REPOS_ROOT:-$HOME/ghq}
 DEFAULT_HOST=github.com
+WORK_FLAT=${REPOS_WORK_FLAT:-$(git config --global --get smores.workFlat 2>/dev/null || true)}
+# git config keeps `~/` literal; the shell will not expand it inside quotes.
+case $WORK_FLAT in
+    \~/*) WORK_FLAT="$HOME/${WORK_FLAT#\~/}" ;;
+esac
+WORK_OWNERS=${REPOS_WORK_OWNERS:-$(git config --global --get smores.workOwners 2>/dev/null || true)}
 
 usage() {
     cat <<'EOF'
@@ -23,13 +31,27 @@ usage: repos [list]
                 branch, and print the checkout path
 
 environment:
-  REPOS_ROOT    checkout root (default: ~/repos)
+  REPOS_ROOT        checkout root (default: ~/ghq)
+  REPOS_WORK_FLAT   flat work root (default: git config smores.workFlat)
+  REPOS_WORK_OWNERS work owners (default: git config smores.workOwners)
 EOF
 }
 
 die() { printf 'repos: %s\n' "$*" >&2; exit 1; }
 
 is_git_dir() { [ -d "$1/.git" ] || [ -f "$1/.git" ]; }
+
+lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+
+is_work_owner() {
+    local want owner
+    want=$(lower "$1")
+    # shellcheck disable=SC2086 # owners are a space-separated list of plain names
+    for owner in $WORK_OWNERS; do
+        [ "$(lower "$owner")" = "$want" ] && return 0
+    done
+    return 1
+}
 
 # One path segment: no separators, no option-looking leading dash, and no `..`
 # that could walk out of the checkout root.
@@ -63,19 +85,28 @@ nested_in_repo() {
 }
 
 list_repos() {
-    local host_dir owner_dir repo_dir
-    for host_dir in "$ROOT"/*; do
-        [ -d "$host_dir" ] || continue
-        for owner_dir in "$host_dir"/*; do
-            [ -d "$owner_dir" ] || continue
-            for repo_dir in "$owner_dir"/*; do
-                [ -d "$repo_dir" ] || continue
-                is_git_dir "$repo_dir" || continue
-                nested_in_repo "$repo_dir" && continue
-                printf '%s\n' "$repo_dir"
+    local host_dir owner_dir repo_dir repo_path
+    {
+        for host_dir in "$ROOT"/*; do
+            [ -d "$host_dir" ] || continue
+            for owner_dir in "$host_dir"/*; do
+                [ -d "$owner_dir" ] || continue
+                for repo_dir in "$owner_dir"/*; do
+                    [ -d "$repo_dir" ] || continue
+                    is_git_dir "$repo_dir" || continue
+                    nested_in_repo "$repo_dir" && continue
+                    printf '%s\n' "$repo_dir"
+                done
             done
         done
-    done | sort
+        if [ -n "$WORK_FLAT" ] && [ -d "$WORK_FLAT" ]; then
+            for repo_path in "$WORK_FLAT"/*; do
+                [ -d "$repo_path" ] || continue
+                is_git_dir "$repo_path" || continue
+                printf '%s\n' "$repo_path"
+            done
+        fi
+    } | sort -u
 }
 
 # Prints "host owner repo" for an owner/repo shorthand, host/owner/repo, or a
@@ -142,11 +173,26 @@ ghq_supports_clean_bare() {
     ghq get --help 2>&1 | grep -q -- '--clean-bare'
 }
 
-# Removes whatever a failed clone either of the two paths left behind, so a
-# retry starts from nothing instead of tripping the "already exists" guard.
+# Removes whatever a failed clone left behind, so a retry starts from nothing
+# instead of tripping the "already exists" guard.
 cleanup_failed_get() {
-    rm -rf "${ROOT:?}/${1:?}/${2:?}/${3:?}"
-    rmdir "$ROOT/$1/$2" 2>/dev/null || true
+    rm -rf "${1:?}"
+    rmdir "$(dirname "$1")" 2>/dev/null || true
+}
+
+# GitHub names are case-insensitive; a flat root can only hold one spelling.
+check_work_destination() {
+    local repo="$1" candidate name
+    [ -d "$WORK_FLAT" ] || return 0
+    for candidate in "$WORK_FLAT"/*; do
+        [ -e "$candidate" ] || [ -L "$candidate" ] || continue
+        name=${candidate##*/}
+        if [ "$name" != "$repo" ] && [ "$(lower "$name")" = "$(lower "$repo")" ]; then
+            printf 'repos get: %s conflicts with %s (GitHub names are case-insensitive)\n' \
+                "$WORK_FLAT/$repo" "$candidate" >&2
+            return 1
+        fi
+    done
 }
 
 get_repo() {
@@ -159,25 +205,34 @@ get_repo() {
     host=$1 owner=$2 repo=$3
 
     dest=$ROOT/$host/$owner/$repo
+    if [ "$host" = "$DEFAULT_HOST" ] && [ -n "$WORK_FLAT" ] && is_work_owner "$owner"; then
+        dest=$WORK_FLAT/$repo
+        check_work_destination "$repo" || exit 1
+    fi
     if [ -e "$dest" ] || [ -L "$dest" ]; then
         die "destination already exists: $dest"
     fi
 
-    mkdir -p "$ROOT/$host/$owner"
+    if [ "$dest" = "$WORK_FLAT/$repo" ]; then
+        mkdir -p "$WORK_FLAT"
+    else
+        mkdir -p "$ROOT/$host/$owner"
+    fi
     url="git@$host:$owner/$repo.git"
 
     # A failed clone leaves no half-populated checkout: ghq and git both create
-    # the destination before they can fail, so remove it the same way.
-    if ghq_supports_clean_bare; then
+    # the destination before they can fail, so remove it the same way. The flat
+    # work layout is not a ghq layout, so it always uses a bare clone.
+    if [ "$dest" = "$ROOT/$host/$owner/$repo" ] && ghq_supports_clean_bare; then
         if ! GHQ_ROOT=$ROOT ghq get --clean-bare -p "$host/$owner/$repo" >&2; then
-            cleanup_failed_get "$host" "$owner" "$repo"
+            cleanup_failed_get "$dest"
             die "ghq get failed: $host/$owner/$repo"
         fi
         checkout=$(checkout_default "$dest/.git" "$dest") || checkout=""
         track_remote_branches "$dest/.git"
     else
         if ! git clone --bare "$url" "$dest/.git"; then
-            cleanup_failed_get "$host" "$owner" "$repo"
+            cleanup_failed_get "$dest"
             die "clone failed: $url"
         fi
         checkout=$(checkout_default "$dest/.git" "$dest") || checkout=""

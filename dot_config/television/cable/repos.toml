@@ -1,0 +1,12 @@
+[metadata]
+name = "repos"
+description = "local repositories"
+requirements = ["repos", "git"]
+
+[source]
+command = "repos list"
+display = "{}"
+output = "{}"
+
+[preview]
+command = "git -C '{}' log --oneline --decorate --graph -20 --color=always"

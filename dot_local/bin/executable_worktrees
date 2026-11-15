@@ -22,7 +22,7 @@ usage: worktrees [list]
        worktrees prune [--apply] [--force] [--min-age <0s|Nm|Nh|Nd>]
 
   list    print the path of every worktree; the bare gitdir is skipped
-  new     create <repo>/.worktrees/<branch with / replaced by -> and print
+  new     create <repo>/.worktrees/<collision-safe encoded branch> and print
           JSON: {"branch":...,"path":...,"ticket":...,"base":...}
   prune   report worktrees and merged branches whose commits are already in
           the default branch. Nothing is deleted without --apply; branches go
@@ -54,6 +54,16 @@ slugify() {
         | sed -e 's/[^a-z0-9][^a-z0-9]*/-/g' -e 's/^-//' \
         | cut -c1-50 \
         | sed -e 's/-*$//'
+}
+
+# A branch path must not collide with another branch: `feat/foo-bar` and
+# `feat-foo/bar` share the old tr '/' '-' spelling. Percent-encode `%` and `/`,
+# then add a checksum so the path is still unique on case-insensitive macOS.
+encode_name() {
+    local encoded hash
+    encoded=$(printf '%s' "$1" | sed -e 's/%/%25/g' -e 's|/|%2F|g')
+    hash=$(printf '%s' "$1" | cksum | cut -d' ' -f1)
+    printf '%s-%s\n' "$encoded" "$hash"
 }
 
 repo_root() {
@@ -202,7 +212,7 @@ create_new() {
     branch=$(render_branch "$template" "$ticket" "$type" "$slug")
     git check-ref-format --branch "$branch" >/dev/null 2>&1 \
         || die "worktrees new: invalid branch name: $branch" 2
-    name=$(printf '%s' "$branch" | tr '/' '-')
+    name=$(encode_name "$branch")
 
     root=$(repo_root) || die "worktrees new: could not resolve the repository root"
     path=$root/.worktrees/$name

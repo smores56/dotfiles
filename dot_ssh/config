@@ -1,0 +1,19 @@
+# Managed by chezmoi: ~/.ssh/config
+#
+# Same connection behaviour as nix-config: one multiplexed transport per
+# destination, known hosts under ~/.config/ssh, and no agent or key invention.
+# github.com is HTTPS-or-SSH depending on the remote; this entry only fixes the
+# user so `git@github.com:` URLs resolve.
+Host github.com
+    HostName github.com
+    User git
+
+Host *
+    Compression no
+    ServerAliveInterval 0
+    ServerAliveCountMax 3
+    HashKnownHosts no
+    UserKnownHostsFile ~/.config/ssh/known_hosts
+    ControlMaster auto
+    ControlPath ~/.cache/ssh-%C
+    ControlPersist 10m

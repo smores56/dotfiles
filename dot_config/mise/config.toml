@@ -26,6 +26,18 @@ actionlint = "1.7.12"
 # every machine; helix and lazygit come from the package manager instead.
 "aqua:zellij-org/zellij" = "0.46.0"
 "aqua:sxyazi/yazi" = "26.9.1"
+# Shell/git/editor workflow tools that the previous host configuration supplied.
+"aqua:ajeetdsouza/zoxide" = "0.10.0"
+"aqua:alexpasmantier/television" = "0.15.9"
+"aqua:dandavison/delta" = "0.20.1"
+"aqua:x-motemen/ghq" = "1.12.0"
+# ntfy's CLI is the same binary as the server; used by the desktop subscriber.
+"ubi:binwiederhier/ntfy" = "2.36.0"
+# Helix language servers/formatters (the rest of the editor set stays in the
+# dev container; these are small single binaries).
+"aqua:astral-sh/ruff" = "0.17.5"
+"aqua:tamasfe/taplo" = "0.10.0"
+"aqua:artempyanykh/marksman" = "2026-02-08"
 
 [settings]
 # Tools come from precompiled releases; nothing here compiles from source.

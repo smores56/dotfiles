@@ -1,0 +1,20 @@
+#!/bin/sh
+# Managed by chezmoi. Apply the macOS settings the previous host configuration
+# owned: key repeat, natural scrolling, scroll speed, and the
+# screenshot/window-manager hotkeys. Runs when the rendered values change; the
+# hotkey helper writes only the entries it owns.
+set -u
+
+[ "$(uname -s)" = Darwin ] || exit 0
+
+defaults write NSGlobalDomain InitialKeyRepeat -int 13
+defaults write NSGlobalDomain KeyRepeat -int 2
+defaults write NSGlobalDomain com.apple.swipescrolldirection -bool false
+defaults write NSGlobalDomain com.apple.scrollwheel.scaling -float 0.5
+
+SYSTEM_HOTKEYS='{"enable":[{"symbolicHotkey":"28","parameters":[65535,105,8388608]},{"symbolicHotkey":"30","parameters":[65535,105,8650752]},{"symbolicHotkey":"184","parameters":[65535,105,8912896]}],"disable":["32","33","34","35","79","80","81","82","118","119","120","121","122","123","124","125","126"]}'
+export SYSTEM_HOTKEYS
+
+if command -v python3 >/dev/null 2>&1; then
+    python3 -I "$HOME/.config/macos/macos-hotkeys.py" || true
+fi

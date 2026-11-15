@@ -2,3 +2,8 @@
 [user]
     email = {{ .email | quote }}
     signingkey = {{ .personal_signing_key | quote }}
+
+[smores]
+    flow = "local"
+    branchTemplate = "smores/{slug}"
+    branchTemplateUnticketed = "smores/{slug}"

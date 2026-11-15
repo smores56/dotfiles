@@ -1,0 +1,17 @@
+{
+  "workspaces": [
+    {
+      "name": "1",
+      "layout": "h_tiles",
+      "children": ["net.kovidgoyal.kitty", "com.brave.Browser"]
+    },
+    {
+      "name": "2",
+      "layout": "h_tiles",
+      "children": [
+        ["com.apple.mail", "com.apple.iCal"],
+        "com.tinyspeck.slackmacgap"
+      ]
+    }
+  ]
+}

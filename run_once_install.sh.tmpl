@@ -27,12 +27,20 @@ Manual follow-ups, once per machine:
        gh ssh-key add ~/.ssh/id_ed25519.pub -t "$(hostname)"
   2. Tool versions
        mise install
+       rustup toolchain install stable   # macOS: dot_cargo expects stable
        mise ls
   3. Verify the dotfiles
        chezmoi diff
   4. Verify the checkout layout
        repos list
        worktrees list
+  5. macOS GUI casks (macOS only)
+       brew bundle --file ~/.config/homebrew/Brewfile
+  6. ntfy notifications (optional)
+       mkdir -p ~/.config/ntfy
+       printf '%s\n' '<reader-token>' > ~/.config/ntfy/token
+       chmod 600 ~/.config/ntfy/token
+       chezmoi apply
 EOF
 }
 
@@ -46,9 +54,10 @@ else
 fi
 
 # rpm-ostree layers need a reboot; dnf is used on non-atomic Fedora only.
-# zellij and yazi have no Fedora package; mise installs them (see
-# dot_config/mise/config.toml). The Nerd font is the packaged Caskaydia Mono NF.
-PACKAGES="fish zsh gh git git-lfs just jq yq ripgrep fd-find bat eza shellcheck podman helix lazygit cascadia-mono-nf-fonts"
+# zellij, yazi, television, ghq, zoxide, and delta have no Fedora package;
+# mise installs them (see dot_config/mise/config.toml). The Nerd font is the
+# packaged Caskaydia Mono NF.
+PACKAGES="fish zsh gh git git-lfs just jq yq ripgrep fd-find bat eza shellcheck podman flatpak rsync helix lazygit cascadia-mono-nf-fonts"
 missing=""
 for pkg in $PACKAGES; do
     rpm -q "$pkg" >/dev/null 2>&1 || missing="$missing $pkg"
@@ -65,10 +74,24 @@ if [ -n "$missing" ]; then
 fi
 
 # GUI applications come from Flathub; headless machines skip them entirely.
+# This is the nix-config app set that has a maintained Flathub id. Discord is
+# the stock client: Vencord's patcher is not a Flatpak and is left to the user.
 if [ "$IS_HEADLESS" != "true" ] && command -v flatpak >/dev/null 2>&1; then
     flatpak remote-add --if-not-exists --user flathub \
         https://flathub.org/repo/flathub.flatpakrepo || true
-    for app in md.obsidian.Obsidian; do
+    for app in \
+        md.obsidian.Obsidian \
+        com.brave.Browser \
+        org.videolan.VLC \
+        org.gimp.GIMP \
+        org.gnome.Evince \
+        com.transmissionbt.Transmission \
+        com.discordapp.Discord \
+        org.kde.krita \
+        com.valvesoftware.Steam \
+        com.bitwarden.desktop \
+        com.tutanota.Tutanota \
+        org.kde.dolphin; do
         flatpak info --user "$app" >/dev/null 2>&1 \
             || flatpak install --user -y --noninteractive flathub "$app" \
             || printf 'Flathub install failed for %s; install it by hand.\n' "$app"
@@ -114,9 +137,9 @@ fi
 if ! command -v brew >/dev/null 2>&1; then
     printf 'Homebrew is required: install it from https://brew.sh, then re-run chezmoi apply.\n'
 else
-    # zellij and yazi come from mise on both OSes, so their pinned versions are
-    # the only ones that ever run.
-    FORMULAE="fish zsh git git-lfs gh just mise ripgrep fd bat eza jq yq shellcheck yamllint kubeconform actionlint helix lazygit uv deno podman"
+    # zellij, yazi, television, ghq, zoxide, and delta come from mise on both
+    # OSes, so their pinned versions are the only ones that ever run.
+    FORMULAE="fish zsh git git-lfs gh just mise ripgrep fd bat eza jq yq shellcheck yamllint kubeconform actionlint helix lazygit uv deno podman python rustup rsync zsh-autosuggestions zsh-syntax-highlighting zsh-history-substring-search"
     missing=""
     for formula in $FORMULAE; do
         brew list --formula "$formula" >/dev/null 2>&1 || missing="$missing $formula"
@@ -127,7 +150,10 @@ else
     fi
 
     # A Nerd font is what the terminal and helix are configured for; a headless
-    # machine has no terminal that would use it.
+    # machine has no terminal that would use it. The GUI casks (kitty,
+    # AeroSpace, Brave, Docker, …) live in ~/.config/homebrew/Brewfile and are
+    # applied on request with `brew bundle`, so a first apply never asks for
+    # Docker Desktop's privileged helper.
     if [ "$IS_HEADLESS" != "true" ]; then
         for cask in font-jetbrains-mono-nerd-font; do
             brew list --cask "$cask" >/dev/null 2>&1 \

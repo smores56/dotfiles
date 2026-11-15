@@ -1,0 +1,70 @@
+#!/bin/sh
+# Sync the canonical wallpaper tree into a local cache and pick one for each
+# display. The source is the #660 path on the private host; override it with
+# WALLPAPERS_SOURCE for a migration or a test.
+set -eu
+
+source=${WALLPAPERS_SOURCE:-smortress:/srv/wallpapers/}
+cache=${XDG_CACHE_HOME:-$HOME/.cache}/wallpapers
+dest=$cache/Wallpapers
+
+log() { printf 'wallpapers: %s\n' "$*" >&2; }
+
+# macOS has no timeout(1); coreutils' gtimeout is optional. Without either,
+# let the existing connect/IO bounds in rsync/ssh do the work.
+with_timeout() {
+    seconds=$1
+    shift
+    if command -v timeout >/dev/null 2>&1; then
+        timeout "$seconds" "$@"
+    elif command -v gtimeout >/dev/null 2>&1; then
+        gtimeout "$seconds" "$@"
+    else
+        "$@"
+    fi
+}
+
+sync_cache() {
+    command -v rsync >/dev/null 2>&1 || { log 'rsync is required'; exit 1; }
+    mkdir -p "$cache" "$dest"
+    ssh_opts='ssh -o StrictHostKeyChecking=yes -o ConnectTimeout=20 -o ForwardAgent=no'
+    # openrsync on macOS 15.4+ has no --list-only; -n -v is the portable probe.
+    if ! raw=$(with_timeout 240 rsync -rnv -e "$ssh_opts" "$source" 2>/dev/null); then
+        log "cannot list $source; keeping the cached set"
+        exit 1
+    fi
+    listing=$(printf '%s\n' "$raw" | grep -vE '^(sending incremental file list|sent |total size|$)' || true)
+    if [ -z "$listing" ]; then
+        log "source listing is empty; keeping the cached set"
+        exit 1
+    fi
+    with_timeout 780 rsync -rt --del \
+        -e "$ssh_opts" --timeout=120 "$source" "$dest/"
+}
+
+pick_one() {
+    [ -d "$dest" ] || { log "no cached wallpapers at $dest"; exit 1; }
+    file=$(find "$dest" -type f \
+        \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) \
+        | awk 'BEGIN { srand() } { a[NR] = $0 } END { if (NR) print a[int(rand() * NR) + 1] }')
+    [ -n "$file" ] || { log "no wallpapers in $dest"; exit 1; }
+
+    case $(uname -s) in
+        Darwin)
+            command -v desktoppr >/dev/null 2>&1 || { log 'desktoppr is required'; exit 1; }
+            desktoppr "$file"
+            ;;
+        *)
+            # COSMIC stores its background in a RON settings tree with no stable
+            # CLI in this branch; leave the file where the operator can select it.
+            log "COSMIC has no scriptable wallpaper CLI here; selected $file"
+            ;;
+    esac
+}
+
+case ${1:-} in
+    sync) sync_cache ;;
+    pick) pick_one ;;
+    sync-and-pick) sync_cache; pick_one ;;
+    *) printf 'usage: wallpapers sync|pick|sync-and-pick\n' >&2; exit 2 ;;
+esac

@@ -1,0 +1,8 @@
+# Managed by chezmoi. No secret here: the reader token arrives from
+# ~/.config/ntfy/token as NTFY_TOKEN when ntfy-subscribe starts.
+default-host: https://ntfy.sammohr.dev
+subscribe:
+  - topic: alerts
+    command: {{ .chezmoi.homeDir }}/.local/bin/ntfy-notify-send
+  - topic: agent
+    command: {{ .chezmoi.homeDir }}/.local/bin/ntfy-notify-send

@@ -1,0 +1,22 @@
+#!/bin/sh
+# ntfy runs this for each message; map ntfy priority to the desktop urgency.
+set -u
+case ${NTFY_PRIORITY:-3} in
+    1 | 2) urgency=low ;;
+    4 | 5) urgency=critical ;;
+    *) urgency=normal ;;
+esac
+
+title=${NTFY_TITLE:-${NTFY_TOPIC:-ntfy}}
+body=${NTFY_MESSAGE:-}
+
+if command -v notify-send >/dev/null 2>&1; then
+    exec notify-send --app-name=ntfy --urgency="$urgency" "$title" "$body"
+fi
+if command -v osascript >/dev/null 2>&1; then
+    exec /usr/bin/osascript -e 'on run argv' \
+        -e 'display notification (item 2 of argv) with title (item 1 of argv)' \
+        -e 'end run' -- "$title" "$body"
+fi
+printf 'ntfy-notify-send: no notification backend (install libnotify or use macOS)\n' >&2
+exit 1
