@@ -145,6 +145,8 @@ else
                     run_onchange_after_macos_defaults.sh.tmpl \
                     run_onchange_after_ntfy.sh.tmpl \
                     run_onchange_after_wallpapers.sh.tmpl \
+                    run_once_before_00-install-sops.sh.tmpl \
+                    run_once_before_10-sops-verify.sh.tmpl \
                     dot_Library/LaunchAgents/dev.sammohr.ntfy-subscribe.plist.tmpl \
                     dot_Library/LaunchAgents/dev.sammohr.wallpapers.plist.tmpl; do
             if HOME=$chome XDG_CONFIG_HOME=$chome/.config chezmoi --source "$root" \

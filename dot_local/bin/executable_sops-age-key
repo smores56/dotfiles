@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# sops runs this through SOPS_AGE_KEY_CMD and reads the age identity from stdout;
+# age prompts for the passphrase on the tty, so the identity never appears in
+# argv or in the environment.
+set -eu
+
+# sops folds a failing command's stderr into its own error, so repeat the reason
+# on the tty where the operator is actually looking.
+fail() {
+    printf 'sops-age-key: %s\n' "$*" >&2
+    { printf 'sops-age-key: %s\n' "$*" >/dev/tty; } 2>/dev/null || true
+    exit 1
+}
+
+# sops loads this plaintext default even when SOPS_AGE_KEY_CMD is set, so a
+# leftover key would decrypt without ever asking for the passphrase.
+legacy=${XDG_CONFIG_HOME:-$HOME/.config}/sops/age/keys.txt
+if [ -e "$legacy" ]; then
+    fail "remove the retired plaintext identity $legacy"
+fi
+
+key=${XDG_CONFIG_HOME:-$HOME/.config}/sops/keys.age
+# Checked here so the error names the file to provision instead of age's generic
+# passphrase prompt.
+if [ ! -r "$key" ]; then
+    fail "$key is missing or unreadable;" \
+        "provision the passphrase-wrapped admin age identity there"
+fi
+
+exec age --decrypt "$key"
