@@ -89,6 +89,12 @@ if (( $+commands[zoxide] )); then
 fi
 
 # Homebrew's zsh plugins, when present. Syntax highlighting must load last.
+# sops unwraps the passphrase-protected admin age identity through this wrapper,
+# so no plaintext identity is ever on disk. Installed by chezmoi at first apply.
+if [ -x "$HOME/.local/bin/sops-age-key" ]; then
+  export SOPS_AGE_KEY_CMD="$HOME/.local/bin/sops-age-key"
+fi
+
 if [ -r /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh ]; then
   source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
 fi

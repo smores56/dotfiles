@@ -27,3 +27,9 @@ set -gx MANPAGER 'less -FRX'
 if test -d ~/Blitzy
     set -gx BLITZY_REPOS_DIR ~/Blitzy
 end
+
+# sops unwraps the passphrase-protected admin age identity through this wrapper,
+# so no plaintext identity is ever on disk. Installed by chezmoi at first apply.
+if test -x "$HOME/.local/bin/sops-age-key"
+    set -gx SOPS_AGE_KEY_CMD "$HOME/.local/bin/sops-age-key"
+end
