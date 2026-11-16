@@ -53,6 +53,12 @@ else
     sed 's/^/     /' "$tmp/zim.log" >&2
 fi
 
+dirty=""
+for repo in "$h"/.local/share/zsh-plugins/*/; do
+    [ -n "$(git -C "$repo" status --porcelain 2>/dev/null)" ] && dirty="$dirty $(basename "$repo")"
+done
+expect "zim's compiled files leave the plugin checkouts clean" "" "$dirty"
+
 # A stand-in maki that reports which provider keys it received.
 cat >"$h/.local/bin/maki" <<'EOF'
 #!/bin/sh

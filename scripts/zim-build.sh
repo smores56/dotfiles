@@ -30,3 +30,14 @@ if [ ! -f "$zim_home/zimfw.zsh" ] || [ "$(sha256_of "$zim_home/zimfw.zsh")" != "
     mv "$tmp" "$zim_home/zimfw.zsh"
 fi
 ZIM_HOME=$zim_home ZDOTDIR=$zdotdir zsh "$zim_home/zimfw.zsh" build -q
+
+# zimfw compiles each module into .zwc files beside its sources and has no
+# switch to stop that; excluding them locally keeps the pinned checkouts clean
+# for `mise bootstrap`'s dirty-repo check without losing the faster startup.
+plugins=${XDG_DATA_HOME:-$HOME/.local/share}/zsh-plugins
+for repo in "$plugins"/*/; do
+    exclude=$(git -C "$repo" rev-parse --git-path info/exclude 2>/dev/null) || continue
+    case $exclude in /*) ;; *) exclude=$repo$exclude ;; esac
+    mkdir -p "$(dirname "$exclude")"
+    grep -qxF '*.zwc' "$exclude" 2>/dev/null || printf '*.zwc\n*.zwc.old\n' >>"$exclude"
+done
