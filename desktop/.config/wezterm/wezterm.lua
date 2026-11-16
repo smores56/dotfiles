@@ -10,7 +10,7 @@ config.font_rules = {
   { intensity = "Bold", italic = false, font = wezterm.font("Google Sans Code", { weight = "Bold" }) },
   { intensity = "Bold", italic = true, font = wezterm.font("Google Sans Code", { weight = "Bold", italic = true }) },
 }
-config.font_size = 18.0
+config.font_size = 15.0
 -- WezTerm rasterizes with FreeType even on macOS; full hinting snaps stems to
 -- the pixel grid and looks thin and grainy next to CoreText. Light, unhinted
 -- loading on the GPU renderer is close to native macOS text.
