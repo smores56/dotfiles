@@ -1,0 +1,8 @@
+[Unit]
+Description=Keep the wallpaper cache fresh
+
+[Timer]
+OnUnitInactiveSec=3h
+
+[Install]
+WantedBy=timers.target

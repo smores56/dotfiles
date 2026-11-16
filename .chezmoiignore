@@ -1,8 +1,0 @@
-# Repository documentation, tests, and CI are not dotfiles.
-README.md
-tests
-.github
-Containerfile
-dev
-.containerignore
-.gitignore

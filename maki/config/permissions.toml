@@ -1,0 +1,26 @@
+# Deny wins over always_yolo. A backstop against a compromised model or prompt
+# injection, not a sandbox: obfuscated forms can slip through.
+[bash]
+deny = [
+  "sudo",
+  "sudo *",
+  "rm -rf /",
+  "rm -rf /*",
+  "rm -fr /",
+  "rm -fr /*",
+  "rm -rf ~",
+  "rm -rf ~/*",
+  "rm -rf $HOME",
+  "rm -rf $HOME/*",
+  "sh",
+  "bash",
+  "zsh",
+  "fish",
+  "git push --force *",
+  "git push -f *",
+  "git push * --force *",
+  "dd of=/dev/*",
+  "dd * of=/dev/*",
+  "mkfs*",
+  "mkfs *",
+]

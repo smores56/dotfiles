@@ -1,0 +1,84 @@
+# Managed file: ~/.gitconfig, symlinked by install.sh.
+#
+# Machine identity and the includeIf rules live in ~/.config/git/machine.inc,
+# which install.sh generates from the untracked local.env. Personal and work
+# checkouts then pick up their own email, signing key, flow, and branch
+# templates from personal.inc and work.inc.
+#
+# The include is deliberately the last thing in this file: an include is read
+# where it appears, so a plain section below it would override the identity and
+# template its conditional includes chose.
+[init]
+    defaultBranch = main
+
+[core]
+    excludesFile = ~/.config/git/ignore
+    pager = delta
+
+[pull]
+    rebase = true
+
+[push]
+    default = simple
+    autoSetupRemote = true
+
+[fetch]
+    prune = true
+    # A stale remote-tracking branch is safe to drop; a tag may be local-only
+    # and is never a fetch side effect.
+    pruneTags = false
+
+[rebase]
+    autosquash = true
+    updateRefs = true
+
+[merge]
+    conflictstyle = zdiff3
+
+[rerere]
+    enabled = true
+
+[diff]
+    algorithm = histogram
+    colorMoved = default
+
+[commit]
+    gpgsign = true
+
+[tag]
+    gpgsign = true
+
+[gpg]
+    format = ssh
+
+[gpg "ssh"]
+    allowedSignersFile = ~/.config/ssh/allowed_signers
+
+[interactive]
+    diffFilter = delta --color-only
+
+[delta]
+    navigate = true
+    line-numbers = true
+
+[pager]
+    diff = delta
+    log = delta
+    reflog = delta
+    show = delta
+
+[column]
+    ui = auto
+
+[help]
+    autocorrect = prompt
+
+[smores]
+    # Fallback for a checkout that matches no includeIf rule. The personal and
+    # work includes are read after this section, so their templates win.
+    branchTemplate = smores/{slug}
+    branchTemplateUnticketed = smores/{slug}
+    # workFlat and workOwners are per-machine and set in machine.inc.
+
+[include]
+    path = ~/.config/git/machine.inc

@@ -1,257 +1,212 @@
 # dotfiles
 
-User configuration for a Fedora Atomic **COSMIC** desktop and **macOS**, managed
-with [chezmoi][chezmoi]. No Nix, no secrets. `chezmoi apply` only writes files;
-the one-time installer, the wallpaper sync, and the ntfy subscriber are the
-only steps that use the network.
+Configuration for a Fedora COSMIC Atomic laptop with an encrypted root. The
+repository is plain Git and a symlink installer: no configuration manager, no
+templating engine, and no package to install. Every file here is either linked
+into `$HOME` or read by one of the scripts in `scripts/`.
 
-Three ideas keep the machines interchangeable:
+Four sources, each with one job:
 
-- **[mise][mise]** owns CLI tool versions, pinned in one file per user.
-- **`repos`** keeps every checkout under `~/ghq/<host>/<owner>/<repo>` as a
-  ghq-style clean-bare repository, and **`worktrees`** manages the worktrees
-  inside it. An employer's flat `~/Blitzy/<repo>` root is supported while those
-  checkouts migrate.
-- **`dev`** runs any checkout in an OCI development container, so project
-  toolchains never leak into the host.
+| Source | Owns |
+| --- | --- |
+| `packages/flatpaks.txt` | GUI applications, installed as user Flatpaks from Flathub |
+| `packages/mise.toml` | CLI tool versions, installed by standalone mise |
+| `scripts/bootstrap.sh` | the one-time Flatpak, mise, and CLI bootstrap, including the pinned `sdlc` |
+| `rpm-ostree` | host packages only; Tailscale and rsync share the one layer |
+
+The coding agent, Maki, is a pinned upstream release installed into
+`~/.local/bin`; its configuration and skills live in `maki/`. The `sdlc` CLI
+(the issues registry the workflow skills call) is pinned to an upstream commit
+and installed by `scripts/bootstrap.sh` with `uv tool install`. The Mac is not
+managed by this repository: it keeps Tailscale and ordinary OpenSSH, and
+`home/.ssh/config` is portable by hand.
 
 ## One-time setup
 
-### Fedora Atomic (COSMIC)
+The full sequence, with the operator-only steps, is in
+[docs/manual-steps.md](docs/manual-steps.md). Read it before wiping the old
+disk: the FIDO2 credential handles only exist there.
 
 ```sh
-# Base tools. rpm-ostree changes need one reboot.
-sudo rpm-ostree install fish git gh
+# 1. Clone into the shared checkout root.
+mkdir -p ~/repos/github.com/smores56
+git clone git@github.com:smores56/dotfiles.git \
+    ~/repos/github.com/smores56/dotfiles
+cd ~/repos/github.com/smores56/dotfiles
 
-# chezmoi: either the Fedora package (root) ...
-sudo rpm-ostree install chezmoi
-# ... or the upstream installer (no root, installs to ~/.local/bin).
-sh -c "$(curl -fsSL https://get.chezmoi.io)"
+# 2. Machine identity (untracked).
+cp local.env.example local.env
+$EDITOR local.env
+chmod 600 local.env
 
-chezmoi init --apply smores56
+# 3. Link the files.
+./install.sh --dry-run
+./install.sh
+
+# 4. Packages: user Flatpaks, mise, the pinned CLI tools, and `sdlc`.
+scripts/bootstrap.sh
+
+# 5. Maki (verified download).
+scripts/install-maki.sh
 ```
 
-The first `chezmoi init` prompts for your name, email, machine profile, and
-whether the machine is a laptop or headless. On a `work` profile it also asks
-for the work email and GitHub owners, so work checkouts get their own identity,
-`smores.flow = pr`, and `{ticket}`/`{type}` branch templates. Answers live in
-`~/.config/chezmoi/chezmoi.toml`, which you can edit afterwards.
-
-`run_once_install.sh` then layers the remaining packages with `rpm-ostree`
-(including `helix`, `lazygit`, and the Caskaydia Mono NF font), installs GUI
-apps from Flathub unless the machine is headless, and installs `mise` into
-`~/.local/bin` from a checksum-verified release download. `zellij`, `yazi`,
-`television`, `ghq`, `zoxide`, `delta`, and `ntfy` have no Fedora package, so
-`mise install` provides them. Reboot when it says so and read the follow-ups it
-prints.
-
-### macOS
+Then the root steps: the one package layer, a reboot, and the Tailscale
+login (each command below needs root):
 
 ```sh
-xcode-select --install
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-brew install chezmoi
-chezmoi init --apply smores56
+sudo rpm-ostree install tailscale rsync
+sudo systemctl reboot
+sudo systemctl enable --now tailscaled
+sudo tailscale up
 ```
 
-`run_once_install.sh` installs the formulae (including `mise`, `podman`,
-`helix`, `lazygit`, `python`, `rustup`, and the zsh plugins) and the JetBrains
-Mono Nerd Font, then prints follow-ups. The GUI casks are in
-`~/.config/homebrew/Brewfile` and are applied on request with
-`brew bundle --file ~/.config/homebrew/Brewfile`; `zellij`, `yazi`,
-`television`, `ghq`, `zoxide`, `delta`, and `ntfy` come from `mise install` on
-both OSes.
+## Machine identity
 
-### Follow-ups on either OS
+`local.env` is an untracked file of plain shell assignments (see
+`local.env.example`). `install.sh` sources it, then writes three git include
+files: `~/.config/git/machine.inc` carries the global user, the active profile,
+and the `includeIf` rules — one set per personal and work owner on the checkout
+path under `REPOS_ROOT`, one per remote URL spelling (`git@host:…`, `ssh://`,
+`https://`), and one for the flat work root;
+`~/.config/git/personal.inc` and `~/.config/git/work.inc` carry that profile's
+email, signing key, flow (`local` or `pr`), and branch templates. The URL rules
+are what make a work checkout in `~/wip`, `/tmp`, or another host still resolve
+to the work identity and `flow = pr`. The include is the last thing in the
+checked-in `~/.gitconfig`, so the identity its rules choose is not overridden by
+a plain section, and `install.sh --profile work` switches the fallback identity
+without touching any tracked file. Re-run `install.sh` after editing
+`local.env`.
+
+## What the installer does
+
+`install.sh` symlinks `home/` under `$HOME` at the same relative paths, and
+links the sources that do not live under `$HOME` at fixed targets:
+
+| Source | Target |
+| --- | --- |
+| `home/.gitconfig` | `~/.gitconfig` |
+| `home/.config/fish/**` | `~/.config/fish/**` |
+| `home/.local/bin/{repos,worktrees,dev,wallpapers,sops-age-key}` | `~/.local/bin/` |
+| `home/.config/{helix,zellij,lazygit,yazi,gh,television,containers}` | `~/.config/…` |
+| `home/.config/systemd/user/wallpapers.*` | `~/.config/systemd/user/` |
+| `home/.ssh/config` | `~/.ssh/config` |
+| `packages/mise.toml` | `~/.config/mise/config.toml` |
+| `maki/config/**` | `~/.config/maki/**` |
+| `maki/skills/*` | `~/.agents/skills/*` |
+| `maki/bin/*` | `~/.local/bin/*` |
+
+It is idempotent: a second run reports `ok` for every current link and rewrites
+no generated file. `--dry-run` prints every planned action and writes nothing.
+A destination is replaced only when this repository already owns it (the link
+points into the repository, or the previous record names it). A real file or a
+foreign symlink needs `--force`, which moves the victim to
+`<dest>.bak.<timestamp>` first; a directory is never removed. Every link it
+owns is recorded in `~/.local/state/dotfiles/links` — written from an `EXIT`
+trap, so an interrupted run still records what it linked — and the generated
+include and signer files are listed there too. When a source disappears from
+the repository, the next run unlinks the dangling link and prints it. Nothing
+is ever written outside the prefix: a symlinked parent directory is refused.
+
+What it does not do: it never installs packages, runs a package manager, uses
+sudo, starts a service, or touches the network. It does not copy secrets.
+
+## Daily use
 
 ```sh
-gh auth login --git-protocol ssh
-ssh-keygen -t ed25519 -C "$(hostname)"          # skip if the key exists
-gh ssh-key add ~/.ssh/id_ed25519.pub -t "$(hostname)"
-mise install                                    # installs the pinned CLI tools
-rustup toolchain install stable                 # macOS: dot_cargo expects stable
+# After changing a tracked file, re-link (idempotent; safe to re-run).
+./install.sh
+
+# After changing local.env or switching profiles.
+./install.sh --profile work
+
+# Follow-ups that a file installer cannot do.
+systemctl --user daemon-reload
+systemctl --user enable --now wallpapers.timer
 ```
 
-For ntfy notifications, write the reader token to `~/.config/ntfy/token`
-(mode 600); the next `chezmoi apply` starts `ntfy-subscribe` (systemd user unit
-on Linux, launchd agent on macOS). For the wallpapers agent, set
-`WALLPAPERS_SOURCE` if the tree is not at `smortress:/srv/wallpapers/`. On macOS
-run `brew bundle --file ~/.config/homebrew/Brewfile` once for the GUI casks,
-then sign in once for the launchd agents to load.
+`wallpapers` syncs `$WALLPAPERS_SOURCE` (default `smortress:/srv/wallpapers/`)
+into `~/.cache/wallpapers` and names one file to use; the timer above runs
+`wallpapers sync-and-pick` every three hours. COSMIC has no scriptable
+wallpaper setting in this branch, so the wrapper maintains the cache and the
+pick is applied by hand in the desktop's Appearance settings. `rsync` comes
+from the host layer, since no user-level installer provides it.
 
-On macOS also `podman machine init && podman machine start` once. Keys are
-generated by you, never stored in this repository; git signs commits with the
-SSH key (`gpg.format = ssh`), and the key path comes from the chezmoi data
-(`personal_signing_key`, `work_signing_key`).
-
-### Authentication boundary
-
-GitHub authentication uses the SSH agent and the machine's default keys; the
-work/personal include selects the **commit signing** key, not the SSH identity.
-nix-config's sops-held per-owner PAT helper, PIV/YubiKey identities, and
-cloudflared SSH proxy are not ported; they were bound to the retired smortress
-secret delivery. If a machine still needs per-owner PATs, put that decision in
-#660's T1 secret-delivery task rather than putting a token in this repository.
-
-## What each file does
-
-| File | Target | Purpose |
-| --- | --- | --- |
-| `.chezmoi.toml.tmpl` | `~/.config/chezmoi/chezmoi.toml` | Prompts (name, email, profile, work identity, laptop, headless) and per-OS data (`linux`, `macos`) |
-| `.chezmoiignore` | — | Keeps `README.md`, `tests/`, `.github/`, the repository `Containerfile`/`dev`, and the repository ignore files out of the home directory |
-| `dot_gitconfig.tmpl` | `~/.gitconfig` | Global identity, SSH commit signing, delta pager, `smores.*` settings, owner-keyed and flat-work includes |
-| `dot_config/git/ignore` | `~/.config/git/ignore` | Ignores `.worktrees/` so worktrees never show up as untracked |
-| `dot_config/git/personal.inc.tmpl` | `~/.config/git/personal.inc` | Personal email, signing key, local flow and branch template |
-| `dot_config/git/work.inc.tmpl` | `~/.config/git/work.inc` | Work email, signing key, `pr` flow and ticket branch templates |
-| `dot_config/mise/config.toml` | `~/.config/mise/config.toml` | Pinned CLI versions |
-| `dot_config/fish/config.fish` | `~/.config/fish/config.fish` | Interactive shell; nothing runs at startup that needs network |
-| `dot_config/fish/conf.d/env.fish` | `~/.config/fish/conf.d/env.fish` | PATH contract (`~/.local/bin`, mise, Homebrew, cargo, editors) and flat work root |
-| `dot_config/fish/conf.d/mise.fish` | `~/.config/fish/conf.d/mise.fish` | `mise activate fish`, guarded |
-| `dot_config/fish/conf.d/zoxide.fish` | `~/.config/fish/conf.d/zoxide.fish` | `zoxide init fish --cmd c`, guarded |
-| `dot_config/fish/conf.d/abbreviations.fish` | `~/.config/fish/conf.d/abbreviations.fish` | Portable abbreviations, repo/worktree pickers, and zellij main session |
-| `dot_config/fish/functions/pick.fish` | `~/.config/fish/functions/pick.fish` | Television picker helper |
-| `dot_zshrc` | `~/.zshrc` | macOS login shell: same PATH, mise, zoxide, picker aliases, zsh plugins, 50k history |
-| `dot_config/television/cable/*` | `~/.config/television/cable/` | Repository and worktree picker channels |
-| `dot_config/helix/*` | `~/.config/helix/` | Editor settings and language formatting |
-| `dot_config/zellij/config.kdl` | `~/.config/zellij/config.kdl` | Multiplexer defaults, fish shell, Ctrl+Alt pane keys |
-| `dot_config/lazygit/config.yml` | `~/.config/lazygit/config.yml` | One portable lazygit config, helix as editor |
-| `dot_config/yazi/yazi.toml` | `~/.config/yazi/yazi.toml` | File manager layout |
-| `dot_config/gh/config.yml` | `~/.config/gh/config.yml` | `co`/`pv` aliases, helix editor, SSH protocol |
-| `dot_config/homebrew/Brewfile` | `~/.config/homebrew/Brewfile` | Work-Mac GUI casks, applied on request |
-| `dot_config/ntfy/client.yml.tmpl` | `~/.config/ntfy/client.yml` | Subscribes to the `alerts` and `agent` topics |
-| `dot_config/systemd/user/*` | `~/.config/systemd/user/` | ntfy subscriber and wallpaper rotation on Linux |
-| `dot_ssh/config` | `~/.ssh/config` | ControlMaster, known hosts under `~/.config/ssh` |
-| `dot_aerospace.toml` | `~/.aerospace.toml` | Work-Mac tiling layout and keybindings |
-| `dot_config/aerospace/*` | `~/.config/aerospace/` | AeroSpace layout engine and spec |
-| `dot_cargo/config.toml.tmpl` | `~/.cargo/config.toml` | macOS rustc/CC pinning |
-| `dot_Library/LaunchAgents/*` | `~/Library/LaunchAgents/` | ntfy subscriber and wallpaper agents on macOS |
-| `run_after_allowed_signers.sh.tmpl` | executed on apply | Rebuilds `~/.config/ssh/allowed_signers` from existing public keys |
-| `run_onchange_after_macos_defaults.sh.tmpl` | executed on change | Key repeat, scrolling, screenshot and window-manager hotkeys |
-| `run_onchange_after_ntfy.sh.tmpl` | executed on change | Starts the ntfy subscriber once a token exists |
-| `run_onchange_after_wallpapers.sh.tmpl` | executed on change | Starts the wallpaper timer/agent |
-| `dot_local/bin/executable_repos` | `~/.local/bin/repos` | Checkout root and cloning (work flat root supported) |
-| `dot_local/bin/executable_worktrees` | `~/.local/bin/worktrees` | Worktree list/create/prune with collision-safe paths |
-| `dot_local/bin/executable_dev` | `~/.local/bin/dev` | Development container entrypoint |
-| `dot_local/bin/executable_wallpapers` | `~/.local/bin/wallpapers` | Sync and select wallpapers |
-| `dot_local/bin/executable_ntfy-subscribe` | `~/.local/bin/ntfy-subscribe` | ntfy client with token from `~/.config/ntfy/token` |
-| `dot_local/bin/executable_ntfy-notify-send` | `~/.local/bin/ntfy-notify-send` | ntfy priority to notify-send/osascript |
-| `dot_config/containers/Containerfile.dev` | `~/.config/containers/Containerfile.dev` | Shared Fedora dev image |
-| `run_once_install.sh.tmpl` | executed once by `chezmoi apply` | Per-OS package bootstrap, idempotent |
-| `tests/check.sh` | — | Parses every script and config, runs the behavioral tests; not applied |
-| `tests/cli.sh` | — | Behavioral tests for `repos`, `worktrees`, and `dev`; not applied |
-| `Containerfile` / `dev` | not applied | This repository's own digest-pinned check container and entrypoint |
-| `.gitignore` / `.containerignore` | not applied | Repository-only ignore files |
-
-## `repos`, `worktrees`, and `dev`
-
-### `repos`
+### `repos`, `worktrees`, and `dev`
 
 ```sh
-repos list                 # every repository directory under ~/ghq (plus ~/Blitzy)
-repos get owner/project    # clone, check out the default branch, print the path
-repos get git@github.com:owner/project.git
-```
-
-`repos get` uses `ghq get --clean-bare` when ghq supports it, otherwise
-`git clone --bare` plus a worktree. A GitHub owner listed in
-`smores.workOwners` is routed to the flat `smores.workFlat` root instead. The
-result is:
-
-```
-~/ghq/github.com/owner/project/
-├── .git/          # bare gitdir, all refs live here
-├── main/          # worktree for the default branch
-└── .worktrees/    # extra worktrees created by `worktrees new`
-```
-
-The bare gitdir tracks `refs/remotes/origin/*`, so `git fetch` never fights a
-checked-out branch. `REPOS_ROOT` overrides the root.
-
-### `worktrees`
-
-```sh
-worktrees list
+repos get owner/project      # plain git clone under ~/repos/<host>/<owner>/<repo>
+repos list
 worktrees new --slug add-gizmo --ticket ABC-123 --type feat
-worktrees prune                        # dry run: report only
-worktrees prune --apply                # remove what the dry run reported
-worktrees prune --apply --min-age 7d   # only worktrees idle for a week
+worktrees prune              # dry run; --apply removes what it reported
+dev                          # rootless Podman shell for the current checkout
 ```
 
-`new` renders the branch name from `git config smores.branchTemplate` (default
-`smores/{slug}`, with `{slug}`, `{ticket}`, and `{type}` placeholders). A
-template that needs `{ticket}` requires `--ticket` unless the repository sets
-`smores.branchTemplateUnticketed`. The worktree lands in
-`<repo>/.worktrees/<collision-safe encoded branch>` and `new` prints JSON on
-stdout:
+`repos get` clones with plain `git clone`; work owners listed in
+`smores.workOwners` are routed to the flat `smores.workFlat` root instead.
+`worktrees new` renders the branch name from `git config smores.branchTemplate`
+and prints JSON: use its `path`. Worktrees live in the repository's
+`.worktrees/`, so no extra checkout layout is required. The retired `~/ghq`
+root is not part of this layout: nothing writes there, and a checkout left
+there falls back to the global identity.
 
-```json
-{"branch":"smores/ABC-123-add-gizmo","path":"/home/you/ghq/github.com/owner/project/.worktrees/smores%2FABC-123-add-gizmo-1234567890","ticket":"ABC-123","base":"origin/main"}
-```
+`dev` prefers podman, uses the repository's `Containerfile` when present, and
+otherwise the shared `~/.config/containers/Containerfile.dev`. It never mounts
+`~/.ssh`, never forwards tokens, and keeps each checkout's mise installs on its
+own volume. The SSH agent socket is opt-in, because any repository image could
+use a forwarded agent to push to every remote the key reaches:
+`DEV_SSH_AGENT=1` mounts it for a trusted checkout.
 
-`prune` reports worktrees (and merged branches) whose commits are already
-contained in the default branch, using ancestry, empty-diff, and merge-tree tree
-comparison. Nothing is deleted without `--apply`, dirty or locked worktrees are
-never removed, and a branch is only deleted with `-d`, so unmerged commits
-survive; `--force` is what allows `-D` for a branch whose content is already in
-the target. Age comes from the per-worktree gitdir, tags are never deleted, and
-without a default branch (`origin/HEAD`, `main`, or `master`) prune does
-nothing.
+## Packages
 
-### `dev`
+`packages/flatpaks.txt` lists the GUI apps. `packages/mise.toml` pins every CLI
+tool; bump one at a time, run `mise install`, use it for a day, then commit.
+Fish itself comes from mise, so the shell version is in the same pin file.
+
+The base image is not modified except for the Tailscale and rsync layer.
+Packages that need to run before login (none today) would be the only reason to
+add another layer.
+
+## Maki
 
 ```sh
-dev                      # interactive shell in the repository's container
-dev --build              # rebuild the image first
-dev mise run test        # run one command in the container
-dev --engine docker ...  # pick the engine explicitly
+scripts/install-maki.sh      # downloads, verifies, installs ~/.local/bin/maki
+maki                         # or the `a` abbreviation
+maki-session-search list     # local session history
+pick maki-sessions maki-session-resume   # `ms`
 ```
 
-`dev` prefers `podman`, falls back to `docker`, and uses the repository's
-`Containerfile` when present; otherwise it builds
-`~/.config/containers/Containerfile.dev`. It mounts the checkout at the same
-absolute path (linked worktrees keep working), preserves your uid/gid
-(`--userns=keep-id` on Podman, `--user` on Docker), relabels the mounts for
-SELinux on Fedora Atomic, and mounts `~/.gitconfig` and `~/.config/git`
-read-only. Credentials stay on the host: `~/.ssh` is never mounted and
-`GH_TOKEN`/`GITHUB_TOKEN` are never forwarded; only the SSH agent socket is
-passed in, and each repository gets its own `dev-mise` volume so one
-checkout's tool installs cannot land on another's PATH. `--tty` behaviour
-follows the terminal: `-i`/`-t` are added only when a terminal is attached, and
-no probe container is started. No container engine socket is ever mounted.
-`DEV_IMAGE` overrides the image tag (`dev-<repo>:local` by default).
+The version, target, and sha256 are in `maki/pin.env`; the installer fails
+closed if the download does not match both the pin and the release's published
+`sha256sums.txt`. An update is a pin bump in `maki/pin.env` followed by
+`scripts/install-maki.sh`; never copy a release into `~/.local/bin` by hand.
+Configuration, permissions, provider definitions, skills, and session helpers
+are ordinary files under `maki/`. Maki talks directly to Neuralwatt and
+TinyFish: there is no capability broker, no agent VM, and no memory service.
+Fresh XDG state is used; nothing is migrated from an old cache.
 
-## Migration note: no Nix
+## Secrets
 
-This repository replaces the 2024 Arch/Nix stub. Nothing is installed, built, or
-evaluated with Nix:
+Nothing secret is tracked, and `install.sh` never writes a secret. Two files
+live outside the repository:
 
-- NixOS modules, home-manager, and `nix-shell` are gone; packages come from
-  `rpm-ostree`/Flatpak on Fedora Atomic and Homebrew on macOS.
-- `mise` replaces developer toolchains; project environments are OCI containers
-  built from a `Containerfile` and run by `dev`.
-- Checkouts move to one ghq-style root (`~/ghq`). Old checkouts are left
-  read-only until their worktrees, stashes, unpushed refs, and dirty files are
-  inventoried and compared; nothing is deleted by this repository.
-- `doas`, `pacman`, Arch-only packages, the alacritty theme switcher, and the
-  `fundle` bootstrap (which downloaded at shell start) are gone. COSMIC's terminal
-  and macOS's Terminal are configured by the desktop, not by a dotfile.
+| Path | Format | Used by |
+| --- | --- | --- |
+| `~/.config/secrets.env` | mode 600, `NAME=value` lines (`NEURALWATT_API_KEY`, `TINYFISH_API_KEY`) | the fish `maki` launcher exports them into the Maki process only |
+| `~/.config/sops/keys.age` | age-encrypted, passphrase-wrapped identity | `~/.local/bin/sops-age-key`, invoked by sops through `SOPS_AGE_KEY_CMD`, for repositories that use sops |
+
+`local.env` is not a secret file: it holds the machine's git identity and is
+ignored only because it is machine-specific.
 
 ## Checks
 
 ```sh
-tests/check.sh                # syntax, TOML, both OS templates, lints, behavior
-tests/check.sh --shellcheck   # also run shellcheck when installed
+tests/check.sh                # syntax, TOML, layout, lints, behavior
+tests/check.sh --shellcheck   # also shellcheck every script
+tests/install-test.sh         # the installer, in a throwaway HOME
 ```
 
-The template checks render with a throwaway chezmoi config, so the script is
-safe to run before this machine has ever been set up; without chezmoi installed
-they are skipped instead of failing. Both OS branches of `run_once_install.sh`
-are rendered, so a macOS-only syntax error is caught on a Linux machine.
-`tests/cli.sh` exercises `repos`, `worktrees`, and `dev` against throwaway
-repositories and a fake container engine: cloning and pull, prune's
-merged/unmerged/dirty/age/tag behaviour, and the container argument assembly.
-`.github/workflows/check.yml` runs the same suite with shellcheck on every push
-to `main` and every pull request.
-
-[chezmoi]: https://www.chezmoi.io/
-[mise]: https://mise.jdx.dev/
+`tests/install-test.sh` installs into temporary prefixes: it asserts every
+symlink and generated include file, asserts a second run changes nothing, and
+asserts `--dry-run` writes nothing. `tests/cli.sh` exercises `repos`,
+`worktrees`, and `dev` against throwaway repositories and a fake container
+engine. CI runs the same suite with shellcheck.

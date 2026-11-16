@@ -1,0 +1,37 @@
+# Only languages whose server is in packages/mise.toml are configured here: a
+# language entry that names a binary nobody installs looks broken in the editor
+# and hides the real problem. Helix's built-in language definitions cover every
+# other file type without a custom entry.
+[[language]]
+name = "python"
+auto-format = true
+language-servers = ["ruff"]
+
+[[language]]
+name = "json"
+auto-format = false
+
+[[language]]
+name = "yaml"
+auto-format = false
+
+[[language]]
+name = "markdown"
+auto-format = false
+language-servers = ["marksman"]
+
+[[language]]
+name = "toml"
+auto-format = true
+language-servers = ["taplo"]
+
+[language-server.ruff]
+command = "ruff"
+args = ["server"]
+
+[language-server.taplo]
+command = "taplo"
+args = ["lsp", "stdio"]
+
+[language-server.marksman]
+command = "marksman"
