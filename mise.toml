@@ -1,0 +1,30 @@
+# Machine definition for every host. `mise bootstrap` applies it from this
+# checkout; the global tool set lives in global/, which `--config-dir global`
+# links to ~/.config/mise. Environments only add entries, so nothing here is
+# ever excluded again elsewhere:
+#   smortress   identity
+#   smorespro   desktop,identity
+#   smoreswork  desktop,work
+min_version = "2026.11.9"
+
+[dotfiles]
+"~/.zshenv" = { source = "home/.zshenv" }
+"~/.config/zsh" = { source = "home/.config/zsh", mode = "symlink-each" }
+"~/.config/containers" = { source = "home/.config/containers", mode = "symlink-each" }
+"~/.config/gh" = { source = "home/.config/gh", mode = "symlink-each" }
+"~/.config/git" = { source = "home/.config/git", mode = "symlink-each" }
+"~/.config/helix" = { source = "home/.config/helix", mode = "symlink-each" }
+"~/.config/lazygit" = { source = "home/.config/lazygit", mode = "symlink-each" }
+"~/.config/television" = { source = "home/.config/television", mode = "symlink-each" }
+"~/.config/yazi" = { source = "home/.config/yazi", mode = "symlink-each" }
+"~/.config/zellij" = { source = "home/.config/zellij", mode = "symlink-each" }
+"~/.local/bin" = { source = "home/.local/bin", mode = "symlink-each" }
+"~/.config/maki" = { source = "maki/config", mode = "symlink-each" }
+"~/.agents/skills" = { source = "maki/skills", mode = "symlink-each" }
+"~/.local/bin/maki-session-search" = { source = "maki/bin/maki-session-search" }
+"~/.local/bin/maki-session-resume" = { source = "maki/bin/maki-session-resume" }
+
+# Runs on every `mise bootstrap`, after tools, so it must be safe to repeat.
+[tasks.bootstrap]
+description = "Install the pieces mise does not manage declaratively"
+run = "sh scripts/bootstrap-task.sh"

@@ -1,0 +1,6 @@
+# Tools only machines with a display need.
+[tools]
+# copy/paste on every desktop.
+"github:Slackadays/Clipboard" = "0.10.0"
+# `ct` empties the trash with gtrash on Linux; macOS uses ~/.Trash directly.
+"aqua:umlx5h/gtrash" = { version = "0.0.6", os = ["linux"] }

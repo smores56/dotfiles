@@ -1,0 +1,5 @@
+# Git and SSH identity. Not applied on smoreswork, where home-manager keeps git
+# and ssh until PIV signing and the sops keys have another home.
+[dotfiles]
+"~/.gitconfig" = { source = "identity/.gitconfig" }
+"~/.ssh/config" = { source = "identity/.ssh/config" }

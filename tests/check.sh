@@ -44,7 +44,7 @@ for script in "$root"/home/.local/bin/* "$root"/maki/bin/maki-session-resume "$r
     sh_syntax "$script"
 done
 
-for script in "$root/install.sh" "$root"/scripts/*.sh "$root"/tests/*.sh; do
+for script in "$root"/scripts/*.sh "$root"/tests/*.sh; do
     [ -f "$script" ] || continue
     bash_syntax "$script"
 done
@@ -95,7 +95,8 @@ toml() {
     fi
 }
 
-for cfg in "$root/packages/mise.toml" "$root"/maki/config/*.toml \
+for cfg in "$root"/mise.toml "$root"/mise.*.toml "$root"/global/*.toml "$root"/global/*.lock \
+        "$root"/desktop/.aerospace.toml "$root"/maki/config/*.toml \
         "$root"/home/.config/helix/*.toml "$root"/home/.config/television/cable/*.toml; do
     [ -f "$cfg" ] && toml "$cfg"
 done
@@ -138,11 +139,15 @@ fi
 # --- layout
 
 for required in \
-    "$root/install.sh" \
+    "$root/mise.toml" \
+    "$root/global/config.toml" \
+    "$root/global/mise.lock" \
+    "$root/global/mise.desktop.lock" \
+    "$root/scripts/install-mise.sh" \
+    "$root/scripts/bootstrap-task.sh" \
     "$root/README.md" \
     "$root/docs/manual-steps.md" \
-    "$root/home/.gitconfig" \
-    "$root/packages/mise.toml" \
+    "$root/identity/.gitconfig" \
     "$root/maki/config/init.lua" \
     "$root/maki/config/providers.toml" \
     "$root/maki/skills/sdlc/SKILL.md"; do
@@ -153,12 +158,55 @@ for required in \
     fi
 done
 
-if [ -f "$root/home/.config/mise/config.toml" ] || [ -L "$root/home/.config/mise/config.toml" ]; then
-    # Either a symlink to packages/mise.toml or no file at all: install.sh links
-    # the pin explicitly. A real duplicate file would drift.
-    no "home/.config/mise/config.toml must not duplicate packages/mise.toml"
+if [ -e "$root/home/.config/mise" ]; then
+    # `mise bootstrap --config-dir global` links ~/.config/mise to global/; a
+    # second copy under home/ would drift from it.
+    no "home/.config/mise must not exist (global/ is the global config)"
 else
-    ok "the mise pin is linked from packages/, not duplicated"
+    ok "the global mise config lives only in global/"
+fi
+
+for removed in install.sh packages/mise.toml scripts/bootstrap.sh; do
+    if [ -e "$root/$removed" ]; then
+        no "the retired installer piece $removed is gone"
+    else
+        ok "the retired installer piece $removed is gone"
+    fi
+done
+
+# --- lockfiles cover every pinned tool on every platform it runs on
+
+if python3 -c 'import tomllib' >/dev/null 2>&1; then
+    if python3 - "$root/global" >"$tmp/lock.out" 2>&1 <<'PY'
+import pathlib, sys, tomllib
+root = pathlib.Path(sys.argv[1])
+all_platforms = {"linux-x64", "linux-arm64", "macos-arm64"}
+os_platforms = {"linux": {"linux-x64", "linux-arm64"}, "macos": {"macos-arm64"}}
+missing = []
+for config in sorted(root.glob("config*.toml")):
+    env = config.stem.removeprefix("config").lstrip(".")
+    lock_path = root / (f"mise.{env}.lock" if env else "mise.lock")
+    tools = tomllib.loads(config.read_text()).get("tools", {})
+    locked = tomllib.loads(lock_path.read_text()).get("tools", {}) if lock_path.exists() else {}
+    for name, spec in tools.items():
+        want = set().union(*(os_platforms[o] for o in spec["os"])) if isinstance(spec, dict) and "os" in spec else all_platforms
+        key = name.split(":", 1)[-1].split("/")[-1] if name not in locked else name
+        entries = locked.get(name) or locked.get(key) or []
+        have = {p.removeprefix("platforms.") for e in entries for p, v in e.items()
+                if p.startswith("platforms.") and isinstance(v, dict) and v.get("checksum")}
+        for platform in sorted(want - have):
+            missing.append(f"{config.name}: {name} has no checksummed {platform} entry in {lock_path.name}")
+print("\n".join(missing))
+sys.exit(1 if missing else 0)
+PY
+    then
+        ok "the global lockfiles cover every pinned tool on its platforms"
+    else
+        no "the global lockfiles cover every pinned tool on its platforms"
+        sed 's/^/     /' "$tmp/lock.out" >&2
+    fi
+else
+    skip "lockfile coverage (python3 tomllib missing)"
 fi
 
 # --- retired toolchains and services
@@ -187,8 +235,8 @@ else
 fi
 
 secret_pattern='BEGIN [A-Z ]*PRIVATE KEY|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}'
-if grep -rInE "$secret_pattern" "$root/home" "$root/maki" "$root/packages" \
-        "$root/scripts" "$root/install.sh" >/dev/null 2>&1; then
+if grep -rInE "$secret_pattern" "$root/home" "$root/identity" "$root/desktop" \
+        "$root/maki" "$root/global" "$root/scripts" >/dev/null 2>&1; then
     no "secret material in a managed file"
 else
     ok "no secret material in managed files"
@@ -203,10 +251,10 @@ fi
 
 # --- one checkout root, one instruction set
 
-if grep -rn 'ghq' "$root/install.sh" "$root/local.env.example" \
+if grep -rn 'ghq' "$root/mise.toml" "$root/local.env.example" \
         "$root/home/.local/bin/repos" "$root/maki/config/AGENTS.md" >/dev/null 2>&1; then
     no "the checkout root is ~/repos everywhere, not the retired ~/ghq"
-    grep -rn 'ghq' "$root/install.sh" "$root/local.env.example" \
+    grep -rn 'ghq' "$root/mise.toml" "$root/local.env.example" \
         "$root/home/.local/bin/repos" "$root/maki/config/AGENTS.md" | sed 's/^/     /' >&2
 else
     ok "the checkout root is ~/repos everywhere, not the retired ~/ghq"
@@ -227,13 +275,22 @@ fi
 
 # --- the tools the instructions require are actually installed
 
-if grep -qE '^SDLC_REV=[0-9a-f]{40}$' "$root/scripts/bootstrap.sh" \
-        && grep -q '^SDLC_UPSTREAM=git+ssh://git@github.com/smores56/sdlc$' \
-            "$root/scripts/bootstrap.sh" \
-        && grep -q 'uv tool install --force "\$pin"' "$root/scripts/bootstrap.sh"; then
-    ok "bootstrap.sh installs the sdlc CLI at a pinned commit"
+task=$root/scripts/bootstrap-task.sh
+if grep -qE '^SDLC_REV=[0-9a-f]{40}$' "$task" \
+        && grep -q '^SDLC_UPSTREAM=git+ssh://git@github.com/smores56/sdlc$' "$task" \
+        && grep -q 'uv tool install --quiet --force "\$pin"' "$task"; then
+    ok "the bootstrap task installs the sdlc CLI at a pinned commit"
 else
-    no "bootstrap.sh must install sdlc with 'uv tool install' at a pinned commit"
+    no "the bootstrap task must install sdlc with 'uv tool install' at a pinned commit"
+fi
+
+installer=$root/scripts/install-mise.sh
+if grep -qE '^MISE_VERSION=v[0-9]+\.[0-9]+\.[0-9]+$' "$installer" \
+        && [ "$(grep -cE '^MISE_SHA_[A-Z0-9_]+=[0-9a-f]{64}$' "$installer")" -eq 3 ] \
+        && grep -q 'grep -Eqx .\[0-9a-f\]{40}' "$installer"; then
+    ok "install-mise.sh pins mise by checksum on three platforms and a commit ref"
+else
+    no "install-mise.sh must pin MISE_VERSION, three MISE_SHA_* values, and require a 40-hex ref"
 fi
 
 if grep -q 'uv tool install' "$root/docs/manual-steps.md" \
@@ -243,7 +300,7 @@ else
     no "docs/manual-steps.md must name the sdlc install and its pin"
 fi
 
-for file in "$root/scripts/bootstrap.sh" "$root/docs/manual-steps.md" "$root/README.md"; do
+for file in "$root/docs/manual-steps.md" "$root/README.md"; do
     if grep -q 'rpm-ostree install tailscale rsync' "$file"; then
         ok "the host layer installs rsync in $(rel "$file")"
     else
@@ -331,7 +388,7 @@ for server in $helix_servers; do
             helix_missing="$helix_missing $server(no pin)"
             continue ;;
     esac
-    grep -qF "\"$pkg\" = " "$root/packages/mise.toml" \
+    grep -qF "\"$pkg\" = " "$root/global/config.toml" \
         || helix_missing="$helix_missing $server($pkg)"
 done
 for server in $(grep -E '^language-servers' "$helix_languages" \
@@ -340,7 +397,7 @@ for server in $(grep -E '^language-servers' "$helix_languages" \
         || helix_missing="$helix_missing $server(undefined)"
 done
 if [ -z "$helix_missing" ]; then
-    ok "every Helix language server is defined and pinned in packages/mise.toml"
+    ok "every Helix language server is defined and pinned in global/config.toml"
 else
     no "Helix references a language server that is not installed:$helix_missing"
 fi
@@ -348,11 +405,11 @@ fi
 # --- behavioral tests
 
 if command -v git >/dev/null 2>&1 && command -v bash >/dev/null 2>&1; then
-    if bash "$root/tests/install-test.sh" >"$tmp/install.log" 2>&1; then
-        ok "behavioral tests (tests/install-test.sh)"
+    if bash "$root/tests/bootstrap-test.sh" >"$tmp/bootstrap.log" 2>&1; then
+        ok "behavioral tests (tests/bootstrap-test.sh)"
     else
-        no "behavioral tests (tests/install-test.sh)"
-        sed 's/^/     /' "$tmp/install.log" >&2
+        no "behavioral tests (tests/bootstrap-test.sh)"
+        sed 's/^/     /' "$tmp/bootstrap.log" >&2
     fi
     if bash "$root/tests/cli.sh" >"$tmp/cli.log" 2>&1; then
         ok "behavioral tests (tests/cli.sh)"
@@ -378,9 +435,10 @@ if $use_shellcheck; then
                 sed 's/^/     /' "$tmp/out" >&2
             fi
         done
-        for script in "$root/install.sh" "$root"/scripts/*.sh "$root"/tests/*.sh; do
+        for script in "$root"/scripts/*.sh "$root"/tests/*.sh; do
             [ -f "$script" ] || continue
-            if shellcheck -s bash -S warning "$script" >"$tmp/out" 2>&1; then
+            # The shebang picks the dialect; SC3043 as above for the sh ones.
+            if shellcheck -S warning -e SC3043 "$script" >"$tmp/out" 2>&1; then
                 ok "shellcheck $(rel "$script")"
             else
                 no "shellcheck $(rel "$script")"
