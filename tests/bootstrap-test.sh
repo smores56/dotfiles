@@ -31,6 +31,11 @@ assert_not() {
 links_into_repo() { [ -L "$1" ] && case $(readlink -- "$1") in "$root"/*) true ;; *) false ;; esac; }
 
 os=$(uname -s)
+# The zsh each platform logs in with: macOS's own /bin/zsh reads /etc/zprofile
+# (path_helper), which a Nix- or Homebrew-built zsh on PATH does not.
+if [ "$os" = Darwin ] && [ -x /bin/zsh ]; then
+    zsh() { /bin/zsh "$@"; }
+fi
 
 # run_mise <home> <env> <args...>: mise with a clean environment, trusting only
 # this checkout, so no global or user config leaks into the case.
@@ -66,7 +71,6 @@ for target in \
     .config/helix/languages.toml \
     .config/zellij/config.kdl \
     .config/yazi/yazi.toml \
-    .config/lazygit/config.yml \
     .config/television/cable/repos.toml \
     .config/gh/config.yml \
     .config/containers/Containerfile.dev \
@@ -80,6 +84,13 @@ for target in \
     .agents/skills/sdlc/SKILL.md; do
     assert "base links ~/$target into the checkout" links_into_repo "$h/$target"
 done
+
+if [ "$os" = Darwin ]; then
+    assert "base links lazygit where macOS lazygit reads it" \
+        links_into_repo "$h/Library/Application Support/lazygit/config.yml"
+else
+    assert "base links ~/.config/lazygit/config.yml" links_into_repo "$h/.config/lazygit/config.yml"
+fi
 
 for target in \
     .gitconfig \
@@ -234,6 +245,9 @@ assert "desktop keeps the base links" links_into_repo "$h/.local/bin/repos"
 assert_not "desktop does not pull in identity" test -e "$h/.gitconfig"
 if [ "$os" = Darwin ]; then
     assert "desktop links ~/.aerospace.toml on macOS" links_into_repo "$h/.aerospace.toml"
+    assert "desktop installs Google Sans Code on macOS" test -f "$h/Library/Fonts/GoogleSansCode-VF.ttf"
+    assert "desktop installs Google Sans Code Italic on macOS" test -f "$h/Library/Fonts/GoogleSansCode-Italic-VF.ttf"
+    assert "desktop links the WezTerm config" links_into_repo "$h/.config/wezterm/wezterm.lua"
     assert_not "desktop skips the Linux wallpaper sync on macOS" test -e "$h/.local/bin/wallpapers"
     assert_not "desktop skips the Linux TTY shim on macOS" test -e "$h/.local/bin/tty"
     assert_not "desktop skips systemd units on macOS" test -e "$h/.config/systemd"
@@ -249,7 +263,9 @@ fi
 
 h=$(new_home work)
 mkdir -p "$h/.nix-profile/etc/profile.d"
-printf 'export HM_SESSION_TEST=1\n' >"$h/.nix-profile/etc/profile.d/hm-session-vars.sh"
+printf 'export HM_SESSION_TEST=1\nexport PATH="$HOME/.nix-profile/bin:$PATH"\n' \
+    >"$h/.nix-profile/etc/profile.d/hm-session-vars.sh"
+mkdir -p "$h/.nix-profile/bin"
 printf 'export EMPLOYER_RC_TEST=1\n' >"$h/.zshrc"
 run_mise "$h" desktop,work dot apply >"$tmp/work.log" 2>&1 \
     || { no "work apply exits 0"; sed 's/^/     /' "$tmp/work.log" >&2; }
@@ -262,8 +278,21 @@ if command -v zsh >/dev/null 2>&1; then
         test "$(env -i HOME="$h" PATH=/usr/bin:/bin zsh -c 'print -r -- ${HM_SESSION_TEST-}')" = 1
     assert "non-interactive zsh keeps ~/.local/bin first after the hook" \
         test "$(env -i HOME="$h" PATH=/usr/bin:/bin zsh -c 'print -r -- $path[1]')" = "$h/.local/bin"
+    login_path=$(env -i HOME="$h" PATH=/usr/bin:/bin zsh -lc 'print -rl -- $path' 2>/dev/null)
+    nix_at=$(printf '%s\n' "$login_path" | grep -nx "$h/.nix-profile/bin" | cut -d: -f1 | head -1)
+    usr_at=$(printf '%s\n' "$login_path" | grep -nx /usr/bin | cut -d: -f1 | head -1)
+    assert "login zsh keeps the Nix profile ahead of /usr/bin after path_helper" \
+        test "${nix_at:-99}" -lt "${usr_at:-0}"
     assert "interactive zsh sources the employer's ~/.zshrc" \
         test "$(env -i HOME="$h" PATH=/usr/bin:/bin TERM=dumb zsh -ic 'print -r -- ${EMPLOYER_RC_TEST-}' 2>/dev/null)" = 1
+fi
+
+# mise reports an entry whose source is missing as a warning and exits 0.
+if grep -h 'matched no files' "$tmp"/*.log >"$tmp/nomatch" 2>/dev/null; then
+    no "every dotfile source exists"
+    sed 's/^/     /' "$tmp/nomatch" >&2
+else
+    ok "every dotfile source exists"
 fi
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"

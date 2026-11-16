@@ -14,58 +14,103 @@ ok() { pass=$((pass + 1)); printf 'ok   %s\n' "$*"; }
 no() { fail=$((fail + 1)); printf 'FAIL %s\n' "$*" >&2; }
 assert() { local d=$1; shift; if "$@" >/dev/null 2>&1; then ok "$d"; else no "$d"; fi; }
 assert_not() { local d=$1; shift; if "$@" >/dev/null 2>&1; then no "$d"; else ok "$d"; fi; }
+store_link() { [ -L "$1" ] && case $(readlink "$1") in /nix/store/*) true ;; *) false ;; esac; }
+repo_link() { [ -L "$1" ] && case $(readlink "$1") in "$root"/*) true ;; *) false ;; esac; }
 
 h=$tmp/home
 bin=$tmp/bin
-mkdir -p "$h/.local/state/nix/profiles/home-manager-7-link" "$bin" "$h/.config/helix"
-ln -s home-manager-7-link "$h/.local/state/nix/profiles/home-manager"
-cat >"$h/.local/state/nix/profiles/home-manager-7-link/activate" <<'A'
-#!/bin/sh
-echo activated >"$HOME/activated"
-A
-chmod +x "$h/.local/state/nix/profiles/home-manager-7-link/activate"
+profiles=$h/.local/state/nix/profiles
+mkdir -p "$bin" "$profiles"
 ln -s "$mise_bin" "$bin/mise"
-# home-manager still owns helix: a link into the Nix store.
-ln -s /nix/store/fake-hm-files/helix-config.toml "$h/.config/helix/config.toml"
 
-stub_hm() {  # stub_hm keep|drop: what the stub switch does to helix's link
-    cat >"$bin/home-manager" <<S
-#!/bin/sh
-echo "\$*" >>"\$HOME/hm.log"
-[ "$1" = drop ] && rm -f "\$HOME/.config/helix/config.toml"
-exit 0
-S
-    chmod +x "$bin/home-manager"
+# Two generations; each activate script just records that it ran.
+for n in 7 8; do
+    mkdir -p "$profiles/home-manager-$n-link"
+    printf '#!/bin/sh\necho %s >"$HOME/activated"\n' "$n" >"$profiles/home-manager-$n-link/activate"
+    chmod +x "$profiles/home-manager-$n-link/activate"
+done
+ln -s home-manager-7-link "$profiles/home-manager"
+
+# What home-manager writes for each piece in this fixture: nix store links,
+# including television's nested cable/ files.
+hm_links() {  # hm_links make|drop <piece>
+    local links
+    case $2 in
+        helix) links=".config/helix/config.toml" ;;
+        television) links=".config/television/cable/repos.toml" ;;
+    esac
+    for l in $links; do
+        if [ "$1" = make ]; then
+            mkdir -p "$(dirname "$h/$l")"
+            rm -f "$h/$l"
+            ln -s "/nix/store/fake-hm-files/$l" "$h/$l"
+        else
+            store_link "$h/$l" && rm -f "$h/$l"
+        fi
+    done
+    return 0
 }
+
+# The stub switch does whatever $h/hm.mode says: keep, drop <piece>, make <piece>.
+cat >"$bin/home-manager" <<'S'
+#!/bin/sh
+echo "$*" >>"$HOME/hm.log"
+set -- $(cat "$HOME/hm.mode" 2>/dev/null)
+[ "${1:-keep}" = keep ] && exit 0
+exec bash "$HOME/../hm-links.sh" "$@"
+S
+chmod +x "$bin/home-manager"
+{ declare -f hm_links store_link; printf 'h=%q\nhm_links "$@"\n' "$h"; } >"$tmp/hm-links.sh"
+mode() { printf '%s\n' "$*" >"$h/hm.mode"; }
 
 hand() {
     env -i HOME="$h" PATH="$bin:/usr/bin:/bin" TERM=dumb DOTFILES="$root" NIX_CONFIG=/nowhere \
         MISE_TRUSTED_CONFIG_PATHS="$root" MISE_YES=1 sh "$root/scripts/handoff.sh" "$@"
 }
 
+hm_links make helix
+hm_links make television
+
+# --- dry run ---
 hand --dry-run apply helix >"$tmp/dry.log" 2>&1
 assert "a dry run prints the switch" grep -q 'would run: home-manager switch --flake /nowhere#sam@smoreswork' "$tmp/dry.log"
-assert "a dry run prints the apply" grep -q 'would run: mise .* dot apply ~/.config/helix' "$tmp/dry.log"
+assert "a dry run reports where a real run would stop" grep -q 'a real run would stop here' "$tmp/dry.log"
 assert_not "a dry run switches nothing" test -e "$h/hm.log"
+assert_not "a dry run writes no state" test -e "$h/.local/state/dotfiles-handoff"
 
-stub_hm keep
+# --- refusal, nested links, retries ---
+mode keep
 assert_not "apply refuses while home-manager still writes the piece" hand apply helix
-assert "the refusal leaves home-manager's link alone" test -L "$h/.config/helix/config.toml"
+assert "the refusal leaves home-manager's link alone" store_link "$h/.config/helix/config.toml"
+assert_not "a nested home-manager link also blocks the handoff" hand apply television
+assert "the nested link is untouched" store_link "$h/.config/television/cable/repos.toml"
 
-stub_hm drop
+ln -sfn home-manager-8-link "$profiles/home-manager"   # a retry after another switch
+mode drop helix
 if hand apply helix >"$tmp/apply.log" 2>&1; then ok "apply succeeds once the switch drops the link"; else no "apply succeeds once the switch drops the link"; sed 's/^/     /' "$tmp/apply.log" >&2; fi
-assert "helix now links into the checkout" bash -c "readlink '$h/.config/helix/config.toml' | grep -q '^$root/'"
-assert "the generation before the handoff is recorded" grep -qx home-manager-7-link "$h/.local/state/dotfiles-handoff/helix.before"
+assert "helix now links into the checkout" repo_link "$h/.config/helix/config.toml"
+assert "a retried apply keeps the generation from the first attempt" \
+    grep -qx home-manager-7-link "$h/.local/state/dotfiles-handoff/helix.before"
+assert "applying twice is harmless" hand apply helix
 
-if hand rollback helix >"$tmp/rollback.log" 2>&1; then ok "rollback succeeds"; else no "rollback succeeds"; sed 's/^/     /' "$tmp/rollback.log" >&2; fi
-assert_not "rollback removes the dotfiles link first" test -L "$h/.config/helix/config.toml"
-assert "rollback re-activates the recorded generation" test -e "$h/activated"
-assert_not "rollback forgets the record" test -e "$h/.local/state/dotfiles-handoff/helix.before"
-assert_not "rollback without a record refuses" hand rollback helix
+# --- zsh: the work hooks must land ---
+mode keep
+if hand apply zsh >"$tmp/zsh.log" 2>&1; then ok "the zsh handoff succeeds"; else no "the zsh handoff succeeds"; sed 's/^/     /' "$tmp/zsh.log" >&2; fi
+assert "the zsh handoff links the work environment hook" repo_link "$h/.config/zsh/env.d/work.zsh"
+assert "the zsh handoff links the interactive work hook" repo_link "$h/.config/zsh/conf.d/90-work.zsh"
 
-mkdir -p "$h/.config/zsh"; : >"$h/.config/zsh/.zcompdump-old"
-hand apply zsh >"$tmp/zsh.log" 2>&1 || true
-assert_not "the zsh handoff clears home-manager's completion dumps" test -e "$h/.config/zsh/.zcompdump-old"
+# --- rollback ---
+assert_not "--previous refuses an older handoff" hand rollback --previous helix
+mode make helix
+if hand rollback helix >"$tmp/rollback.log" 2>&1; then ok "a plain rollback succeeds"; else no "a plain rollback succeeds"; sed 's/^/     /' "$tmp/rollback.log" >&2; fi
+assert "home-manager owns helix again" store_link "$h/.config/helix/config.toml"
+assert_not "the rollback forgets helix" test -e "$h/.local/state/dotfiles-handoff/helix.before"
+mode keep
+assert_not "a plain rollback fails when home-manager does not take the piece back" hand rollback zsh
+rm -f "$h/activated"
+if hand rollback --previous zsh >"$tmp/prev.log" 2>&1; then ok "--previous undoes the latest handoff"; else no "--previous undoes the latest handoff"; sed 's/^/     /' "$tmp/prev.log" >&2; fi
+assert "--previous activates the recorded generation" grep -qx 8 "$h/activated"
+assert_not "--previous removes the zsh dotfiles first" test -L "$h/.config/zsh/env.d/work.zsh"
 assert_not "an unknown piece is refused" hand apply fish
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"

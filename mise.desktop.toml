@@ -6,9 +6,11 @@
 "~/.local/bin/tty" = { source = "desktop/.local/bin/tty", variants = [{ os = "linux" }] }
 "~/.config/systemd/user" = { source = "desktop/.config/systemd/user", mode = "symlink-each", variants = [{ os = "linux" }] }
 "~/.config/wezterm" = { source = "desktop/.config/wezterm", mode = "symlink-each" }
-# Copies, not links: macOS does not reliably register a symlinked font.
-"~/Library/Fonts/GoogleSansCode[wght].ttf" = { source = "desktop/fonts/GoogleSansCode[wght].ttf", mode = "copy", variants = [{ os = "macos" }] }
-"~/Library/Fonts/GoogleSansCode-Italic[wght].ttf" = { source = "desktop/fonts/GoogleSansCode-Italic[wght].ttf", mode = "copy", variants = [{ os = "macos" }] }
+# Copies, not links: macOS does not reliably register a symlinked font. The
+# upstream names carry "[wght]", which mise reads as a glob, so the vendored
+# files are renamed (google/fonts 9e108e1439daa51f8dddeb8834e9617816b50c01).
+"~/Library/Fonts/GoogleSansCode-VF.ttf" = { source = "desktop/fonts/GoogleSansCode-VF.ttf", mode = "copy", variants = [{ os = "macos" }] }
+"~/Library/Fonts/GoogleSansCode-Italic-VF.ttf" = { source = "desktop/fonts/GoogleSansCode-Italic-VF.ttf", mode = "copy", variants = [{ os = "macos" }] }
 
 [bootstrap.packages]
 "brew-cask:wezterm" = { version = "latest", os = ["macos"] }

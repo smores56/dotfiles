@@ -32,7 +32,11 @@ min_version = "2026.11.9"
 "~/.config/gh" = { source = "home/.config/gh", mode = "symlink-each" }
 "~/.config/git" = { source = "home/.config/git", mode = "symlink-each" }
 "~/.config/helix" = { source = "home/.config/helix", mode = "symlink-each" }
-"~/.config/lazygit" = { source = "home/.config/lazygit", mode = "symlink-each" }
+# lazygit on macOS reads ~/Library/Application Support unless XDG_CONFIG_HOME is set.
+"~/.config/lazygit" = { source = "home/.config/lazygit", mode = "symlink-each", variants = [
+  { os = "macos", target = "~/Library/Application Support/lazygit" },
+  { default = true },
+] }
 "~/.config/television" = { source = "home/.config/television", mode = "symlink-each" }
 "~/.config/yazi" = { source = "home/.config/yazi", mode = "symlink-each" }
 "~/.config/zellij" = { source = "home/.config/zellij", mode = "symlink-each" }
