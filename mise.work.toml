@@ -1,1 +1,10 @@
-# smoreswork only: coexistence with home-manager. Entries arrive with T5.
+# smoreswork only: living beside home-manager while pieces move over. Each
+# piece is handed over by scripts/handoff.sh after nix-config stops writing it.
+[dotfiles]
+"~/.config/zsh/env.d/work.zsh" = { source = "work/.config/zsh/env.d/work.zsh" }
+"~/.config/zsh/conf.d/90-work.zsh" = { source = "work/.config/zsh/conf.d/90-work.zsh" }
+
+# macOS ships zsh 5.9 in /etc/shells already, so no sudo; chsh asks for the
+# password, so this part runs on its own: `mise bootstrap --only user`.
+[bootstrap.user]
+login_shell = "/bin/zsh"

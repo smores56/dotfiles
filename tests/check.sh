@@ -225,14 +225,18 @@ else
 fi
 
 # docs/manual-steps.md deliberately calls the old machine's key-backup before
-# the disk is wiped; that is the only allowed nix reference.
+# the disk is wiped. The smoreswork coexistence files (work/, the work env,
+# the handoff script, and their tests) talk to the home-manager generation
+# that still runs there. Those are the only allowed nix references.
 if grep -rInE '\bnix\b|nixos|nixpkgs|nix-shell' "$root" \
         --exclude-dir=.git --exclude-dir=.worktrees --exclude=check.sh \
-        --exclude=manual-steps.md >/dev/null 2>&1; then
+        --exclude=manual-steps.md --exclude-dir=work --exclude=mise.work.toml \
+        --exclude=handoff.sh --exclude=handoff-test.sh --exclude=bootstrap-test.sh >/dev/null 2>&1; then
     no "no nix reference remains outside docs/manual-steps.md"
     grep -rInE '\bnix\b|nixos|nixpkgs|nix-shell' "$root" \
         --exclude-dir=.git --exclude-dir=.worktrees --exclude=check.sh \
-        --exclude=manual-steps.md | sed 's/^/     /' >&2
+        --exclude=manual-steps.md --exclude-dir=work --exclude=mise.work.toml \
+        --exclude=handoff.sh --exclude=handoff-test.sh --exclude=bootstrap-test.sh | sed 's/^/     /' >&2
 else
     ok "no nix reference remains outside docs/manual-steps.md"
 fi
@@ -444,6 +448,16 @@ if command -v git >/dev/null 2>&1 && command -v bash >/dev/null 2>&1; then
     else
         no "behavioral tests (tests/shell-test.sh)"
         sed 's/^/     /' "$tmp/shell.log" >&2
+    fi
+    if bash "$root/tests/handoff-test.sh" >"$tmp/handoff.log" 2>&1; then
+        if grep -q '^skip handoff tests' "$tmp/handoff.log"; then
+            skip "behavioral tests (tests/handoff-test.sh: mise not installed)"
+        else
+            ok "behavioral tests (tests/handoff-test.sh)"
+        fi
+    else
+        no "behavioral tests (tests/handoff-test.sh)"
+        sed 's/^/     /' "$tmp/handoff.log" >&2
     fi
     if bash "$root/tests/cli.sh" >"$tmp/cli.log" 2>&1; then
         ok "behavioral tests (tests/cli.sh)"

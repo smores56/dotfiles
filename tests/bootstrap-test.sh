@@ -245,5 +245,26 @@ else
     assert_not "desktop skips AeroSpace on Linux" test -e "$h/.aerospace.toml"
 fi
 
+# --- work environment (smoreswork beside home-manager) -----------------------
+
+h=$(new_home work)
+mkdir -p "$h/.nix-profile/etc/profile.d"
+printf 'export HM_SESSION_TEST=1\n' >"$h/.nix-profile/etc/profile.d/hm-session-vars.sh"
+printf 'export EMPLOYER_RC_TEST=1\n' >"$h/.zshrc"
+run_mise "$h" desktop,work dot apply >"$tmp/work.log" 2>&1 \
+    || { no "work apply exits 0"; sed 's/^/     /' "$tmp/work.log" >&2; }
+assert "work links the zsh environment hook" links_into_repo "$h/.config/zsh/env.d/work.zsh"
+assert "work links the interactive work hook" links_into_repo "$h/.config/zsh/conf.d/90-work.zsh"
+assert "work leaves the employer's ~/.zshrc a plain file" test ! -L "$h/.zshrc"
+assert_not "work does not pull in identity" test -e "$h/.gitconfig"
+if command -v zsh >/dev/null 2>&1; then
+    assert "non-interactive zsh gets home-manager's session vars" \
+        test "$(env -i HOME="$h" PATH=/usr/bin:/bin zsh -c 'print -r -- ${HM_SESSION_TEST-}')" = 1
+    assert "non-interactive zsh keeps ~/.local/bin first after the hook" \
+        test "$(env -i HOME="$h" PATH=/usr/bin:/bin zsh -c 'print -r -- $path[1]')" = "$h/.local/bin"
+    assert "interactive zsh sources the employer's ~/.zshrc" \
+        test "$(env -i HOME="$h" PATH=/usr/bin:/bin TERM=dumb zsh -ic 'print -r -- ${EMPLOYER_RC_TEST-}' 2>/dev/null)" = 1
+fi
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
