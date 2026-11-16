@@ -1,0 +1,14 @@
+#!/bin/sh
+# gh with the work token from 1Password, read per call (biometric unlock), so
+# no token is on disk or in any environment. Works for every caller: scripts,
+# agents' non-interactive shells, and git hooks, not only interactive zsh.
+# ~/.config/gh-token-ref holds the 1Password reference (op://vault/item/field).
+set -eu
+real=/opt/homebrew/bin/gh
+ref_file=${XDG_CONFIG_HOME:-$HOME/.config}/gh-token-ref
+[ -x "$real" ] || { echo "gh: $real is missing; run mise bootstrap" >&2; exit 127; }
+if [ -z "${GH_TOKEN-}" ] && [ -r "$ref_file" ]; then
+    GH_TOKEN=$(op read "$(cat "$ref_file")") || { echo "gh: could not read the token from 1Password (is it unlocked?)" >&2; exit 1; }
+    export GH_TOKEN
+fi
+exec "$real" "$@"

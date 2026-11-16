@@ -1,7 +1,8 @@
-# Managed file: ~/.gitconfig, linked by mise from the identity environment.
+# Managed file: ~/.gitconfig, linked by mise (identity and work environments).
 #
-# Machine identity and the includeIf rules live in ~/.config/git/machine.inc,
-# which mise renders from the identity vars (see mise.identity.toml). Personal and work
+# Machine identity lives in ~/.config/git/machine.inc, rendered from the vars
+# of whichever environment the machine applies (mise.identity.toml on personal
+# hosts, with includeIf routing; mise.work.toml on the work laptop). Personal and work
 # checkouts then pick up their own email, signing key, flow, and branch
 # templates from personal.inc and work.inc.
 #

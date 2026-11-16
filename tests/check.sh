@@ -197,6 +197,9 @@ for config in sorted(root.glob("config*.toml")):
             continue
         have = {p.removeprefix("platforms.") for e in entries for p, v in e.items()
                 if p.startswith("platforms.") and isinstance(v, dict) and v.get("checksum")}
+        # PyPI pins the package hash itself; mise records only the version.
+        if name.startswith("pipx:"):
+            continue
         for platform in sorted(want - have):
             missing.append(f"{config.name}: {name} has no checksummed {platform} entry in {lock_path.name}")
 print("\n".join(missing))
@@ -408,6 +411,8 @@ for server in $helix_servers; do
         ruff) pkg='aqua:astral-sh/ruff' ;;
         taplo) pkg='aqua:tamasfe/taplo' ;;
         marksman) pkg='aqua:artempyanykh/marksman' ;;
+        markdown-oxide) pkg='github:Feel-ix-343/markdown-oxide' ;;
+        basedpyright) pkg='pipx:basedpyright' ;;
         *)
             helix_missing="$helix_missing $server(no pin)"
             continue ;;
@@ -416,7 +421,7 @@ for server in $helix_servers; do
         || helix_missing="$helix_missing $server($pkg)"
 done
 for server in $(grep -E '^language-servers' "$helix_languages" \
-        | sed -E 's/.*\[//; s/\].*//; s/[" ,]//g'); do
+        | sed -E 's/.*\[//; s/\].*//; s/[" ]//g' | tr ',' '\n'); do
     printf '%s\n' "$helix_servers" | grep -qx "$server" \
         || helix_missing="$helix_missing $server(undefined)"
 done
@@ -473,7 +478,8 @@ fi
 
 if $use_shellcheck; then
     if command -v shellcheck >/dev/null 2>&1; then
-        for script in "$root"/home/.local/bin/* "$root/dev" "$root/maki/bin/maki-session-resume"; do
+        for script in "$root"/home/.local/bin/* "$root"/work/.local/bin/* "$root"/desktop/.local/bin/* \
+                "$root/dev" "$root/maki/bin/maki-session-resume"; do
             [ -f "$script" ] || continue
             # SC3043: `local` is not POSIX, but every real /bin/sh implements it.
             if shellcheck -s sh -S warning -e SC3043 "$script" >"$tmp/out" 2>&1; then

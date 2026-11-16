@@ -281,12 +281,8 @@ fi
 # --- work environment (smoreswork beside home-manager) -----------------------
 
 h=$(new_home work)
-mkdir -p "$h/.nix-profile/etc/profile.d"
-printf 'export HM_SESSION_TEST=1\nexport PATH="$HOME/.nix-profile/bin:$PATH"\n' \
-    >"$h/.nix-profile/etc/profile.d/hm-session-vars.sh"
-mkdir -p "$h/.nix-profile/bin"
 printf 'export EMPLOYER_RC_TEST=1\n' >"$h/.zshrc"
-for v in git_name=W work_email=w@work.example 'work_signing_pubkey=ssh-ed25519 AAAAtest w'; do
+for v in git_name=W work_email=w@work.example 'work_signing_pubkey=ssh-ed25519 AAAAtest w' 'work_gh_token_ref=op://Work/GitHub/token'; do
     run_mise "$h" desktop,work vars "$v" >/dev/null 2>&1
 done
 run_mise "$h" desktop,work dot apply >"$tmp/work.log" 2>&1 \
@@ -297,15 +293,16 @@ assert "work links the Claude work rules" grep -q 'This is a work host' "$h/.cla
 assert "work leaves the employer's ~/.zshrc a plain file" test ! -L "$h/.zshrc"
 assert_not "work does not pull in the personal identity" test -e "$h/.config/git/personal.inc"
 if command -v zsh >/dev/null 2>&1; then
-    assert "non-interactive zsh gets home-manager's session vars" \
-        test "$(env -i HOME="$h" PATH=/usr/bin:/bin zsh -c 'print -r -- ${HM_SESSION_TEST-}')" = 1
+    assert "non-interactive zsh points SSH at the 1Password agent" \
+        bash -c "env -i HOME='$h' PATH=/usr/bin:/bin zsh -c 'print -r -- \$SSH_AUTH_SOCK' | grep -q 2BUA8C4S2C.com.1password"
+    assert "non-interactive zsh builds with Apple clang" \
+        test "$(env -i HOME="$h" PATH=/usr/bin:/bin zsh -c 'print -r -- $CC')" = /usr/bin/clang
     assert "non-interactive zsh keeps ~/.local/bin first after the hook" \
         test "$(env -i HOME="$h" PATH=/usr/bin:/bin zsh -c 'print -r -- $path[1]')" = "$h/.local/bin"
     login_path=$(env -i HOME="$h" PATH=/usr/bin:/bin zsh -lc 'print -rl -- $path' 2>/dev/null)
-    nix_at=$(printf '%s\n' "$login_path" | grep -nx "$h/.nix-profile/bin" | cut -d: -f1 | head -1)
-    usr_at=$(printf '%s\n' "$login_path" | grep -nx /usr/bin | cut -d: -f1 | head -1)
-    assert "login zsh keeps the Nix profile ahead of /usr/bin after path_helper" \
-        test "${nix_at:-99}" -lt "${usr_at:-0}"
+    assert "login zsh keeps ~/.local/bin ahead of /usr/bin after path_helper" \
+        test "$(printf '%s\n' "$login_path" | sed -n 1p)" = "$h/.local/bin"
+    assert_not "the work environment references no Nix path" grep -rqE '/nix/|nix-profile|hm-session' "$root/work"
     assert "interactive zsh sources the employer's ~/.zshrc" \
         test "$(env -i HOME="$h" PATH=/usr/bin:/bin TERM=dumb zsh -ic 'print -r -- ${EMPLOYER_RC_TEST-}' 2>/dev/null)" = 1
 fi
@@ -317,13 +314,14 @@ ln -s "$root/global" "$h/.config/mise"
 current_tools() {
     (cd / && env -i HOME="$h" PATH=/usr/bin:/bin MISE_ENV="$1" "$mise_bin" ls --current 2>/dev/null | awk '{print $1}')
 }
-assert "the work environment installs gh from mise" grep -qx gh <<<"$(current_tools desktop,work)"
+assert "the base tool set includes gh" grep -qx gh <<<"$(current_tools "")"
+assert_not "the work environment leaves gh to the 1Password wrapper" grep -qx gh <<<"$(current_tools desktop,work)"
 
 # --- work identity: work everywhere, signed through 1Password ----------------
 
 h=$(new_home work-identity)
 key='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIworkkey work@1password'
-for v in "git_name=Work Person" work_email=me@work.example "work_signing_pubkey=$key"; do
+for v in "git_name=Work Person" work_email=me@work.example "work_signing_pubkey=$key" 'work_gh_token_ref=op://Work/GitHub/token'; do
     run_mise "$h" desktop,work vars "$v" >/dev/null 2>&1 || no "save work var ${v%%=*}"
 done
 if run_mise "$h" desktop,work dot apply >"$tmp/work-identity.log" 2>&1; then
@@ -343,14 +341,29 @@ assert "the work name is set" test "$(gitcfg "$h/scratch" user.name)" = "Work Pe
 assert "commits are signed" test "$(gitcfg "$h/scratch" commit.gpgsign)" = true
 assert "signing goes through 1Password" \
     test "$(gitcfg "$h/scratch" gpg.ssh.program)" = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
-assert "the signing key is the 1Password public key" test "$(gitcfg "$h/scratch" user.signingkey)" = "$key"
+assert "the signing key is the 1Password public key" test "$(gitcfg "$h/scratch" user.signingkey)" = "key::$key"
 assert "the work flow is pr" test "$(gitcfg "$h/scratch" smores.flow)" = pr
 assert "work branches use the ticket template" test "$(gitcfg "$h/scratch" smores.branchTemplate)" = '{ticket}-{slug}'
 assert "https GitHub remotes go over SSH" \
     test "$(env -i HOME="$h" PATH=/usr/bin:/bin git -C "$h/Blitzy/svc" ls-remote --get-url origin)" = git@github.com:blitzy-ai/svc.git
 assert "github.com uses the 1Password SSH agent" \
     grep -q 'IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"' "$h/.ssh/config"
-assert_not "the work SSH config names no key file" grep -q IdentityFile "$h/.ssh/config"
+assert "the work SSH config offers only the work key" grep -q 'IdentitiesOnly yes' "$h/.ssh/config"
+assert "the work public key is rendered for ssh" grep -qx "$key" "$h/.config/ssh/work.pub"
+assert "ssh resolves the 1Password agent for github.com" \
+    bash -c "env -i HOME='$h' PATH=/usr/bin:/bin ssh -F '$h/.ssh/config' -G github.com | grep -qi 'identityagent .*2BUA8C4S2C.com.1password/t/agent.sock'"
+mkdir -p "$h/pub"; git init -q "$h/pub"; git -C "$h/pub" remote add origin https://github.com/someone/public.git
+assert "public GitHub remotes stay on https" \
+    test "$(env -i HOME="$h" PATH=/usr/bin:/bin git -C "$h/pub" ls-remote --get-url origin)" = https://github.com/someone/public.git
+assert "the gh wrapper is first on PATH" links_into_repo "$h/.local/bin/gh"
+assert "the gh wrapper knows where the token lives" grep -qx op://Work/GitHub/token "$h/.config/gh-token-ref"
+
+h2=$(new_home work-token)
+for v in git_name=W work_email=w@work.example 'work_signing_pubkey=ssh-ed25519 AAAAtest w' 'work_gh_token_ref=ghp_notareference'; do
+    run_mise "$h2" desktop,work vars "$v" >/dev/null 2>&1
+done
+run_mise "$h2" desktop,work dot apply >"$tmp/work-token.log" 2>&1
+assert_not "a raw token in place of a 1Password reference stops the apply" test -e "$h2/.config/gh-token-ref"
 assert "allowed_signers lists the work key" \
     grep -qx "me@work.example namespaces=\"git\" $key" "$h/.config/ssh/allowed_signers"
 assert_not "no personal identity on the work host" test -e "$h/.config/git/personal.inc"

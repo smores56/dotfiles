@@ -8,6 +8,10 @@
 "~/.ssh/config" = { source = "work/.ssh/config" }
 "~/.config/git/machine.inc" = { source = "work/.config/git/machine.inc.tera", mode = "template" }
 "~/.config/ssh/allowed_signers" = { source = "work/.config/ssh/allowed_signers.tera", mode = "template" }
+"~/.config/ssh/work.pub" = { source = "work/.config/ssh/work.pub.tera", mode = "template" }
+"~/.config/gh-token-ref" = { source = "work/.config/gh-token-ref.tera", mode = "template" }
+"~/.local/bin/gh" = { source = "work/.local/bin/gh" }
+"~/.cargo/config.toml" = { source = "work/.cargo/config.toml" }
 
 # macOS ships zsh 5.9 in /etc/shells already, so no sudo; chsh asks for the
 # password, so this part runs on its own: `mise bootstrap --only user`.
@@ -23,10 +27,162 @@ required = "Run `mise vars prompt git_name`"
 [vars.work_email]
 prompt = "Work Git email"
 required = "Run `mise vars prompt work_email`"
+[vars.work_gh_token_ref]
+prompt = "1Password reference to the work GitHub token (op://vault/item/field)"
+required = "Run `mise vars prompt work_gh_token_ref`"
 [vars.work_signing_pubkey]
 prompt = "Public key of the 1Password SSH key (ssh-ed25519 AAAA...)"
 required = "Run `mise vars prompt work_signing_pubkey`"
 
 [bootstrap.hooks.pre-dotfiles]
 description = "check the work identity vars"
-run = "sh {{ config_root }}/scripts/identity.sh check-work {{ vars.git_name | quote }} {{ vars.work_email | quote }} {{ vars.work_signing_pubkey | quote }}"
+run = "sh {{ config_root }}/scripts/identity.sh check-work {{ vars.git_name | quote }} {{ vars.work_email | quote }} {{ vars.work_signing_pubkey | quote }} {{ vars.work_gh_token_ref | quote }}"
+
+# Apps for a fresh laptop. ~/Applications: mise refuses a group-writable
+# /Applications. Copies already installed elsewhere stay where they are.
+# AeroSpace comes from a tap that mise can only evaluate with Ruby 3, so it
+# is installed by hand: brew install --cask nikitabobko/tap/aerospace
+[bootstrap.packages]
+"brew:gh" = "latest"
+"brew-cask:brave-browser" = { version = "latest", appdir = "~/Applications" }
+"brew-cask:docker-desktop" = { version = "latest", appdir = "~/Applications" }
+"brew-cask:caffeine" = { version = "latest", appdir = "~/Applications" }
+"brew-cask:gitify" = { version = "latest", appdir = "~/Applications" }
+"brew-cask:steam" = { version = "latest", appdir = "~/Applications" }
+"brew-cask:nvidia-geforce-now" = { version = "latest", appdir = "~/Applications" }
+
+[bootstrap.settings.macos.keyboard]
+key_repeat = 2
+initial_key_repeat = 13
+
+[bootstrap.settings.macos.defaults.NSGlobalDomain]
+"com.apple.swipescrolldirection" = false
+"com.apple.scrollwheel.scaling" = 0.5
+
+# AeroSpace binds Ctrl with the arrows and digits, so macOS's own Mission Control
+# and Spaces shortcuts on those chords are turned off; the screenshot shortcuts
+# move to Ctrl+Shift+Cmd+3/4/5. Each entry changes one shortcut and keeps the rest.
+[[bootstrap.settings.macos.defaults_entries]]
+domain = "com.apple.symbolichotkeys"
+key = "AppleSymbolicHotKeys"
+path = ["32", "enabled"]
+value = false
+
+[[bootstrap.settings.macos.defaults_entries]]
+domain = "com.apple.symbolichotkeys"
+key = "AppleSymbolicHotKeys"
+path = ["33", "enabled"]
+value = false
+
+[[bootstrap.settings.macos.defaults_entries]]
+domain = "com.apple.symbolichotkeys"
+key = "AppleSymbolicHotKeys"
+path = ["34", "enabled"]
+value = false
+
+[[bootstrap.settings.macos.defaults_entries]]
+domain = "com.apple.symbolichotkeys"
+key = "AppleSymbolicHotKeys"
+path = ["35", "enabled"]
+value = false
+
+[[bootstrap.settings.macos.defaults_entries]]
+domain = "com.apple.symbolichotkeys"
+key = "AppleSymbolicHotKeys"
+path = ["79", "enabled"]
+value = false
+
+[[bootstrap.settings.macos.defaults_entries]]
+domain = "com.apple.symbolichotkeys"
+key = "AppleSymbolicHotKeys"
+path = ["80", "enabled"]
+value = false
+
+[[bootstrap.settings.macos.defaults_entries]]
+domain = "com.apple.symbolichotkeys"
+key = "AppleSymbolicHotKeys"
+path = ["81", "enabled"]
+value = false
+
+[[bootstrap.settings.macos.defaults_entries]]
+domain = "com.apple.symbolichotkeys"
+key = "AppleSymbolicHotKeys"
+path = ["82", "enabled"]
+value = false
+
+[[bootstrap.settings.macos.defaults_entries]]
+domain = "com.apple.symbolichotkeys"
+key = "AppleSymbolicHotKeys"
+path = ["118", "enabled"]
+value = false
+
+[[bootstrap.settings.macos.defaults_entries]]
+domain = "com.apple.symbolichotkeys"
+key = "AppleSymbolicHotKeys"
+path = ["119", "enabled"]
+value = false
+
+[[bootstrap.settings.macos.defaults_entries]]
+domain = "com.apple.symbolichotkeys"
+key = "AppleSymbolicHotKeys"
+path = ["120", "enabled"]
+value = false
+
+[[bootstrap.settings.macos.defaults_entries]]
+domain = "com.apple.symbolichotkeys"
+key = "AppleSymbolicHotKeys"
+path = ["121", "enabled"]
+value = false
+
+[[bootstrap.settings.macos.defaults_entries]]
+domain = "com.apple.symbolichotkeys"
+key = "AppleSymbolicHotKeys"
+path = ["122", "enabled"]
+value = false
+
+[[bootstrap.settings.macos.defaults_entries]]
+domain = "com.apple.symbolichotkeys"
+key = "AppleSymbolicHotKeys"
+path = ["123", "enabled"]
+value = false
+
+[[bootstrap.settings.macos.defaults_entries]]
+domain = "com.apple.symbolichotkeys"
+key = "AppleSymbolicHotKeys"
+path = ["124", "enabled"]
+value = false
+
+[[bootstrap.settings.macos.defaults_entries]]
+domain = "com.apple.symbolichotkeys"
+key = "AppleSymbolicHotKeys"
+path = ["125", "enabled"]
+value = false
+
+[[bootstrap.settings.macos.defaults_entries]]
+domain = "com.apple.symbolichotkeys"
+key = "AppleSymbolicHotKeys"
+path = ["126", "enabled"]
+value = false
+
+[[bootstrap.settings.macos.defaults_entries]]
+domain = "com.apple.symbolichotkeys"
+key = "AppleSymbolicHotKeys"
+path = ["28"]
+value = { enabled = true, value = { parameters = [65535, 105, 8388608], type = "standard" } }
+
+[[bootstrap.settings.macos.defaults_entries]]
+domain = "com.apple.symbolichotkeys"
+key = "AppleSymbolicHotKeys"
+path = ["30"]
+value = { enabled = true, value = { parameters = [65535, 105, 8650752], type = "standard" } }
+
+[[bootstrap.settings.macos.defaults_entries]]
+domain = "com.apple.symbolichotkeys"
+key = "AppleSymbolicHotKeys"
+path = ["184"]
+value = { enabled = true, value = { parameters = [65535, 105, 8912896], type = "standard" } }
+
+# The session caches shortcuts; without a reload they wait for the next login.
+[bootstrap.hooks.post-defaults]
+description = "reload the keyboard shortcuts"
+run = "/System/Library/PrivateFrameworks/SystemAdministration.framework/Resources/activateSettings -u || true"

@@ -1,0 +1,4 @@
+# smoreswork: gh comes from Homebrew behind ~/.local/bin/gh, which hands it
+# the work token from 1Password per call; a mise gh would shadow that wrapper.
+[settings]
+disable_tools = ["gh"]

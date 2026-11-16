@@ -50,13 +50,18 @@ case $cmd in
         fi
         ;;
     check-work)
-        [ $# -eq 3 ] || die "check-work takes 3 values, got $#"
+        [ $# -eq 4 ] || die "check-work takes 4 values, got $#"
         check_value git_name "$1"
         check_value work_email "$2"
         check_value work_signing_pubkey "$3"
         case $3 in
             ssh-ed25519\ *|ssh-rsa\ *|ecdsa-sha2-*\ *|sk-ssh-ed25519@openssh.com\ *) ;;
             *) die "work_signing_pubkey must be an OpenSSH public key (ssh-ed25519 AAAA...), not a path" ;;
+        esac
+        check_value work_gh_token_ref "$4"
+        case $4 in
+            op://*/*/*) ;;
+            *) die "work_gh_token_ref must be a 1Password reference (op://vault/item/field), never the token itself" ;;
         esac
         mkdir -p "$HOME/.config/ssh" && chmod 700 "$HOME/.config/ssh"
         ;;

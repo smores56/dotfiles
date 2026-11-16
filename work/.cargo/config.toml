@@ -1,0 +1,12 @@
+[build]
+rustc = "~/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustc"
+rustdoc = "~/.rustup/toolchains/stable-aarch64-apple-darwin/bin/rustdoc"
+
+[target.aarch64-apple-darwin]
+rustflags = ["-C", "linker=/usr/bin/clang"]
+
+# [env] is read from this file regardless of shell, unlike packages.nix's sessionVariables that
+# non-interactive processes may lack. force makes the `cc` crate always use Apple clang.
+[env]
+CC = { value = "/usr/bin/clang", force = true }
+CXX = { value = "/usr/bin/clang++", force = true }

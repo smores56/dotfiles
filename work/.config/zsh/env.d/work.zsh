@@ -1,14 +1,18 @@
-# What home-manager's zsh environment did, for every zsh (agents, launchd,
-# editors run `zsh -c`): the Nix daemon profile, home-manager's session vars,
-# then Homebrew appended so the employer's ~/.zshrc finds brew.
-if [[ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]]; then
-  unset __ETC_PROFILE_NIX_SOURCED
-  . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
-fi
-if [[ -r $HOME/.nix-profile/etc/profile.d/hm-session-vars.sh ]]; then
-  unset __HM_SESS_VARS_SOURCED
-  . "$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh"
-fi
+# smoreswork's environment for every zsh (agents, launchd jobs, and editors
+# run `zsh -c`): what the employer's toolchains expect, nothing else.
+export TERMINAL=wezterm
+# Tools that ignore ssh_config's IdentityAgent (libssh2, docker --ssh, dev's
+# agent forwarding) find the 1Password agent here.
+export SSH_AUTH_SOCK="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
+export COLORTERM=truecolor
+# The cc crate and native builds use Apple's clang (see ~/.cargo/config.toml).
+export CC=/usr/bin/clang
+export CXX=/usr/bin/clang++
+# The employer's ~/.zshrc expects brew on PATH even in non-login shells.
 [[ -d /opt/homebrew/bin ]] && path+=(/opt/homebrew/bin /opt/homebrew/sbin)
-# Keep the dotfiles order on top of whatever those prepended.
+for _d in "$HOME/.cargo/bin" "$HOME/.bun/bin" "$HOME/.deno/bin"; do
+  [[ -d $_d ]] && path+=("$_d")
+done
+unset _d
+# Keep the dotfiles order on top of whatever was appended.
 path=("$HOME/.local/bin" "${XDG_DATA_HOME:-$HOME/.local/share}/mise/shims" $path)

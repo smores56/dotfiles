@@ -3,7 +3,8 @@
 [user]
     name = "{{ vars.git_name }}"
     email = "{{ vars.work_email }}"
-    signingkey = "{{ vars.work_signing_pubkey }}"
+    # key:: makes git treat it as a key for every type, not only ssh-* ones.
+    signingkey = "key::{{ vars.work_signing_pubkey }}"
 [gpg "ssh"]
     program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
 [smores]
@@ -12,7 +13,9 @@
     branchTemplateUnticketed = "{type}/{slug}"
     workFlat = "~/Blitzy"
     workOwners = "blitzy-ai blitzy-platform"
-# Git talks to GitHub over SSH through the 1Password agent, so https remotes
-# (what `repos get` and most tools clone) are rewritten.
-[url "git@github.com:"]
-    insteadOf = https://github.com/
+# Work repositories go over SSH through the 1Password agent; public GitHub
+# (Homebrew taps, git dependencies) stays on https and needs no approval.
+[url "git@github.com:blitzy-ai/"]
+    insteadOf = https://github.com/blitzy-ai/
+[url "git@github.com:blitzy-platform/"]
+    insteadOf = https://github.com/blitzy-platform/

@@ -4,9 +4,6 @@
 # 99-mise.zsh, so mise's tools win over pyenv and nvm on PATH.
 [[ -r $HOME/.zshrc ]] && source "$HOME/.zshrc"
 
-# 1Password's shell plugins (`op plugin init gh`) give gh its token per call.
-[[ -r $HOME/.config/op/plugins.sh ]] && source "$HOME/.config/op/plugins.sh"
-
 # On the work laptop the agent is Claude Code, not maki.
 (( $+functions[abbr] )) && abbr add --session --quiet --force -- 'a=claude'
 
