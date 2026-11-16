@@ -152,6 +152,11 @@ case $action in
         fi
         dot apply
         $dry_run || verify_applied
+        # zim had nothing to build before this repository's .zimrc arrived.
+        # HANDOFF_SKIP_ZIM is for the tests, whose fixture has no plugin clones.
+        if [ "$piece" = zsh ] && [ -z "${HANDOFF_SKIP_ZIM-}" ]; then
+            run sh "$DOTFILES/scripts/zim-build.sh"
+        fi
         say "$piece now comes from $DOTFILES"
         ;;
     rollback)

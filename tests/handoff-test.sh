@@ -65,7 +65,7 @@ mode() { printf '%s\n' "$*" >"$h/hm.mode"; }
 
 hand() {
     env -i HOME="$h" PATH="$bin:/usr/bin:/bin" TERM=dumb DOTFILES="$root" NIX_CONFIG=/nowhere \
-        HANDOFF_SKIP_SHELL_CHECK=1 \
+        HANDOFF_SKIP_SHELL_CHECK=1 HANDOFF_SKIP_ZIM=1 \
         MISE_TRUSTED_CONFIG_PATHS="$root" MISE_YES=1 sh "$root/scripts/handoff.sh" "$@"
 }
 
@@ -77,6 +77,11 @@ hand --dry-run apply helix >"$tmp/dry.log" 2>&1
 assert "a dry run prints the switch" grep -q 'would run: home-manager switch --flake /nowhere#sam@smoreswork' "$tmp/dry.log"
 assert "a dry run reports where a real run would stop" grep -q 'a real run would stop here' "$tmp/dry.log"
 assert_not "a dry run switches nothing" test -e "$h/hm.log"
+mode drop helix
+env -i HOME="$h" PATH="$bin:/usr/bin:/bin" TERM=dumb DOTFILES="$root" NIX_CONFIG=/nowhere \
+    HANDOFF_SKIP_SHELL_CHECK=1 sh "$root/scripts/handoff.sh" --dry-run apply zsh >"$tmp/dry-zsh.log" 2>&1
+assert "the zsh handoff builds zim after deploying" grep -q 'would run: sh .*/scripts/zim-build.sh' "$tmp/dry-zsh.log"
+rm -f "$h/hm.log" "$h/hm.mode"
 assert_not "a dry run writes no state" test -e "$h/.local/state/dotfiles-handoff"
 
 # --- refusal, nested links, retries ---

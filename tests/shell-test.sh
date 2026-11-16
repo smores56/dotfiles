@@ -41,6 +41,11 @@ else
     no "repos and dotfiles apply"
     sed 's/^/     /' "$tmp/bootstrap.log" >&2
 fi
+hz=$tmp/home-no-zsh
+mkdir -p "$hz/.config/zsh"
+env -i HOME="$hz" PATH="$base_path" sh "$root/scripts/zim-build.sh" >"$tmp/zim-skip.log" 2>&1
+expect "zim-build skips while the zsh config is not deployed" "0:no" \
+    "$?:$([ -e "$hz/.config/zsh/.zimrc" ] && echo yes || echo no)"
 if env -i HOME="$h" PATH="$base_path" sh "$root/scripts/zim-build.sh" >"$tmp/zim.log" 2>&1; then
     ok "zim builds from the cloned modules"
 else
