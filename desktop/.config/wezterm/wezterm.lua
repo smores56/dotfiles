@@ -3,14 +3,14 @@ local wezterm = require("wezterm")
 local config = wezterm.config_builder()
 
 config.color_scheme = "rose-pine-moon"
--- Same faces and size as the retired kitty setup: Regular for text, the real
+-- Same faces as the retired kitty setup: Regular for text, the real
 -- Bold face (not synthesized) for bold.
 config.font = wezterm.font("Google Sans Code", { weight = "Regular" })
 config.font_rules = {
   { intensity = "Bold", italic = false, font = wezterm.font("Google Sans Code", { weight = "Bold" }) },
   { intensity = "Bold", italic = true, font = wezterm.font("Google Sans Code", { weight = "Bold", italic = true }) },
 }
-config.font_size = 12.0
+config.font_size = 18.0
 -- WezTerm rasterizes with FreeType even on macOS; full hinting snaps stems to
 -- the pixel grid and looks thin and grainy next to CoreText. Light, unhinted
 -- loading on the GPU renderer is close to native macOS text.
