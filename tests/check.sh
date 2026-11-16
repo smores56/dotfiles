@@ -197,8 +197,13 @@ for config in sorted(root.glob("config*.toml")):
             continue
         have = {p.removeprefix("platforms.") for e in entries for p, v in e.items()
                 if p.startswith("platforms.") and isinstance(v, dict) and v.get("checksum")}
-        # PyPI pins the package hash itself; mise records only the version.
+        # mise records only the version for pipx tools; the uv lock beside the
+        # config pins the package and its dependencies by hash.
         if name.startswith("pipx:"):
+            uv_lock = root / "locks" / name.replace(":", "-") / pin / "uv.lock"
+            text = uv_lock.read_text() if uv_lock.exists() else ""
+            if f'version = "{pin}"' not in text or "sha256:" not in text:
+                missing.append(f"{config.name}: {name} = {pin} has no hashed uv lock at {uv_lock.relative_to(root)}")
             continue
         for platform in sorted(want - have):
             missing.append(f"{config.name}: {name} has no checksummed {platform} entry in {lock_path.name}")

@@ -7,8 +7,15 @@ set -eu
 real=/opt/homebrew/bin/gh
 ref_file=${XDG_CONFIG_HOME:-$HOME/.config}/gh-token-ref
 [ -x "$real" ] || { echo "gh: $real is missing; run mise bootstrap" >&2; exit 127; }
+op=/opt/homebrew/bin/op
+# Without a token gh still runs: --version, completion, and config need none,
+# and an API call then reports gh's own auth error.
 if [ -z "${GH_TOKEN-}" ] && [ -r "$ref_file" ]; then
-    GH_TOKEN=$(op read "$(cat "$ref_file")") || { echo "gh: could not read the token from 1Password (is it unlocked?)" >&2; exit 1; }
-    export GH_TOKEN
+    if token=$("$op" read "$(cat "$ref_file")" 2>/dev/null) && [ -n "$token" ]; then
+        GH_TOKEN=$token
+        export GH_TOKEN
+    else
+        echo "gh: no work token from 1Password (locked, or no desktop session); continuing without one" >&2
+    fi
 fi
 exec "$real" "$@"
