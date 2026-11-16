@@ -1,0 +1,64 @@
+#!/bin/sh
+# Sync the canonical wallpaper tree into a local cache and pick one file.
+#
+# COSMIC (the desktop this repository targets) has no scriptable wallpaper
+# setting, so `pick` selects a file and prints it: set it by hand in the
+# desktop's Appearance settings. The systemd timer keeps the cache fresh.
+# The source is the #660 path on the private host; override it with
+# WALLPAPERS_SOURCE for a migration or a test.
+#
+# Needs: rsync and ssh (the host layer installs rsync).
+set -eu
+
+source=${WALLPAPERS_SOURCE:-smortress:/srv/wallpapers/}
+cache=${XDG_CACHE_HOME:-$HOME/.cache}/wallpapers
+dest=$cache/Wallpapers
+
+log() { printf 'wallpapers: %s\n' "$*" >&2; }
+
+# Bound every remote call. Without timeout(1) the connect/IO bounds in
+# rsync/ssh still apply, so the wrapper simply runs the command then.
+with_timeout() {
+    seconds=$1
+    shift
+    if command -v timeout >/dev/null 2>&1; then
+        timeout "$seconds" "$@"
+    else
+        "$@"
+    fi
+}
+
+sync_cache() {
+    command -v rsync >/dev/null 2>&1 \
+        || { log 'rsync is required; install the host layer (see docs/manual-steps.md)'; exit 1; }
+    mkdir -p "$cache" "$dest"
+    ssh_opts='ssh -o StrictHostKeyChecking=yes -o ConnectTimeout=20 -o ForwardAgent=no'
+    # -n -v is the portable probe for the remote listing.
+    if ! raw=$(with_timeout 240 rsync -rnv -e "$ssh_opts" "$source" 2>/dev/null); then
+        log "cannot list $source; keeping the cached set"
+        exit 1
+    fi
+    listing=$(printf '%s\n' "$raw" | grep -vE '^(sending incremental file list|sent |total size|$)' || true)
+    if [ -z "$listing" ]; then
+        log "source listing is empty; keeping the cached set"
+        exit 1
+    fi
+    with_timeout 780 rsync -rt --del \
+        -e "$ssh_opts" --timeout=120 "$source" "$dest/"
+}
+
+pick_one() {
+    [ -d "$dest" ] || { log "no cached wallpapers at $dest"; exit 1; }
+    file=$(find "$dest" -type f \
+        \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) \
+        | awk 'BEGIN { srand() } { a[NR] = $0 } END { if (NR) print a[int(rand() * NR) + 1] }')
+    [ -n "$file" ] || { log "no wallpapers in $dest"; exit 1; }
+    log "selected $file; set it in COSMIC's Appearance settings"
+}
+
+case ${1:-} in
+    sync) sync_cache ;;
+    pick) pick_one ;;
+    sync-and-pick) sync_cache; pick_one ;;
+    *) printf 'usage: wallpapers sync|pick|sync-and-pick\n' >&2; exit 2 ;;
+esac

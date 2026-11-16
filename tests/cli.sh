@@ -8,9 +8,9 @@
 set -uo pipefail
 
 root=$(cd -- "$(dirname -- "$0")/.." && pwd)
-REPOS=$root/dot_local/bin/executable_repos
-WORKTREES=$root/dot_local/bin/executable_worktrees
-DEV=$root/dot_local/bin/executable_dev
+REPOS=$root/home/.local/bin/repos
+WORKTREES=$root/home/.local/bin/worktrees
+DEV=$root/home/.local/bin/dev
 
 tmp=$(mktemp -d) || exit 1
 trap 'rm -rf "$tmp"' EXIT
@@ -69,10 +69,9 @@ DESC="repos get prints the checkout path"
 assert test -n "$checkout"
 DESC="repos get checks out the default branch"
 assert test -f "$checkout/file"
-DESC="repos get keeps the clean-bare layout (<repo>/.git is a directory)"
-assert test -d "$repos_root/github.com/acme/demo/.git"
-DESC="the checkout's .git is a gitdir file"
-assert test -f "$checkout/.git"
+DESC="repos get clones into <root>/<host>/<owner>/<repo>"
+assert test -d "$checkout/.git"
+assert test -d "$repos_root/github.com/acme/demo"
 DESC="repos get sets branch.main.remote"
 assert test "$(git -C "$checkout" config --get branch.main.remote)" = origin
 DESC="repos get sets branch.main.merge"
@@ -104,7 +103,7 @@ work_flat=$tmp/work-flat
 work_checkout=$(REPOS_ROOT=$repos_root REPOS_WORK_FLAT=$work_flat \
     REPOS_WORK_OWNERS=blitzy-ai sh "$REPOS" get blitzy-ai/demo 2>"$tmp/work.err")
 DESC="repos get routes a work owner to the flat root"
-assert test "$work_checkout" = "$work_flat/demo/main"
+assert test "$work_checkout" = "$work_flat/demo"
 DESC="the flat work checkout has the default branch"
 assert test -f "$work_checkout/file"
 out=$(REPOS_ROOT=$repos_root REPOS_WORK_FLAT=$work_flat \
@@ -114,14 +113,14 @@ case $out in
     *) no "repos list includes the flat work checkout" ;;
 esac
 
-# The same routing comes from git config, so a chezmoi-rendered machine needs
+# The same routing comes from git config, so an install.sh-rendered machine needs
 # no exported environment.
 git config --global smores.workFlat "$work_flat"
 git config --global smores.workOwners "blitzy-ai"
 rm -rf "$work_flat/demo"
 work_checkout=$(REPOS_ROOT=$repos_root sh "$REPOS" get blitzy-ai/demo 2>"$tmp/work.err")
 DESC="repos get reads the flat root from git config"
-assert test "$work_checkout" = "$work_flat/demo/main"
+assert test "$work_checkout" = "$work_flat/demo"
 
 # GitHub names are case-insensitive; a flat root cannot hold both spellings.
 rm -rf "$work_flat/demo"

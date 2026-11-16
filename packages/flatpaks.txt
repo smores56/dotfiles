@@ -1,0 +1,17 @@
+# GUI applications. `scripts/bootstrap.sh` installs these as user Flatpaks
+# from Flathub; nothing here belongs to the host image.
+#
+# One app id per line, blank lines and # comments ignored. Discord is the stock
+# client: the Vencord patcher is not a Flatpak and stays a manual choice.
+md.obsidian.Obsidian
+com.brave.Browser
+org.videolan.VLC
+org.gimp.GIMP
+org.gnome.Evince
+com.transmissionbt.Transmission
+com.discordapp.Discord
+org.kde.krita
+com.valvesoftware.Steam
+com.bitwarden.desktop
+com.tutanota.Tutanota
+org.kde.dolphin

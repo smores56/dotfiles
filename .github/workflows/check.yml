@@ -15,19 +15,6 @@ jobs:
       - name: Install checks
         run: |
           sudo apt-get update
-          sudo apt-get install -y zsh fish shellcheck python3 curl
-      - name: Install pinned chezmoi
-        env:
-          CHEZMOI_VERSION: 2.70.5
-        run: |
-          set -euo pipefail
-          base="https://github.com/twpayne/chezmoi/releases/download/v${CHEZMOI_VERSION}"
-          asset="chezmoi_${CHEZMOI_VERSION}_linux_amd64.tar.gz"
-          curl -fsSLO "$base/$asset"
-          curl -fsSLO "$base/chezmoi_${CHEZMOI_VERSION}_checksums.txt"
-          sha256sum --check --ignore-missing "chezmoi_${CHEZMOI_VERSION}_checksums.txt"
-          mkdir -p "$HOME/.local/bin"
-          tar -xzf "$asset" -C "$HOME/.local/bin" chezmoi
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          sudo apt-get install -y bash fish git python3 shellcheck
       - name: Run the checks
         run: tests/check.sh --shellcheck

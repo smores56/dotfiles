@@ -1,0 +1,119 @@
+# Custom providers for Maki. The key comes from the environment
+# (NEURALWATT_API_KEY, exported by the fish `maki` launcher), never from this
+# file.
+#
+# Model ids, windows, vision support, and prices mirror the previous host
+# configuration. Maki's always_thinking="max" picks the effort level, so every
+# model declares the full scale; a missing level would leave the request silent
+# and keep the model default.
+
+[neuralwatt]
+display_name = "Neuralwatt"
+protocol = "openai"
+base_url = "https://api.neuralwatt.com/v1"
+api_key_env = "NEURALWATT_API_KEY"
+default_model = "neuralwatt/deepseek-v4.1-flash"
+
+[[neuralwatt.models]]
+id = "deepseek-v4.1-flash"
+context_window = 1048576
+max_output_tokens = 393216
+supports_thinking = true
+supports_vision = true
+pricing_input = 0.15
+pricing_output = 0.60
+pricing_cache_write = 0.0
+pricing_cache_read = 0.02
+
+[neuralwatt.models.thinking_fields.off]
+thinking_budget_tokens = 0
+
+[neuralwatt.models.thinking_fields.adaptive]
+thinking_budget_tokens = -1
+
+[neuralwatt.models.thinking_fields.minimal]
+thinking_budget_tokens = 19660
+
+[neuralwatt.models.thinking_fields.low]
+thinking_budget_tokens = 39321
+
+[neuralwatt.models.thinking_fields.medium]
+thinking_budget_tokens = 78643
+
+[neuralwatt.models.thinking_fields.high]
+thinking_budget_tokens = 117964
+
+[neuralwatt.models.thinking_fields.xhigh]
+thinking_budget_tokens = 157286
+
+[neuralwatt.models.thinking_fields.max]
+thinking_budget_tokens = 196608
+
+[[neuralwatt.models]]
+id = "qwen-3.8-27b"
+context_window = 262144
+max_output_tokens = 131072
+supports_thinking = true
+supports_vision = true
+pricing_input = 0.45
+pricing_output = 3.20
+pricing_cache_write = 0.0
+pricing_cache_read = 0.25
+
+[neuralwatt.models.thinking_fields.off]
+thinking_budget_tokens = 0
+
+[neuralwatt.models.thinking_fields.adaptive]
+thinking_budget_tokens = -1
+
+[neuralwatt.models.thinking_fields.minimal]
+thinking_budget_tokens = 6553
+
+[neuralwatt.models.thinking_fields.low]
+thinking_budget_tokens = 13107
+
+[neuralwatt.models.thinking_fields.medium]
+thinking_budget_tokens = 26214
+
+[neuralwatt.models.thinking_fields.high]
+thinking_budget_tokens = 39321
+
+[neuralwatt.models.thinking_fields.xhigh]
+thinking_budget_tokens = 52428
+
+[neuralwatt.models.thinking_fields.max]
+thinking_budget_tokens = 65536
+
+# Neuralwatt maps reasoning_effort per model, and Kimi takes the full public
+# scale, so this model spells the effort names instead of a token budget.
+[[neuralwatt.models]]
+id = "kimi-k3.1-pro"
+context_window = 1048576
+max_output_tokens = 1048576
+supports_thinking = true
+supports_vision = true
+pricing_input = 2.00
+pricing_output = 10.00
+pricing_cache_write = 0.0
+pricing_cache_read = 0.20
+
+[neuralwatt.models.thinking_fields.off]
+reasoning_effort = "none"
+
+[neuralwatt.models.thinking_fields.minimal]
+reasoning_effort = "low"
+
+[neuralwatt.models.thinking_fields.low]
+reasoning_effort = "low"
+
+[neuralwatt.models.thinking_fields.medium]
+reasoning_effort = "medium"
+
+[neuralwatt.models.thinking_fields.high]
+reasoning_effort = "high"
+
+[neuralwatt.models.thinking_fields.xhigh]
+reasoning_effort = "max"
+
+[neuralwatt.models.thinking_fields.max]
+reasoning_effort = "max"

@@ -1,0 +1,15 @@
+#!/bin/sh
+# Resume a Maki session from its id, changing to the directory it ran in.
+#
+# Sessions live in the shared XDG state, so a helper is all that is needed to
+# return to the exact checkout and conversation.
+set -eu
+
+session_id=${1:?usage: maki-session-resume <session-id>}
+cwd=$(maki-session-search cwd "$session_id")
+if [ ! -d "$cwd" ]; then
+    printf 'maki-session-resume: session directory no longer exists: %s\n' "$cwd" >&2
+    exit 1
+fi
+cd "$cwd" || exit 1
+exec maki --session "$session_id"
