@@ -1,0 +1,8 @@
+# Rendered by mise from the identity vars.
+[user]
+    email = "{{ vars.git_email }}"
+    signingkey = "{{ vars.git_signing_key }}"
+[smores]
+    flow = "local"
+    branchTemplate = "smores/{slug}"
+    branchTemplateUnticketed = "smores/{slug}"

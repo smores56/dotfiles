@@ -1,0 +1,9 @@
+# Rendered by mise from the identity vars. Empty work values fall back to the
+# personal ones, so the file never carries an empty email or key.
+[user]
+    email = "{{ vars.work_email | default(value=vars.git_email) }}"
+    signingkey = "{% if vars.work_signing_key %}{{ vars.work_signing_key }}{% else %}{{ vars.git_signing_key }}{% endif %}"
+[smores]
+    flow = "pr"
+    branchTemplate = "{ticket}-{slug}"
+    branchTemplateUnticketed = "{type}/{slug}"

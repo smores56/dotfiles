@@ -131,11 +131,76 @@ assert_not "a real file in the way is not replaced by a link" test -L "$h/.confi
 # --- identity environment ----------------------------------------------------
 
 h=$(new_home identity)
-run_mise "$h" identity dot apply >"$tmp/identity.log" 2>&1 \
-    || { no "identity apply exits 0"; sed 's/^/     /' "$tmp/identity.log" >&2; }
+mkdir -p "$h/.ssh"
+printf 'ssh-ed25519 AAAApersonal me@home\n' >"$h/.ssh/id_ed25519.pub"
+printf 'ssh-ed25519 AAAAwork me@work\n' >"$h/.ssh/id_work.pub"
+set_var() { run_mise "$h" identity vars "$1" >/dev/null 2>&1 || no "save var ${1%%=*}"; }
+set_var "git_name=Test O'Neil User"
+set_var git_email=me@example.com
+set_var work_email=me@work.example
+set_var 'work_signing_key=~/.ssh/id_work.pub'
+set_var 'work_owners=blitzy-ai blitzy-platform'
+set_var 'work_flat_root=~/Blitzy'
+if run_mise "$h" identity dot apply >"$tmp/identity.log" 2>&1; then
+    ok "identity apply exits 0"
+else
+    no "identity apply exits 0"
+    sed 's/^/     /' "$tmp/identity.log" >&2
+fi
 assert "identity links ~/.gitconfig" links_into_repo "$h/.gitconfig"
 assert "identity links ~/.ssh/config" links_into_repo "$h/.ssh/config"
 assert "identity keeps the base links" links_into_repo "$h/.config/helix/config.toml"
+for inc in machine personal work; do
+    assert "identity renders ~/.config/git/$inc.inc" test -f "$h/.config/git/$inc.inc"
+done
+
+# What git resolves per checkout is the contract, not the file text.
+gitcfg() { env -i HOME="$h" PATH=/usr/bin:/bin git -C "$1" config --get "$2"; }
+mkrepo() { mkdir -p "$1" && git init -q "$1" && { [ -z "${2:-}" ] || git -C "$1" remote add origin "$2"; }; }
+mkrepo "$h/repos/github.com/smores56/proj"
+mkrepo "$h/wip/elsewhere" git@github.com:blitzy-ai/service.git
+mkrepo "$h/Blitzy/flat"
+mkrepo "$h/scratch"
+assert "the name survives shell quoting" test "$(gitcfg "$h/scratch" user.name)" = "Test O'Neil User"
+assert "a personal checkout signs as the personal identity" \
+    test "$(gitcfg "$h/repos/github.com/smores56/proj" user.email)" = me@example.com
+assert "a personal checkout uses the local flow" \
+    test "$(gitcfg "$h/repos/github.com/smores56/proj" smores.flow)" = local
+assert "a work remote anywhere uses the work identity" \
+    test "$(gitcfg "$h/wip/elsewhere" user.email)" = me@work.example
+# shellcheck disable=SC2088 # git keeps the key path as the literal the var holds
+assert "a work remote uses the work signing key" \
+    test "$(gitcfg "$h/wip/elsewhere" user.signingkey)" = '~/.ssh/id_work.pub'
+assert "a work checkout uses the pr flow" test "$(gitcfg "$h/wip/elsewhere" smores.flow)" = pr
+assert "the flat work root is work" test "$(gitcfg "$h/Blitzy/flat" user.email)" = me@work.example
+assert "an unmatched checkout falls back to the personal identity" \
+    test "$(gitcfg "$h/scratch" user.email)" = me@example.com
+assert "allowed_signers lists the personal key" \
+    grep -qx 'me@example.com namespaces="git" ssh-ed25519 AAAApersonal me@home' "$h/.config/ssh/allowed_signers"
+assert "allowed_signers lists the work key" \
+    grep -qx 'me@work.example namespaces="git" ssh-ed25519 AAAAwork me@work' "$h/.config/ssh/allowed_signers"
+assert "the XDG ssh directory exists for known_hosts" test -d "$h/.config/ssh"
+
+h2=$(new_home identity-bad)
+HBAD=$h2
+run_mise "$h2" identity vars git_email=me@example.com >/dev/null 2>&1
+run_mise "$h2" identity vars "git_name=bad$(printf '\001')name" >/dev/null 2>&1
+run_mise "$h2" identity dot apply >"$tmp/identity-bad.log" 2>&1
+assert_not "a control character in a var stops the apply" test -e "$HBAD/.config/git/machine.inc"
+assert "the refusal names the var" grep -q git_name "$tmp/identity-bad.log"
+
+h3=$(new_home identity-quote)
+run_mise "$h3" identity vars git_email=me@example.com >/dev/null 2>&1
+run_mise "$h3" identity vars 'git_name=Bad "Quote"' >/dev/null 2>&1
+run_mise "$h3" identity dot apply >"$tmp/identity-quote.log" 2>&1
+assert_not "a double quote in a var stops the apply" test -e "$h3/.config/git/machine.inc"
+
+h4=$(new_home identity-work)
+run_mise "$h4" identity vars git_name=W >/dev/null 2>&1
+run_mise "$h4" identity vars git_email=me@example.com >/dev/null 2>&1
+run_mise "$h4" identity vars work_owners=blitzy-ai >/dev/null 2>&1
+run_mise "$h4" identity dot apply >"$tmp/identity-work.log" 2>&1
+assert_not "work owners without a work email stop the apply" test -e "$h4/.config/git/work.inc"
 
 # --- desktop environment -----------------------------------------------------
 

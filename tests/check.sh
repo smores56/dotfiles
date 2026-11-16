@@ -124,16 +124,16 @@ else
     no "maki/pin.env must pin MAKI_VERSION, MAKI_TARGET, and a 64-hex MAKI_SHA256"
 fi
 
-if grep -q '^local.env$' "$root/.gitignore"; then
-    ok ".gitignore keeps local.env untracked"
+if [ -e "$root/local.env.example" ]; then
+    no "local.env is retired: identity comes from the mise vars in mise.identity.toml"
 else
-    no ".gitignore must ignore local.env"
+    ok "local.env is retired: identity comes from the mise vars in mise.identity.toml"
 fi
 
-if [ -f "$root/local.env.example" ]; then
-    ok "local.env.example exists"
+if grep -rqE 'exec\(' "$root"/identity "$root"/desktop "$root"/home "$root"/mise*.toml 2>/dev/null; then
+    no "no template or hook calls exec() (dotfile status would run it)"
 else
-    no "local.env.example is missing"
+    ok "no template or hook calls exec() (dotfile status would run it)"
 fi
 
 # --- layout
@@ -273,10 +273,10 @@ fi
 
 # --- one checkout root, one instruction set
 
-if grep -rn 'ghq' "$root/mise.toml" "$root/local.env.example" \
+if grep -rn 'ghq' "$root/mise.toml" "$root/mise.identity.toml" \
         "$root/home/.local/bin/repos" "$root/maki/config/AGENTS.md" >/dev/null 2>&1; then
     no "the checkout root is ~/repos everywhere, not the retired ~/ghq"
-    grep -rn 'ghq' "$root/mise.toml" "$root/local.env.example" \
+    grep -rn 'ghq' "$root/mise.toml" "$root/mise.identity.toml" \
         "$root/home/.local/bin/repos" "$root/maki/config/AGENTS.md" | sed 's/^/     /' >&2
 else
     ok "the checkout root is ~/repos everywhere, not the retired ~/ghq"
