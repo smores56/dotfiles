@@ -15,6 +15,11 @@
 
 # macOS ships zsh 5.9 in /etc/shells already, so no sudo; chsh asks for the
 # password, so this part runs on its own: `mise bootstrap --only user`.
+# The bootstrap task reads this: the personal sdlc registry is never reachable
+# from the work laptop, so its CLI is not installed here.
+[env]
+DOTFILES_SKIP_SDLC = "1"
+
 [bootstrap.user]
 login_shell = "/bin/zsh"
 

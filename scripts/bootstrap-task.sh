@@ -29,6 +29,10 @@ link_conda_zsh() {
 SDLC_UPSTREAM=git+ssh://git@github.com/smores56/sdlc
 SDLC_REV=6f6dde8caf7c7049fc5bb1009261410fa8f0eb44
 install_sdlc() {
+    if [ -n "${DOTFILES_SKIP_SDLC-}" ]; then
+        log "sdlc is not installed on this machine (DOTFILES_SKIP_SDLC)"
+        return 0
+    fi
     existing=$(command -v sdlc 2>/dev/null || true)
     case $existing in
         ''|"$HOME/.local/bin/sdlc") ;;
@@ -50,6 +54,5 @@ tighten_ssh_dir() {
 
 link_conda_zsh
 sh "$(dirname "$0")/zim-build.sh" || die "zim build failed; the shell has no plugins until it succeeds"
-log "zim built"
 tighten_ssh_dir
 install_sdlc
