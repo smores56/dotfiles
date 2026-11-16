@@ -64,7 +64,7 @@ chmod +x "$bin/home-manager"
 mode() { printf '%s\n' "$*" >"$h/hm.mode"; }
 
 hand() {
-    env -i HOME="$h" PATH="$bin:/usr/bin:/bin" TERM=dumb DOTFILES="$root" NIX_CONFIG=/nowhere \
+    env -i HOME="$h" PATH="$bin:/usr/bin:/bin" TERM=dumb DOTFILES="$root" NIX_CONFIG_DIR=/nowhere \
         HANDOFF_SKIP_SHELL_CHECK=1 HANDOFF_SKIP_ZIM=1 \
         MISE_TRUSTED_CONFIG_PATHS="$root" MISE_YES=1 sh "$root/scripts/handoff.sh" "$@"
 }
@@ -78,7 +78,7 @@ assert "a dry run prints the switch" grep -q 'would run: home-manager switch --f
 assert "a dry run reports where a real run would stop" grep -q 'a real run would stop here' "$tmp/dry.log"
 assert_not "a dry run switches nothing" test -e "$h/hm.log"
 mode drop helix
-env -i HOME="$h" PATH="$bin:/usr/bin:/bin" TERM=dumb DOTFILES="$root" NIX_CONFIG=/nowhere \
+env -i HOME="$h" PATH="$bin:/usr/bin:/bin" TERM=dumb DOTFILES="$root" NIX_CONFIG_DIR=/nowhere \
     HANDOFF_SKIP_SHELL_CHECK=1 sh "$root/scripts/handoff.sh" --dry-run apply zsh >"$tmp/dry-zsh.log" 2>&1
 assert "the zsh handoff builds zim after deploying" grep -q 'would run: sh .*/scripts/zim-build.sh' "$tmp/dry-zsh.log"
 rm -f "$h/hm.log" "$h/hm.mode"
@@ -132,7 +132,7 @@ G
 chmod +x "$bin/dscl" "$bin/getent"
 rm -f "$h/hm.log"
 assert_not "a Nix-profile login shell stops the zsh handoff" \
-    env -i HOME="$h" PATH="$bin:/usr/bin:/bin" TERM=dumb DOTFILES="$root" NIX_CONFIG=/nowhere \
+    env -i HOME="$h" PATH="$bin:/usr/bin:/bin" TERM=dumb DOTFILES="$root" NIX_CONFIG_DIR=/nowhere \
     sh "$root/scripts/handoff.sh" apply zsh
 assert_not "the guard stops before any switch" test -e "$h/hm.log"
 

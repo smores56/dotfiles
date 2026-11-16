@@ -24,7 +24,8 @@
 set -eu
 
 DOTFILES=${DOTFILES:-$HOME/repos/github.com/smores56/dotfiles}
-NIX_CONFIG=${NIX_CONFIG:-$HOME/repos/github.com/smores56/nix-config}
+# Not NIX_CONFIG: Nix reads that variable as nix.conf contents.
+NIX_CONFIG_DIR=${NIX_CONFIG_DIR:-$HOME/repos/github.com/smores56/nix-config}
 HM_TARGET=${HM_TARGET:-sam@smoreswork}
 # The environment set smoreswork applies; passed explicitly so a missing saved
 # set can never drop the work hooks silently.
@@ -107,7 +108,7 @@ dot() {
     run mise -C "$DOTFILES" -E "$HANDOFF_ENV" dot "$@" $targets
 }
 
-switch() { run home-manager switch --flake "$NIX_CONFIG#$HM_TARGET"; }
+switch() { run home-manager switch --flake "$NIX_CONFIG_DIR#$HM_TARGET"; }
 
 # The login shell must not live in the Nix profile before zsh moves: if a
 # later home-manager change dropped that binary, every new login would fail.
@@ -172,7 +173,7 @@ case $action in
             dot unapply
             switch
             if ! $dry_run && ! hm_owns; then
-                die "home-manager did not write the $piece files back; remove \"$piece\" from user.dotfilesOwns and run: home-manager switch --flake $NIX_CONFIG#$HM_TARGET"
+                die "home-manager did not write the $piece files back; remove \"$piece\" from user.dotfilesOwns and run: home-manager switch --flake $NIX_CONFIG_DIR#$HM_TARGET"
             fi
         fi
         if ! $dry_run; then
