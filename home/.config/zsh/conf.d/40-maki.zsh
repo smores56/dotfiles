@@ -3,6 +3,8 @@
 # no other command from this shell inherits them, and nothing prints a value.
 maki() {
   emulate -L zsh
+  # The whitespace patterns below need extendedglob, which emulate turns off.
+  setopt localoptions extendedglob
   local secrets=$HOME/.config/secrets.env
   if [[ ! -e $secrets ]]; then
     print -u2 "maki: $secrets is missing; the providers will reject the session"
@@ -16,12 +18,13 @@ maki() {
   local neuralwatt= tinyfish= line name value lineno=0
   while IFS= read -r line || [[ -n $line ]]; do
     (( lineno++ ))
+    line=${line%$'\r'}
     [[ $line == [[:space:]]#(\#*|) ]] && continue
     if [[ $line != *=* ]]; then
       print -u2 "maki: $secrets:$lineno: skipped (no =)"
       continue
     fi
-    name=${${line%%=*}//[[:space:]]/}
+    name=${${${line%%=*}##[[:space:]]#(export[[:space:]]##|)}//[[:space:]]/}
     value=${${line#*=}##[[:space:]]#}
     value=${value%%[[:space:]]#}
     # One layer of matching quotes is cosmetic.

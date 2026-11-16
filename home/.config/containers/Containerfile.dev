@@ -44,6 +44,9 @@ RUN useradd --create-home --uid 1000 dev \
     && chown -R dev:dev /home/dev \
     && chmod 1777 /home/dev
 
+# An empty .zshrc keeps zsh's first-run wizard from waiting on the terminal.
+RUN touch /home/dev/.zshrc && chown dev:dev /home/dev/.zshrc
+
 USER 1000
 WORKDIR /home/dev
 CMD ["zsh"]

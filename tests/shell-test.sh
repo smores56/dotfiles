@@ -42,9 +42,9 @@ else
     sed 's/^/     /' "$tmp/bootstrap.log" >&2
 fi
 if env -i HOME="$h" PATH="$base_path" sh "$root/scripts/zim-build.sh" >"$tmp/zim.log" 2>&1; then
-    ok "zim builds offline from the cloned modules"
+    ok "zim builds from the cloned modules"
 else
-    no "zim builds offline from the cloned modules"
+    no "zim builds from the cloned modules"
     sed 's/^/     /' "$tmp/zim.log" >&2
 fi
 
@@ -55,7 +55,10 @@ printf 'child:%s:%s\n' "${NEURALWATT_API_KEY:-unset}" "${TINYFISH_API_KEY:-unset
 EOF
 chmod +x "$h/.local/bin/maki"
 mkdir -p "$h/.config"
-printf 'NEURALWATT_API_KEY="nw-test"\nTINYFISH_API_KEY=tf-test\n' >"$h/.config/secrets.env"
+# Every shape the fish launcher accepted: comments, blank lines, CRLF, spaces
+# around =, an export prefix, and one layer of quotes.
+printf '# provider keys\r\n\r\n  # indented comment\r\nexport NEURALWATT_API_KEY = "nw-test"  \r\n\r\nTINYFISH_API_KEY=tf-test\r\n' \
+    >"$h/.config/secrets.env"
 chmod 600 "$h/.config/secrets.env"
 
 zi() {  # zi <script>: run inside an interactive zsh in the test HOME
@@ -63,12 +66,14 @@ zi() {  # zi <script>: run inside an interactive zsh in the test HOME
 }
 
 for fn in abbr prompt_pure_setup _zsh_autosuggest_start -ftb-complete _auto_notify_send \
-        fast-theme maki ef et; do
+        fast-theme maki ef et ms; do
     expect "zsh -i defines $fn" yes "$(zi "(( \$+functions[$fn] )) && print yes || print no")"
 done
-expect "pure is the prompt" yes "$(zi '[[ $prompt_theme == pure || -n $prompt_pure_state ]] && print yes || print no')"
+expect "pure is the prompt" yes "$(zi '(( ${precmd_functions[(Ie)prompt_pure_precmd]} )) && print yes || print no')"
 expect "abbreviation e expands to hx" hx "$(zi 'abbr expand e')"
 expect "abbreviation g expands to lazygit" lazygit "$(zi 'abbr expand g')"
+expect "the shared abbreviations are session abbreviations" yes \
+    "$(zi 'abbr list-abbreviations --session | grep -qx "\"e\"" && print yes || print no')"
 expect "abbreviations are session-scoped, not written to a file" no \
     "$(zi '[[ -s ${ABBR_USER_ABBREVIATIONS_FILE} ]] && print yes || print no')"
 expect "r changes into a picked repo" 'cd "$(tv repos)"' "$(zi 'print -r -- $aliases[r]')"
@@ -81,7 +86,8 @@ expect "zim state stays out of ZDOTDIR" no \
     "$(zi 'ls -A $ZDOTDIR | grep -qE "zcompdump|^\\.zim$|init\\.zsh|\\.zwc$" && print yes || print no')"
 expect "interactive startup writes nothing to stderr" "" "$(cat "$tmp/zi.err")"
 
-expect "maki receives the provider keys" "child:nw-test:tf-test" "$(zi 'maki')"
+expect "maki receives the provider keys" "child:nw-test:tf-test" "$(zi 'maki' 2>&1)"
+expect "maki parses the file without complaints" "" "$(zi 'maki >/dev/null' 2>&1)"
 expect "the provider keys never reach the parent shell" "unset:unset" \
     "$(zi 'maki >/dev/null; print -r -- ${NEURALWATT_API_KEY:-unset}:${TINYFISH_API_KEY:-unset}')"
 

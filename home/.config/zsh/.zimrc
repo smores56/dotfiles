@@ -11,7 +11,9 @@ zmodule $_p/completion
 zmodule $_p/fzf-tab
 zmodule $_p/zsh-autosuggestions
 zmodule $_p/zsh-autosuggestions-abbreviations-strategy
-zmodule $_p/zsh-auto-notify --source auto-notify.plugin.zsh
+# Linux needs notify-send; without it the plugin prints a warning at every start.
+zmodule $_p/zsh-auto-notify --source auto-notify.plugin.zsh \
+  --if '[[ $OSTYPE == darwin* ]] || (( $+commands[notify-send] ))'
 zmodule $_p/pure --source async.zsh --source pure.zsh
 # Highlighting last, so it sees every widget.
 zmodule $_p/fast-syntax-highlighting

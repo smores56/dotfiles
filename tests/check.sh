@@ -265,7 +265,7 @@ else
     ok "every zim module is an external path cloned by [bootstrap.repos]"
 fi
 
-if grep -E '^"~/.local/share/zsh-plugins/' "$root/mise.toml" | grep -qvE 'ref = "[0-9a-f]{40}"'; then
+if grep -E '^"~/.local/share/zsh-plugins/' "$root/mise.toml" | grep -qvE 'ref = "[0-9a-f]{40}"( |,)'; then
     no "every zsh plugin repo is pinned to a full commit"
 else
     ok "every zsh plugin repo is pinned to a full commit"

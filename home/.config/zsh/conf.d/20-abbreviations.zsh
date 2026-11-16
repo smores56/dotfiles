@@ -14,7 +14,6 @@
     t     'zellij a -c main'
     gp    'gh pr create'
     a     'maki'
-    ms    'maki-session-resume'
     dot   'mise -C ~/repos/github.com/smores56/dotfiles dot apply'
     boot  'mise -C ~/repos/github.com/smores56/dotfiles bootstrap'
     cr    'repos'

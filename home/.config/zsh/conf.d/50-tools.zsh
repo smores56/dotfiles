@@ -5,3 +5,6 @@
 # module; it prepends itself to the suggestion strategy, so reset that after.
 (( $+commands[atuin] )) && eval "$(atuin init zsh)"
 ZSH_AUTOSUGGEST_STRATEGY=(abbreviations history)
+
+# Long-lived interactive programs are not "long commands" worth a notification.
+(( ${+AUTO_NOTIFY_IGNORE} )) && AUTO_NOTIFY_IGNORE+=(hx lazygit yazi zellij maki tv bat btm claude)

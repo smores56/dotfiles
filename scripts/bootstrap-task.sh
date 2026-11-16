@@ -49,6 +49,7 @@ tighten_ssh_dir() {
 }
 
 link_conda_zsh
-sh "$(dirname "$0")/zim-build.sh" && log "zim built"
+sh "$(dirname "$0")/zim-build.sh" || die "zim build failed; the shell has no plugins until it succeeds"
+log "zim built"
 tighten_ssh_dir
 install_sdlc
