@@ -1,0 +1,100 @@
+# AeroSpace (macOS tiling). Installed as a Homebrew cask; this file is the whole config.
+config-version = 2
+# The cask registers its own login item.
+start-at-login = true
+after-login-command = []
+after-startup-command = ["layout tiles"]
+
+default-root-container-layout = "tiles"
+default-root-container-orientation = "auto"
+# Version 2 no longer infers persistent workspaces from bindings; keep 1-9 so
+# empty pinned workspaces stay on their monitors.
+persistent-workspaces = ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+
+# Monitor names are case-insensitive regexes; the first connected one wins.
+# Work (1) prefers any external display, comms (2) the open laptop.
+[workspace-to-monitor-force-assignment]
+1 = ["^dell u3425we", "^27e6qca", "^built-in"]
+2 = ["^built-in", "^27e6qca"]
+
+[[on-window-detected]]
+if.app-id = "com.github.wez.wezterm"
+run = "move-node-to-workspace 1"
+
+[[on-window-detected]]
+if.app-id = "com.brave.Browser"
+run = "move-node-to-workspace 1"
+
+[[on-window-detected]]
+if.app-id = "com.tinyspeck.slackmacgap"
+run = "move-node-to-workspace 2"
+
+[[on-window-detected]]
+if.app-id = "com.apple.mail"
+run = "move-node-to-workspace 2"
+
+[[on-window-detected]]
+if.app-id = "com.apple.iCal"
+run = "move-node-to-workspace 2"
+
+# Tighter gaps on the laptop panel.
+[gaps]
+inner.horizontal = [{ monitor.built-in = 6 }, 12]
+inner.vertical = [{ monitor.built-in = 6 }, 12]
+outer.left = [{ monitor.built-in = 6 }, 12]
+outer.right = [{ monitor.built-in = 6 }, 12]
+outer.top = [{ monitor.built-in = 6 }, 12]
+outer.bottom = [{ monitor.built-in = 6 }, 12]
+
+[mode.main.binding]
+# Apps
+cmd-ctrl-t = "exec-and-forget /usr/bin/open -b com.github.wez.wezterm"
+cmd-ctrl-b = "exec-and-forget /usr/bin/open -b com.brave.Browser"
+cmd-q = "close --quit-if-last-window"
+# Lock the screen; fall back to display sleep if System Events is slow.
+cmd-esc = """exec-and-forget /usr/bin/osascript -e 'with timeout of 5 seconds' -e 'tell application "System Events" to key code 12 using {control down, command down}' -e 'end timeout' || /usr/bin/pmset displaysleepnow"""
+
+# Layout
+cmd-ctrl-e = "layout tiles horizontal vertical"
+cmd-ctrl-w = "layout accordion horizontal vertical"
+cmd-ctrl-v = "layout floating tiling"
+cmd-ctrl-f = "fullscreen"
+cmd-ctrl-shift-f = "macos-native-fullscreen"
+cmd-ctrl-equal = "resize width +30"
+cmd-ctrl-minus = "resize width -30"
+cmd-ctrl-shift-equal = "resize height +30"
+cmd-ctrl-shift-minus = "resize height -30"
+
+# Focus and move
+ctrl-left = "focus --boundaries all-monitors-outer-frame left"
+ctrl-down = "focus --boundaries all-monitors-outer-frame down"
+ctrl-up = "focus --boundaries all-monitors-outer-frame up"
+ctrl-right = "focus --boundaries all-monitors-outer-frame right"
+ctrl-shift-left = "move --boundaries all-monitors-outer-frame left"
+ctrl-shift-down = "move --boundaries all-monitors-outer-frame down"
+ctrl-shift-up = "move --boundaries all-monitors-outer-frame up"
+ctrl-shift-right = "move --boundaries all-monitors-outer-frame right"
+
+# Workspaces
+ctrl-1 = "workspace 1"
+ctrl-2 = "workspace 2"
+ctrl-3 = "workspace 3"
+ctrl-4 = "workspace 4"
+ctrl-5 = "workspace 5"
+ctrl-6 = "workspace 6"
+ctrl-7 = "workspace 7"
+ctrl-8 = "workspace 8"
+ctrl-9 = "workspace 9"
+ctrl-pageUp = "workspace prev"
+ctrl-pageDown = "workspace next"
+ctrl-shift-1 = ["move-node-to-workspace 1", "workspace 1"]
+ctrl-shift-2 = ["move-node-to-workspace 2", "workspace 2"]
+ctrl-shift-3 = ["move-node-to-workspace 3", "workspace 3"]
+ctrl-shift-4 = ["move-node-to-workspace 4", "workspace 4"]
+ctrl-shift-5 = ["move-node-to-workspace 5", "workspace 5"]
+ctrl-shift-6 = ["move-node-to-workspace 6", "workspace 6"]
+ctrl-shift-7 = ["move-node-to-workspace 7", "workspace 7"]
+ctrl-shift-8 = ["move-node-to-workspace 8", "workspace 8"]
+ctrl-shift-9 = ["move-node-to-workspace 9", "workspace 9"]
+ctrl-shift-pageUp = ["move-node-to-workspace prev", "workspace prev"]
+ctrl-shift-pageDown = ["move-node-to-workspace next", "workspace next"]
