@@ -13,4 +13,6 @@
 "~/Library/Fonts/GoogleSansCode-Italic-VF.ttf" = { source = "desktop/fonts/GoogleSansCode-Italic-VF.ttf", mode = "copy", variants = [{ os = "macos" }] }
 
 [bootstrap.packages]
-"brew-cask:wezterm" = { version = "latest", os = ["macos"] }
+# ~/Applications: mise refuses to install through a group-writable
+# /Applications (root:admin 0775 on the work laptop), and it needs no sudo.
+"brew-cask:wezterm" = { version = "latest", os = ["macos"], appdir = "~/Applications" }
