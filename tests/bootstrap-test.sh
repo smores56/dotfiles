@@ -286,13 +286,16 @@ printf 'export HM_SESSION_TEST=1\nexport PATH="$HOME/.nix-profile/bin:$PATH"\n' 
     >"$h/.nix-profile/etc/profile.d/hm-session-vars.sh"
 mkdir -p "$h/.nix-profile/bin"
 printf 'export EMPLOYER_RC_TEST=1\n' >"$h/.zshrc"
+for v in git_name=W work_email=w@work.example 'work_signing_pubkey=ssh-ed25519 AAAAtest w'; do
+    run_mise "$h" desktop,work vars "$v" >/dev/null 2>&1
+done
 run_mise "$h" desktop,work dot apply >"$tmp/work.log" 2>&1 \
     || { no "work apply exits 0"; sed 's/^/     /' "$tmp/work.log" >&2; }
 assert "work links the zsh environment hook" links_into_repo "$h/.config/zsh/env.d/work.zsh"
 assert "work links the interactive work hook" links_into_repo "$h/.config/zsh/conf.d/90-work.zsh"
 assert "work links the Claude work rules" grep -q 'This is a work host' "$h/.claude/work.md"
 assert "work leaves the employer's ~/.zshrc a plain file" test ! -L "$h/.zshrc"
-assert_not "work does not pull in identity" test -e "$h/.gitconfig"
+assert_not "work does not pull in the personal identity" test -e "$h/.config/git/personal.inc"
 if command -v zsh >/dev/null 2>&1; then
     assert "non-interactive zsh gets home-manager's session vars" \
         test "$(env -i HOME="$h" PATH=/usr/bin:/bin zsh -c 'print -r -- ${HM_SESSION_TEST-}')" = 1
@@ -307,17 +310,50 @@ if command -v zsh >/dev/null 2>&1; then
         test "$(env -i HOME="$h" PATH=/usr/bin:/bin TERM=dumb zsh -ic 'print -r -- ${EMPLOYER_RC_TEST-}' 2>/dev/null)" = 1
 fi
 
-# On smoreswork home-manager's gh wrapper picks the token per owner, so the
-# work environment must not put a mise gh ahead of it.
+# On smoreswork gh runs from mise under the 1Password shell plugin.
 h=$(new_home work-tools)
 mkdir -p "$h/.config"
 ln -s "$root/global" "$h/.config/mise"
 current_tools() {
     (cd / && env -i HOME="$h" PATH=/usr/bin:/bin MISE_ENV="$1" "$mise_bin" ls --current 2>/dev/null | awk '{print $1}')
 }
-assert "the base tool set includes gh" grep -qx gh <<<"$(current_tools "")"
-assert_not "the work environment leaves gh to home-manager" grep -qx gh <<<"$(current_tools desktop,work)"
-assert "the work environment keeps the other tools" grep -qx jq <<<"$(current_tools desktop,work)"
+assert "the work environment installs gh from mise" grep -qx gh <<<"$(current_tools desktop,work)"
+
+# --- work identity: work everywhere, signed through 1Password ----------------
+
+h=$(new_home work-identity)
+key='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIworkkey work@1password'
+for v in "git_name=Work Person" work_email=me@work.example "work_signing_pubkey=$key"; do
+    run_mise "$h" desktop,work vars "$v" >/dev/null 2>&1 || no "save work var ${v%%=*}"
+done
+if run_mise "$h" desktop,work dot apply >"$tmp/work-identity.log" 2>&1; then
+    ok "work identity apply exits 0"
+else
+    no "work identity apply exits 0"
+    sed 's/^/     /' "$tmp/work-identity.log" >&2
+fi
+gitcfg() { env -i HOME="$h" PATH=/usr/bin:/bin git -C "$1" config --get "$2"; }
+mkdir -p "$h/Blitzy/svc" "$h/scratch"
+git init -q "$h/Blitzy/svc"; git -C "$h/Blitzy/svc" remote add origin https://github.com/blitzy-ai/svc.git
+git init -q "$h/scratch"
+for repo in "$h/Blitzy/svc" "$h/scratch"; do
+    assert "$(basename "$repo") commits as the work identity" test "$(gitcfg "$repo" user.email)" = me@work.example
+done
+assert "the work name is set" test "$(gitcfg "$h/scratch" user.name)" = "Work Person"
+assert "commits are signed" test "$(gitcfg "$h/scratch" commit.gpgsign)" = true
+assert "signing goes through 1Password" \
+    test "$(gitcfg "$h/scratch" gpg.ssh.program)" = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+assert "the signing key is the 1Password public key" test "$(gitcfg "$h/scratch" user.signingkey)" = "$key"
+assert "the work flow is pr" test "$(gitcfg "$h/scratch" smores.flow)" = pr
+assert "work branches use the ticket template" test "$(gitcfg "$h/scratch" smores.branchTemplate)" = '{ticket}-{slug}'
+assert "https GitHub remotes go over SSH" \
+    test "$(env -i HOME="$h" PATH=/usr/bin:/bin git -C "$h/Blitzy/svc" ls-remote --get-url origin)" = git@github.com:blitzy-ai/svc.git
+assert "github.com uses the 1Password SSH agent" \
+    grep -q 'IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"' "$h/.ssh/config"
+assert_not "the work SSH config names no key file" grep -q IdentityFile "$h/.ssh/config"
+assert "allowed_signers lists the work key" \
+    grep -qx "me@work.example namespaces=\"git\" $key" "$h/.config/ssh/allowed_signers"
+assert_not "no personal identity on the work host" test -e "$h/.config/git/personal.inc"
 
 # mise reports an entry whose source is missing as a warning and exits 0.
 if grep -h 'matched no files' "$tmp"/*.log >"$tmp/nomatch" 2>/dev/null; then

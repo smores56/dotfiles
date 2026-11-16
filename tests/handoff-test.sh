@@ -71,6 +71,11 @@ hand() {
 
 hm_links make helix
 hm_links make television
+# The work environment requires its identity vars before any apply.
+for v in git_name=W work_email=w@work.example 'work_signing_pubkey=ssh-ed25519 AAAAtest w'; do
+    env -i HOME="$h" PATH="$bin:/usr/bin:/bin" MISE_ENV=desktop,work MISE_TRUSTED_CONFIG_PATHS="$root" \
+        "$mise_bin" -C "$root" vars "$v" >/dev/null 2>&1
+done
 
 # --- dry run ---
 hand --dry-run apply helix >"$tmp/dry.log" 2>&1

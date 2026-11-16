@@ -1,0 +1,18 @@
+# Rendered by mise from the work vars. Every checkout on this laptop is work:
+# one identity, signed by the 1Password key, no personal routing.
+[user]
+    name = "{{ vars.git_name }}"
+    email = "{{ vars.work_email }}"
+    signingkey = "{{ vars.work_signing_pubkey }}"
+[gpg "ssh"]
+    program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+[smores]
+    flow = "pr"
+    branchTemplate = "{ticket}-{slug}"
+    branchTemplateUnticketed = "{type}/{slug}"
+    workFlat = "~/Blitzy"
+    workOwners = "blitzy-ai blitzy-platform"
+# Git talks to GitHub over SSH through the 1Password agent, so https remotes
+# (what `repos get` and most tools clone) are rewritten.
+[url "git@github.com:"]
+    insteadOf = https://github.com/

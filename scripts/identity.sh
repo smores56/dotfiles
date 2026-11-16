@@ -49,6 +49,17 @@ case $cmd in
             die "work_owners or work_flat_root is set, so work_email is required: mise vars work_email=..."
         fi
         ;;
+    check-work)
+        [ $# -eq 3 ] || die "check-work takes 3 values, got $#"
+        check_value git_name "$1"
+        check_value work_email "$2"
+        check_value work_signing_pubkey "$3"
+        case $3 in
+            ssh-ed25519\ *|ssh-rsa\ *|ecdsa-sha2-*\ *|sk-ssh-ed25519@openssh.com\ *) ;;
+            *) die "work_signing_pubkey must be an OpenSSH public key (ssh-ed25519 AAAA...), not a path" ;;
+        esac
+        mkdir -p "$HOME/.config/ssh" && chmod 700 "$HOME/.config/ssh"
+        ;;
     signers)
         [ $# -eq 4 ] || die "signers takes 4 values, got $#"
         email=$1 key=$2 work_email=${3:-$1} work_key=${4:-$2}
@@ -79,5 +90,5 @@ case $cmd in
             : >"$dir/allowed_signers"
         fi
         ;;
-    *) die "usage: identity.sh check|signers ..." ;;
+    *) die "usage: identity.sh check|check-work|signers ..." ;;
 esac
