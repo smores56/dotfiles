@@ -259,7 +259,7 @@ else
     no "zsh startup must only source zim's init.zsh, with the version check disabled"
 fi
 
-if grep -vE '^\s*(#|$|_p=|unset )' "$root/home/.config/zsh/.zimrc" | grep -qvE '^zmodule \$_p/'; then
+if grep -vE '^\s*(#|$|_p=|unset |--)' "$root/home/.config/zsh/.zimrc" | grep -qvE '^zmodule \$_p/'; then
     no "every zim module is an external path cloned by [bootstrap.repos]"
 else
     ok "every zim module is an external path cloned by [bootstrap.repos]"

@@ -1,7 +1,7 @@
-# Managed file: ~/.gitconfig, symlinked by install.sh.
+# Managed file: ~/.gitconfig, linked by mise from the identity environment.
 #
 # Machine identity and the includeIf rules live in ~/.config/git/machine.inc,
-# which install.sh generates from the untracked local.env. Personal and work
+# which mise renders from the identity vars (see mise.identity.toml). Personal and work
 # checkouts then pick up their own email, signing key, flow, and branch
 # templates from personal.inc and work.inc.
 #

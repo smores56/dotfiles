@@ -14,6 +14,15 @@ check_value() {
         *[[:cntrl:]]*) die "$1 contains a control character; fix it with: mise vars $1=..." ;;
         *'"'*|*'\'*) die "$1 contains a double quote or backslash; fix it with: mise vars $1=..." ;;
     esac
+    case $1 in
+        *email) case $2 in *[[:space:]]*) die "$1 contains whitespace; fix it with: mise vars $1=..." ;; esac ;;
+        personal_owner|work_owners)
+            for owner in $2; do
+                case $owner in
+                    *[!A-Za-z0-9._-]*) die "$1 has an invalid GitHub owner '$owner'; fix it with: mise vars $1=..." ;;
+                esac
+            done ;;
+    esac
 }
 
 expand_home() {
@@ -43,15 +52,22 @@ case $cmd in
     signers)
         [ $# -eq 4 ] || die "signers takes 4 values, got $#"
         email=$1 key=$2 work_email=${3:-$1} work_key=${4:-$2}
-        dir=${XDG_CONFIG_HOME:-$HOME/.config}/ssh
+        # ~/.gitconfig names ~/.config/ssh/allowed_signers literally, so this
+        # path must not follow XDG_CONFIG_HOME.
+        dir=$HOME/.config/ssh
         # ssh writes known_hosts beside the config, so the directory must exist
         # before the first connection.
         mkdir -p "$dir" && chmod 700 "$dir"
         out=""
         for pair in "$email $key" "$work_email $work_key"; do
             path=$(expand_home "${pair#* }")
-            [ -r "$path" ] || continue
-            line="${pair%% *} namespaces=\"git\" $(cat "$path")"
+            if [ ! -f "$path" ] || [ ! -r "$path" ]; then
+                printf 'identity: %s is not a readable key file; allowed_signers skips it\n' "${pair#* }" >&2
+                continue
+            fi
+            # A .pub file holds one key; anything after its first line is not part of it.
+            IFS= read -r key_line <"$path" || [ -n "$key_line" ] || continue
+            line="${pair%% *} namespaces=\"git\" $key_line"
             case $out in *"$line"*) ;; *) out="$out$line
 " ;; esac
         done

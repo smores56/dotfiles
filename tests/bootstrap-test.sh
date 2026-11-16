@@ -189,6 +189,29 @@ run_mise "$h2" identity dot apply >"$tmp/identity-bad.log" 2>&1
 assert_not "a control character in a var stops the apply" test -e "$HBAD/.config/git/machine.inc"
 assert "the refusal names the var" grep -q git_name "$tmp/identity-bad.log"
 
+h5=$(new_home identity-personal)
+run_mise "$h5" identity vars git_name=P >/dev/null 2>&1
+run_mise "$h5" identity vars git_email=me@example.com >/dev/null 2>&1
+run_mise "$h5" identity vars 'git_signing_key=~/.ssh' >/dev/null 2>&1
+mkdir -p "$h5/.ssh"
+if run_mise "$h5" identity dot apply >"$tmp/identity-personal.log" 2>&1; then
+    ok "a key var naming a directory is skipped, not fatal"
+else
+    no "a key var naming a directory is skipped, not fatal"
+    sed 's/^/     /' "$tmp/identity-personal.log" >&2
+fi
+assert "the skipped key is reported" grep -q 'not a readable key file' "$tmp/identity-personal.log"
+assert "work.inc falls back to the personal email" \
+    grep -q 'email = "me@example.com"' "$h5/.config/git/work.inc"
+
+h6=$(new_home identity-owner)
+run_mise "$h6" identity vars git_name=O >/dev/null 2>&1
+run_mise "$h6" identity vars git_email=me@example.com >/dev/null 2>&1
+run_mise "$h6" identity vars 'work_owners=ok $(touch pwned)' >/dev/null 2>&1
+run_mise "$h6" identity vars work_email=w@example.com >/dev/null 2>&1
+run_mise "$h6" identity dot apply >"$tmp/identity-owner.log" 2>&1
+assert_not "an invalid owner name stops the apply" test -e "$h6/.config/git/machine.inc"
+
 h3=$(new_home identity-quote)
 run_mise "$h3" identity vars git_email=me@example.com >/dev/null 2>&1
 run_mise "$h3" identity vars 'git_name=Bad "Quote"' >/dev/null 2>&1
