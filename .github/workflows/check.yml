@@ -15,6 +15,6 @@ jobs:
       - name: Install checks
         run: |
           sudo apt-get update
-          sudo apt-get install -y bash fish git python3 shellcheck
+          sudo apt-get install -y bash git python3 shellcheck zsh
       - name: Run the checks
         run: tests/check.sh --shellcheck

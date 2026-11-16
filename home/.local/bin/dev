@@ -164,7 +164,7 @@ fi
 
 append_literal "$(quote "$image")"
 # With no command the image's own CMD runs. No probe container: asking the
-# engine whether fish exists starts a second container on every invocation.
+# engine whether a shell exists starts a second container on every invocation.
 
 eval "set -- $(quote "$engine") $run_args \"\$@\""
 exec "$@"

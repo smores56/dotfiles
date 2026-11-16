@@ -49,5 +49,6 @@ tighten_ssh_dir() {
 }
 
 link_conda_zsh
+sh "$(dirname "$0")/zim-build.sh" && log "zim built"
 tighten_ssh_dir
 install_sdlc

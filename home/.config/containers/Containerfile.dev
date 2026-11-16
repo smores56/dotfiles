@@ -11,15 +11,15 @@ ARG MISE_VERSION=v2026.11.8
 # No MISE_TRUSTED_CONFIG_PATHS here: `dev` sets it to the checkout it mounts,
 # so one repository's mise config is never trusted by default.
 ENV LANG=C.UTF-8 \
-    SHELL=/usr/bin/fish \
+    SHELL=/usr/bin/zsh \
     MISE_DATA_DIR=/home/dev/.local/share/mise \
     MISE_YES=1
 
 RUN dnf -y install --setopt=install_weak_deps=False \
-        bash bat ca-certificates curl diffutils eza fd-find findutils fish \
+        bash bat ca-certificates curl diffutils eza fd-find findutils \
         gh git git-delta git-lfs gzip jq just less make man-db openssh-clients \
         procps-ng python3 python3-pip ripgrep shellcheck tar unzip util-linux uv \
-        which xz yq \
+        which xz yq zsh \
     && dnf -y clean all \
     && rm -rf /var/cache/dnf
 
@@ -46,4 +46,4 @@ RUN useradd --create-home --uid 1000 dev \
 
 USER 1000
 WORKDIR /home/dev
-CMD ["fish"]
+CMD ["zsh"]

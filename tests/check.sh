@@ -63,21 +63,21 @@ else
     skip "syntax maki/bin/maki-session-search (python3 not installed)"
 fi
 
-# --- fish
+# --- zsh
 
-if command -v fish >/dev/null 2>&1; then
-    for fish_file in "$root"/home/.config/fish/config.fish "$root"/home/.config/fish/conf.d/*.fish \
-            "$root"/home/.config/fish/functions/*.fish; do
-        [ -f "$fish_file" ] || continue
-        if fish -n "$fish_file" 2>"$tmp/err"; then
-            ok "syntax $(rel "$fish_file") (fish)"
+if command -v zsh >/dev/null 2>&1; then
+    for zsh_file in "$root"/home/.zshenv "$root"/home/.config/zsh/.z* \
+            "$root"/home/.config/zsh/conf.d/*.zsh; do
+        [ -f "$zsh_file" ] || continue
+        if zsh -n "$zsh_file" 2>"$tmp/err"; then
+            ok "syntax $(rel "$zsh_file") (zsh)"
         else
-            no "syntax $(rel "$fish_file") (fish)"
+            no "syntax $(rel "$zsh_file") (zsh)"
             sed 's/^/     /' "$tmp/err" >&2
         fi
     done
 else
-    skip "syntax home/.config/fish (fish not installed)"
+    skip "syntax home/.config/zsh (zsh not installed)"
 fi
 
 # --- TOML
@@ -245,11 +245,30 @@ else
     ok "no secret material in managed files"
 fi
 
-if grep -rE 'curl|wget' "$root/home/.config/fish" >/dev/null 2>&1; then
-    no "fish startup downloads at shell start"
-    grep -rnE 'curl|wget' "$root/home/.config/fish" | sed 's/^/     /' >&2
+if grep -rE 'curl|wget' "$root/home/.zshenv" "$root/home/.config/zsh" >/dev/null 2>&1; then
+    no "zsh startup downloads at shell start"
+    grep -rnE 'curl|wget' "$root/home/.zshenv" "$root/home/.config/zsh" | sed 's/^/     /' >&2
 else
-    ok "no downloader in fish startup"
+    ok "no downloader in zsh startup"
+fi
+
+if grep -qE '^zstyle .:zim. disable-version-check yes$' "$root/home/.config/zsh/.zshrc" \
+        && ! grep -q 'zimfw' "$root/home/.config/zsh/.zshrc"; then
+    ok "zsh startup never runs zimfw or its version check"
+else
+    no "zsh startup must only source zim's init.zsh, with the version check disabled"
+fi
+
+if grep -vE '^\s*(#|$|_p=|unset )' "$root/home/.config/zsh/.zimrc" | grep -qvE '^zmodule \$_p/'; then
+    no "every zim module is an external path cloned by [bootstrap.repos]"
+else
+    ok "every zim module is an external path cloned by [bootstrap.repos]"
+fi
+
+if grep -E '^"~/.local/share/zsh-plugins/' "$root/mise.toml" | grep -qvE 'ref = "[0-9a-f]{40}"'; then
+    no "every zsh plugin repo is pinned to a full commit"
+else
+    ok "every zsh plugin repo is pinned to a full commit"
 fi
 
 # --- one checkout root, one instruction set
@@ -339,18 +358,16 @@ forbid "dev's header does not claim unconditional agent forwarding" \
 require "dev's usage documents the opt-in agent" "$root/home/.local/bin/dev" \
     'DEV_SSH_AGENT'
 require "README documents the opt-in agent" "$root/README.md" 'DEV_SSH_AGENT=1'
-forbid "no undefined 'pick repos c' command" \
-    "$root/home/.config/fish/conf.d/abbreviations.fish" "pick repos c'"
 require "the repos picker changes directory" \
-    "$root/home/.config/fish/conf.d/abbreviations.fish" "pick repos cd'"
-forbid "no undefined 'pick worktrees c' command" \
-    "$root/home/.config/fish/conf.d/abbreviations.fish" "pick worktrees c'"
+    "$root/home/.config/zsh/conf.d/30-pickers.zsh" "alias r='cd \"\$(tv repos)\"'"
 require "the worktrees picker changes directory" \
-    "$root/home/.config/fish/conf.d/abbreviations.fish" "pick worktrees cd'"
-forbid "no zsh residue in the check images" "$root/.github/workflows/check.yml" 'zsh'
-forbid "no zsh residue in the repository Containerfile" "$root/Containerfile" 'zsh'
-forbid "no zsh residue in the shared dev image" \
-    "$root/home/.config/containers/Containerfile.dev" 'zsh'
+    "$root/home/.config/zsh/conf.d/30-pickers.zsh" "alias w='cd \"\$(tv worktrees)\"'"
+forbid "no fish residue in the check images" "$root/.github/workflows/check.yml" 'fish'
+forbid "no fish residue in the repository Containerfile" "$root/Containerfile" 'fish'
+forbid "no fish residue in the shared dev image" \
+    "$root/home/.config/containers/Containerfile.dev" 'fish'
+forbid "zellij does not start fish" "$root/home/.config/zellij/config.kdl" 'fish'
+require "zellij follows the terminal palette" "$root/home/.config/zellij/config.kdl" 'theme "ansi"'
 forbid "no TODO/TBD in the operator steps" "$root/docs/manual-steps.md" 'TODO|TBD'
 forbid "no TODO/TBD in README" "$root/README.md" 'TODO|TBD'
 forbid "the credentials step fetches keys instead of copying a missing file" \
@@ -369,11 +386,11 @@ else
     no "the credentials step must fetch the keys from the Bitwarden CLI"
 fi
 
-if [ -f "$root/home/.config/fish/functions/maki.fish" ] \
-        && [ ! -e "$root/home/.config/fish/conf.d/secrets.fish" ]; then
-    ok "provider keys are exported by the maki launcher, not conf.d"
+if grep -q '^maki() {' "$root/home/.config/zsh/conf.d/40-maki.zsh" 2>/dev/null \
+        && ! grep -rlE '^\s*export (NEURALWATT|TINYFISH)_API_KEY' "$root/home" >/dev/null 2>&1; then
+    ok "provider keys reach only the maki process, never an export"
 else
-    no "provider keys must be exported by home/.config/fish/functions/maki.fish only"
+    no "provider keys must be passed by the maki() launcher only, never exported"
 fi
 
 # --- helix: every configured language server is a pinned tool
@@ -417,6 +434,16 @@ if command -v git >/dev/null 2>&1 && command -v bash >/dev/null 2>&1; then
     else
         no "behavioral tests (tests/bootstrap-test.sh)"
         sed 's/^/     /' "$tmp/bootstrap.log" >&2
+    fi
+    if bash "$root/tests/shell-test.sh" >"$tmp/shell.log" 2>&1; then
+        if grep -q '^skip shell tests' "$tmp/shell.log"; then
+            skip "behavioral tests (tests/shell-test.sh: mise or zsh not installed)"
+        else
+            ok "behavioral tests (tests/shell-test.sh)"
+        fi
+    else
+        no "behavioral tests (tests/shell-test.sh)"
+        sed 's/^/     /' "$tmp/shell.log" >&2
     fi
     if bash "$root/tests/cli.sh" >"$tmp/cli.log" 2>&1; then
         ok "behavioral tests (tests/cli.sh)"

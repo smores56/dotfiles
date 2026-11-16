@@ -1,8 +1,8 @@
-default_shell "fish"
+default_shell "zsh"
 session_serialization false
 show_startup_tips false
 
-theme "catppuccin-mocha"
+theme "ansi"
 
 ui {
     pane_frames {
