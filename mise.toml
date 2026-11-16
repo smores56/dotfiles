@@ -49,7 +49,6 @@ min_version = "2026.11.9"
 "~/.claude/CLAUDE.md" = { source = "home/.claude/CLAUDE.md" }
 # A placeholder, so the import always resolves; the work environment replaces it.
 "~/.claude/work.md" = { source = "home/.claude/work.md" }
-"~/.codex/AGENTS.md" = { source = "home/.claude/CLAUDE.md" }
 "~/.claude/agents/Explore.md" = { source = "home/.claude/agents/Explore.md" }
 "~/.claude/skills" = { source = "maki/skills", mode = "symlink-each" }
 "~/.claude/settings.json/shared" = { source = "home/.claude-merge/settings.json", merge = true }

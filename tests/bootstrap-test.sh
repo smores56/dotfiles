@@ -85,7 +85,6 @@ for target in \
     .config/maki/init.lua \
     .agents/skills/sdlc/SKILL.md \
     .claude/CLAUDE.md \
-    .codex/AGENTS.md \
     .claude/agents/Explore.md \
     .claude/skills/sdlc/SKILL.md \
     .claude/skills/resolve-pr/scripts/watch-pr.sh; do
