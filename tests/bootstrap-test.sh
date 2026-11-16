@@ -287,6 +287,18 @@ if command -v zsh >/dev/null 2>&1; then
         test "$(env -i HOME="$h" PATH=/usr/bin:/bin TERM=dumb zsh -ic 'print -r -- ${EMPLOYER_RC_TEST-}' 2>/dev/null)" = 1
 fi
 
+# On smoreswork home-manager's gh wrapper picks the token per owner, so the
+# work environment must not put a mise gh ahead of it.
+h=$(new_home work-tools)
+mkdir -p "$h/.config"
+ln -s "$root/global" "$h/.config/mise"
+current_tools() {
+    (cd / && env -i HOME="$h" PATH=/usr/bin:/bin MISE_ENV="$1" "$mise_bin" ls --current 2>/dev/null | awk '{print $1}')
+}
+assert "the base tool set includes gh" grep -qx gh <<<"$(current_tools "")"
+assert_not "the work environment leaves gh to home-manager" grep -qx gh <<<"$(current_tools desktop,work)"
+assert "the work environment keeps the other tools" grep -qx jq <<<"$(current_tools desktop,work)"
+
 # mise reports an entry whose source is missing as a warning and exits 0.
 if grep -h 'matched no files' "$tmp"/*.log >"$tmp/nomatch" 2>/dev/null; then
     no "every dotfile source exists"

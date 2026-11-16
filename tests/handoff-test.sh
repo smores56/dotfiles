@@ -65,6 +65,7 @@ mode() { printf '%s\n' "$*" >"$h/hm.mode"; }
 
 hand() {
     env -i HOME="$h" PATH="$bin:/usr/bin:/bin" TERM=dumb DOTFILES="$root" NIX_CONFIG=/nowhere \
+        HANDOFF_SKIP_SHELL_CHECK=1 \
         MISE_TRUSTED_CONFIG_PATHS="$root" MISE_YES=1 sh "$root/scripts/handoff.sh" "$@"
 }
 
@@ -112,6 +113,23 @@ if hand rollback --previous zsh >"$tmp/prev.log" 2>&1; then ok "--previous undoe
 assert "--previous activates the recorded generation" grep -qx 8 "$h/activated"
 assert_not "--previous removes the zsh dotfiles first" test -L "$h/.config/zsh/env.d/work.zsh"
 assert_not "an unknown piece is refused" hand apply fish
+
+# The login-shell guard reads the real account, so only its shape is tested:
+# a Nix-profile login shell stops the zsh handoff before anything runs.
+cat >"$bin/dscl" <<'D'
+#!/bin/sh
+echo "UserShell: $HOME/.nix-profile/bin/zsh"
+D
+cat >"$bin/getent" <<'G'
+#!/bin/sh
+echo "u:x:1:1::$HOME:$HOME/.nix-profile/bin/zsh"
+G
+chmod +x "$bin/dscl" "$bin/getent"
+rm -f "$h/hm.log"
+assert_not "a Nix-profile login shell stops the zsh handoff" \
+    env -i HOME="$h" PATH="$bin:/usr/bin:/bin" TERM=dumb DOTFILES="$root" NIX_CONFIG=/nowhere \
+    sh "$root/scripts/handoff.sh" apply zsh
+assert_not "the guard stops before any switch" test -e "$h/hm.log"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

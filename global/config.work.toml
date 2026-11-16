@@ -1,0 +1,5 @@
+# smoreswork: home-manager's gh is a wrapper that picks the token for each
+# repository owner (personal or employer). A mise gh earlier on PATH would
+# bypass it, so mise leaves gh alone there.
+[settings]
+disable_tools = ["gh"]

@@ -109,8 +109,24 @@ dot() {
 
 switch() { run home-manager switch --flake "$NIX_CONFIG#$HM_TARGET"; }
 
+# The login shell must not live in the Nix profile before zsh moves: if a
+# later home-manager change dropped that binary, every new login would fail.
+login_shell() {
+    if [ "$(uname -s)" = Darwin ]; then
+        dscl . -read "/Users/$(id -un)" UserShell 2>/dev/null | sed 's/^UserShell: //'
+    else
+        getent passwd "$(id -un)" | cut -d: -f7
+    fi
+}
+
 case $action in
     apply)
+        if [ "$piece" = zsh ] && [ -z "${HANDOFF_SKIP_SHELL_CHECK-}" ]; then
+            case $(login_shell) in
+                /nix/*|"$HOME"/.nix-profile/*)
+                    die "the login shell is $(login_shell); switch it first: mise -C $DOTFILES -E $HANDOFF_ENV bootstrap --only user" ;;
+            esac
+        fi
         current=$(readlink "$PROFILES/home-manager" 2>/dev/null || true)
         [ -n "$current" ] || die "no active home-manager generation found"
         # Recorded once: a retried apply must keep the generation from before
