@@ -6,7 +6,9 @@
 # usage: install-mise.sh <40-hex commit> <env set> [extra bootstrap args...]
 #   env sets: identity (smortress), desktop,identity (smorespro), desktop,work (smoreswork)
 #
-# The login shell is a separate, interactive step afterwards:
+# Re-running with a newer commit moves the checkout there (`--update`). The
+# login shell is always skipped here (so extra args cannot use `--only`); it is
+# a separate, interactive step afterwards because chsh prompts for a password:
 #   mise -C ~/repos/github.com/smores56/dotfiles bootstrap --only user
 set -eu
 
@@ -40,7 +42,8 @@ if [ -x "$mise" ] && "$mise" --version 2>/dev/null | grep -q "^${MISE_VERSION#v}
     printf 'install-mise: mise %s present\n' "$MISE_VERSION"
 else
     work=$(mktemp -d) || die "cannot create a temporary directory"
-    trap 'rm -rf "$work"' EXIT HUP INT TERM
+    trap 'rm -rf "$work"' EXIT
+    trap 'exit 1' HUP INT TERM
     asset=mise-$MISE_VERSION-$platform.tar.gz
     curl -fsSL --proto '=https' --tlsv1.2 -o "$work/$asset" \
         "https://github.com/jdx/mise/releases/download/$MISE_VERSION/$asset" || die "could not download $asset"
@@ -48,9 +51,21 @@ else
     tar -xzf "$work/$asset" -C "$work"
     mkdir -p "$HOME/.local/bin"
     install -m 0755 "$work/mise/bin/mise" "$mise"
+    # exec below replaces this shell before an EXIT trap could fire.
+    rm -rf "$work"
     printf 'install-mise: installed mise %s\n' "$MISE_VERSION"
+fi
+
+# `--config-dir` links ~/.config/mise to global/ and refuses when a real
+# directory is there, which is what the retired install.sh left behind (a
+# config.toml symlink into packages/). Keep it aside rather than delete it.
+config_dir=${XDG_CONFIG_HOME:-$HOME/.config}/mise
+if [ -e "$config_dir" ] && [ ! -L "$config_dir" ]; then
+    aside=$config_dir.pre-bootstrap.$(date +%Y%m%d%H%M%S)
+    mv "$config_dir" "$aside"
+    printf 'install-mise: moved the old %s to %s\n' "$config_dir" "$aside"
 fi
 
 exec "$mise" bootstrap \
     --from "$REPO_URL?ref=$ref" --from-dir "$CHECKOUT" --config-dir global \
-    -E "$envs" --prompt-vars --save-env --skip user --yes "$@"
+    -E "$envs" --prompt-vars --save-env --skip user --update --yes "$@"

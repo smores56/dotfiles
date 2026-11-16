@@ -61,6 +61,7 @@ fi
 for target in \
     .zshenv \
     .config/zsh/.zshenv \
+    .config/zsh/.zprofile \
     .config/helix/config.toml \
     .config/helix/languages.toml \
     .config/zellij/config.kdl \
@@ -99,6 +100,11 @@ if command -v zsh >/dev/null 2>&1; then
     assert "non-interactive zsh puts mise shims second" \
         test "$second" = "$h/.local/share/mise/shims"
     assert "the system PATH stays after them" grep -qx /usr/bin <<<"$path_out"
+    login_out=$(env -i HOME="$h" PATH=/usr/bin:/bin zsh -lc 'print -rl -- $path' 2>/dev/null)
+    assert "login zsh keeps ~/.local/bin first after the system profile" \
+        test "$(printf '%s\n' "$login_out" | sed -n 1p)" = "$h/.local/bin"
+    assert "login zsh keeps mise shims second after the system profile" \
+        test "$(printf '%s\n' "$login_out" | sed -n 2p)" = "$h/.local/share/mise/shims"
     zdot=$(env -i HOME="$h" PATH=/usr/bin:/bin zsh -c 'print -r -- $ZDOTDIR' 2>/dev/null)
     assert "the home zshenv sets ZDOTDIR to the XDG zsh directory" test "$zdot" = "$h/.config/zsh"
 else

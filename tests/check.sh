@@ -190,8 +190,11 @@ for config in sorted(root.glob("config*.toml")):
     locked = tomllib.loads(lock_path.read_text()).get("tools", {}) if lock_path.exists() else {}
     for name, spec in tools.items():
         want = set().union(*(os_platforms[o] for o in spec["os"])) if isinstance(spec, dict) and "os" in spec else all_platforms
-        key = name.split(":", 1)[-1].split("/")[-1] if name not in locked else name
-        entries = locked.get(name) or locked.get(key) or []
+        pin = spec["version"] if isinstance(spec, dict) else spec
+        entries = [e for e in locked.get(name, []) if e.get("version") == pin]
+        if not entries:
+            missing.append(f"{config.name}: {name} = {pin} is not in {lock_path.name} (stale lock?)")
+            continue
         have = {p.removeprefix("platforms.") for e in entries for p, v in e.items()
                 if p.startswith("platforms.") and isinstance(v, dict) and v.get("checksum")}
         for platform in sorted(want - have):
@@ -406,7 +409,11 @@ fi
 
 if command -v git >/dev/null 2>&1 && command -v bash >/dev/null 2>&1; then
     if bash "$root/tests/bootstrap-test.sh" >"$tmp/bootstrap.log" 2>&1; then
-        ok "behavioral tests (tests/bootstrap-test.sh)"
+        if grep -q '^skip bootstrap tests' "$tmp/bootstrap.log"; then
+            skip "behavioral tests (tests/bootstrap-test.sh: mise not installed)"
+        else
+            ok "behavioral tests (tests/bootstrap-test.sh)"
+        fi
     else
         no "behavioral tests (tests/bootstrap-test.sh)"
         sed 's/^/     /' "$tmp/bootstrap.log" >&2
