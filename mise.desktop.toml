@@ -6,11 +6,12 @@
 "~/.local/bin/tty" = { source = "desktop/.local/bin/tty", variants = [{ os = "linux" }] }
 "~/.config/systemd/user" = { source = "desktop/.config/systemd/user", mode = "symlink-each", variants = [{ os = "linux" }] }
 "~/.config/wezterm" = { source = "desktop/.config/wezterm", mode = "symlink-each" }
-# Copies, not links: macOS does not reliably register a symlinked font. The
-# upstream names carry "[wght]", which mise reads as a glob, so the vendored
-# files are renamed (google/fonts 9e108e1439daa51f8dddeb8834e9617816b50c01).
-"~/Library/Fonts/GoogleSansCode-VF.ttf" = { source = "desktop/fonts/GoogleSansCode-VF.ttf", mode = "copy", variants = [{ os = "macos" }] }
-"~/Library/Fonts/GoogleSansCode-Italic-VF.ttf" = { source = "desktop/fonts/GoogleSansCode-Italic-VF.ttf", mode = "copy", variants = [{ os = "macos" }] }
+# Copies, not links: macOS does not reliably register a symlinked font.
+# Google Sans Code v7.001 from the upstream release (googlefonts/googlesans-code,
+# GoogleSansCode-v7.001.zip sha256 eebba2a438882396e8530cad6d6cb80182b0afb6e9e0ad07b7340359a53ba2e9),
+# with its MONO axis; renamed because mise reads "[MONO,wght]" as a glob.
+"~/Library/Fonts/GoogleSansCode-MONO-VF.ttf" = { source = "desktop/fonts/GoogleSansCode-MONO-VF.ttf", mode = "copy", variants = [{ os = "macos" }] }
+"~/Library/Fonts/GoogleSansCode-Italic-MONO-VF.ttf" = { source = "desktop/fonts/GoogleSansCode-Italic-MONO-VF.ttf", mode = "copy", variants = [{ os = "macos" }] }
 
 [bootstrap.packages]
 # ~/Applications: mise refuses to install through a group-writable

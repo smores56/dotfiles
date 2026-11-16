@@ -3,8 +3,14 @@ local wezterm = require("wezterm")
 local config = wezterm.config_builder()
 
 config.color_scheme = "rose-pine-moon"
-config.font = wezterm.font("Google Sans Code")
-config.font_size = 13.0
+-- Same faces and size as the retired kitty setup: Regular for text, the real
+-- Bold face (not synthesized) for bold.
+config.font = wezterm.font("Google Sans Code", { weight = "Regular" })
+config.font_rules = {
+  { intensity = "Bold", italic = false, font = wezterm.font("Google Sans Code", { weight = "Bold" }) },
+  { intensity = "Bold", italic = true, font = wezterm.font("Google Sans Code", { weight = "Bold", italic = true }) },
+}
+config.font_size = 12.0
 config.hide_tab_bar_if_only_one_tab = true
 config.window_close_confirmation = "NeverPrompt"
 

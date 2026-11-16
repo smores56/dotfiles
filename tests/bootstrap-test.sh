@@ -72,6 +72,7 @@ for target in \
     .config/helix/config.toml \
     .config/helix/languages.toml \
     .config/zellij/config.kdl \
+    .config/zellij/themes/ansi.kdl \
     .config/yazi/yazi.toml \
     .config/television/cable/repos.toml \
     .config/gh/config.yml \
@@ -264,8 +265,8 @@ assert "desktop keeps the base links" links_into_repo "$h/.local/bin/repos"
 assert_not "desktop does not pull in identity" test -e "$h/.gitconfig"
 if [ "$os" = Darwin ]; then
     assert "desktop links ~/.aerospace.toml on macOS" links_into_repo "$h/.aerospace.toml"
-    assert "desktop installs Google Sans Code on macOS" test -f "$h/Library/Fonts/GoogleSansCode-VF.ttf"
-    assert "desktop installs Google Sans Code Italic on macOS" test -f "$h/Library/Fonts/GoogleSansCode-Italic-VF.ttf"
+    assert "desktop installs Google Sans Code on macOS" test -f "$h/Library/Fonts/GoogleSansCode-MONO-VF.ttf"
+    assert "desktop installs Google Sans Code Italic on macOS" test -f "$h/Library/Fonts/GoogleSansCode-Italic-MONO-VF.ttf"
     assert "desktop links the WezTerm config" links_into_repo "$h/.config/wezterm/wezterm.lua"
     assert_not "desktop skips the Linux wallpaper sync on macOS" test -e "$h/.local/bin/wallpapers"
     assert_not "desktop skips the Linux TTY shim on macOS" test -e "$h/.local/bin/tty"
