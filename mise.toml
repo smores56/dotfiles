@@ -43,6 +43,16 @@ min_version = "2026.11.9"
 "~/.local/bin" = { source = "home/.local/bin", mode = "symlink-each" }
 "~/.config/maki" = { source = "maki/config", mode = "symlink-each" }
 "~/.agents/skills" = { source = "maki/skills", mode = "symlink-each" }
+# Claude Code: one CLAUDE.md for every machine (it imports ~/.claude/work.md,
+# which only the work environment deploys), the shared skills, and only the
+# settings keys this repository owns; Claude Code writes the rest itself.
+"~/.claude/CLAUDE.md" = { source = "home/.claude/CLAUDE.md" }
+# A placeholder, so the import always resolves; the work environment replaces it.
+"~/.claude/work.md" = { source = "home/.claude/work.md" }
+"~/.codex/AGENTS.md" = { source = "home/.claude/CLAUDE.md" }
+"~/.claude/agents/Explore.md" = { source = "home/.claude/agents/Explore.md" }
+"~/.claude/skills" = { source = "maki/skills", mode = "symlink-each" }
+"~/.claude/settings.json/shared" = { source = "home/.claude-merge/settings.json", merge = true }
 "~/.local/bin/maki-session-search" = { source = "maki/bin/maki-session-search" }
 "~/.local/bin/maki-session-resume" = { source = "maki/bin/maki-session-resume" }
 

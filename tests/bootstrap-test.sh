@@ -56,6 +56,8 @@ new_home() {
 # --- base environment --------------------------------------------------------
 
 h=$(new_home base)
+mkdir -p "$h/.claude"
+printf '{\n  "theme": "dark",\n  "autoMemoryEnabled": false\n}\n' >"$h/.claude/settings.json"
 if run_mise "$h" "" dot apply >"$tmp/base.log" 2>&1; then
     ok "base apply exits 0"
 else
@@ -81,7 +83,12 @@ for target in \
     .local/bin/maki-session-search \
     .local/bin/maki-session-resume \
     .config/maki/init.lua \
-    .agents/skills/sdlc/SKILL.md; do
+    .agents/skills/sdlc/SKILL.md \
+    .claude/CLAUDE.md \
+    .codex/AGENTS.md \
+    .claude/agents/Explore.md \
+    .claude/skills/sdlc/SKILL.md \
+    .claude/skills/resolve-pr/scripts/watch-pr.sh; do
     assert "base links ~/$target into the checkout" links_into_repo "$h/$target"
 done
 
@@ -91,6 +98,19 @@ if [ "$os" = Darwin ]; then
 else
     assert "base links ~/.config/lazygit/config.yml" links_into_repo "$h/.config/lazygit/config.yml"
 fi
+
+assert "Claude's auto-memory is on" \
+    test "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["autoMemoryEnabled"])' "$h/.claude/settings.json")" = True
+assert "Claude's own settings keys survive the merge" grep -q '"theme": "dark"' "$h/.claude/settings.json"
+assert "CLAUDE.md imports the machine's work rules" grep -qx '@~/.claude/work.md' "$h/.claude/CLAUDE.md"
+assert_not "CLAUDE.md names no retired memory tool" grep -qE 'memory_(search|write)|memory MCP' "$h/.claude/CLAUDE.md"
+assert_not "CLAUDE.md carries no work-only rule" grep -q Blitzy "$h/.claude/CLAUDE.md"
+for skill in "$root"/maki/skills/*/; do
+    name=$(basename "$skill")
+    assert "the $name skill reaches Claude Code" links_into_repo "$h/.claude/skills/$name/SKILL.md"
+done
+
+assert "the base work.md is the empty placeholder" grep -q 'No machine-specific rules' "$h/.claude/work.md"
 
 for target in \
     .gitconfig \
@@ -271,6 +291,7 @@ run_mise "$h" desktop,work dot apply >"$tmp/work.log" 2>&1 \
     || { no "work apply exits 0"; sed 's/^/     /' "$tmp/work.log" >&2; }
 assert "work links the zsh environment hook" links_into_repo "$h/.config/zsh/env.d/work.zsh"
 assert "work links the interactive work hook" links_into_repo "$h/.config/zsh/conf.d/90-work.zsh"
+assert "work links the Claude work rules" grep -q 'This is a work host' "$h/.claude/work.md"
 assert "work leaves the employer's ~/.zshrc a plain file" test ! -L "$h/.zshrc"
 assert_not "work does not pull in identity" test -e "$h/.gitconfig"
 if command -v zsh >/dev/null 2>&1; then

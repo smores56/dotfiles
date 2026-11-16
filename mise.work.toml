@@ -3,6 +3,7 @@
 [dotfiles]
 "~/.config/zsh/env.d/work.zsh" = { source = "work/.config/zsh/env.d/work.zsh" }
 "~/.config/zsh/conf.d/90-work.zsh" = { source = "work/.config/zsh/conf.d/90-work.zsh" }
+"~/.claude/work.md" = { source = "work/.claude/work.md" }
 
 # macOS ships zsh 5.9 in /etc/shells already, so no sudo; chsh asks for the
 # password, so this part runs on its own: `mise bootstrap --only user`.
