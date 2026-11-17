@@ -49,9 +49,9 @@ Environments are additive; an environment only adds files and hooks.
 | Environment | Adds |
 | --- | --- |
 | base | zsh, helix, zellij, yazi, lazygit, television, gh, `sdlc`, global mise files |
-| `identity` | git identity templates, `~/.ssh/config`, `allowed_signers` |
+| `identity` | git identity templates, `~/.ssh/config` |
 | `desktop` | kitty (Linux) and WezTerm (macOS), fonts, clipboard and trash helpers, Flatpaks or casks, wallpapers, systemd units, the bash-to-zsh login hook |
-| `work` | work zsh hooks, work git identity and 1Password signing, the github.com SSH entry, Claude work rules, macOS defaults, work casks |
+| `work` | work zsh hooks, work git identity, the github.com SSH entry, Claude work rules, macOS defaults, work casks |
 
 `install-mise.sh` saves the set in `~/.config/mise/miserc.local.toml`, so no
 shell file exports `MISE_ENV`.
@@ -64,7 +64,7 @@ shell file exports `MISE_ENV`.
 | Fedora Atomic / CoreOS | nothing more; the image ships `git`, `curl`, and, on desktops, `flatpak` |
 | smortress / smorespro | nothing extra; `install-mise.sh` prompts for sudo once to create `/srv/git` owned by you |
 | macOS | Command Line Tools (they provide `git`) and Homebrew; run `scripts/install-homebrew.sh` once, interactively |
-| smoreswork | also the 1Password app for its SSH agent and `op-ssh-sign`; the bootstrap installs the `op` CLI |
+| smoreswork | the bootstrap installs the `op` CLI |
 
 `install-mise.sh` runs the official installer for the latest stable mise, which
 verifies the release checksum and needs `tar` plus `gzip` (or `zstd`).
@@ -136,15 +136,13 @@ through `[bootstrap.user] login_shell`.
 ## Identity and secrets
 
 Git identity is fixed: `Sam Mohr <sam@sammohr.dev>` on personal checkouts and
-`Sam Mohr <smohr@blitzy.com>` on work checkouts. Signing key paths, work owners (`blitzy-ai blitzy-platform`), the flat work root, and
+`Sam Mohr <smohr@blitzy.com>` on work checkouts. Commits are not signed. Work owners (`blitzy-ai blitzy-platform`), the flat work root, and
 the SDLC registry (`smores56/sdlc` personal, `smohr-blitzy/sdlc` work) are all
 hardcoded. Tera templates render `~/.config/git/machine.inc` and `work.inc`;
-the base `.gitconfig` carries the shared git settings. `scripts/identity.sh`
-writes `~/.config/ssh/allowed_signers` from readable public keys.
+the base `.gitconfig` carries the shared git settings.
 
 smoreswork does not apply the `identity` environment. Its git identity is work
-everywhere, commits are signed by an SSH key in 1Password through `op-ssh-sign`,
-and git reaches github.com over SSH through the 1Password agent. `gh` keeps
+everywhere, and git reaches github.com over https with `gh`'s token. `gh` keeps
 the work token in the macOS Keychain, logged in once from 1Password with
 `op read 'op://Employee/GitHub Personal Access Token/token' | gh auth login --with-token`;
 no personal token is on the laptop, the personal `sdlc` registry is not

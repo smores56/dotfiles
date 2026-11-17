@@ -60,6 +60,11 @@ min_version = "2026.11.9"
 "~/.claude/skills" = { source = "sdlc/skills", mode = "symlink-each" }
 "~/.claude/settings.json/shared" = { source = "home/.claude-merge/settings.json", merge = true }
 
+# ssh writes known_hosts under ~/.config/ssh but never creates the directory.
+[bootstrap.hooks.post-dotfiles]
+description = "create the ssh known_hosts directory"
+run = "mkdir -p -m 700 \"$HOME/.config/ssh\""
+
 [tasks.bootstrap]
 description = "Install the pieces mise does not manage declaratively"
 run = "sh scripts/bootstrap-task.sh"
