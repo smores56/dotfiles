@@ -3,9 +3,6 @@
 export TERMINAL=kitty
 # The work GitHub account owns its SDLC registry.
 export SDLC_REPO=smohr-blitzy/sdlc
-# Tools that ignore ssh_config's IdentityAgent (libssh2, docker --ssh) find the
-# 1Password agent here.
-export SSH_AUTH_SOCK="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
 export COLORTERM=truecolor
 # The cc crate and native builds use Apple's clang (see ~/.cargo/config.toml).
 export CC=/usr/bin/clang

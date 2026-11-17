@@ -1,7 +1,6 @@
 # Rendered by mise. Every value is fixed.
 [user]
     email = "smohr@blitzy.com"
-    signingkey = "~/.ssh/id_work.pub"
 [smores]
     flow = "pr"
     branchTemplate = "{ticket}-{slug}"

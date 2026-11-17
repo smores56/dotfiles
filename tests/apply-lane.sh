@@ -84,8 +84,6 @@ case $env_set in
         present "$HOME/.config/git/work.inc"
         ;;
     *work*)
-        grep -q 'IdentityAgent' "$HOME/.ssh/config" \
-            || fail "the github.com host entry does not use the 1Password agent"
         present "$HOME/.claude/work.md"
         ;;
 esac
