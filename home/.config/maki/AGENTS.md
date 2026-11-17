@@ -23,7 +23,7 @@
 
 # Tools
 - Never run anything that needs superuser rights (`sudo`, `su`, `doas`, polkit actions); ask the human to run it and wait for their answer
-- Repositories that need a container use rootless Podman through the repository's `dev` entrypoint; do not install project toolchains on the host
+- Project toolchains come from the repository's mise config; do not install them on the host
 
 # Style
 - Prefer functional style: pure functions, immutability, composition over inheritance; single-purpose functions; structured types over untyped maps

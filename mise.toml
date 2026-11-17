@@ -28,7 +28,6 @@ min_version = "2026.11.9"
 [dotfiles]
 "~/.zshenv" = { source = "home/.zshenv" }
 "~/.config/zsh" = { source = "home/.config/zsh", mode = "symlink-each" }
-"~/.config/containers" = { source = "home/.config/containers", mode = "symlink-each" }
 "~/.config/gh" = { source = "home/.config/gh", mode = "symlink-each" }
 "~/.config/git" = { source = "home/.config/git", mode = "symlink-each" }
 "~/.config/helix" = { source = "home/.config/helix", mode = "symlink-each" }

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Behavioral tests for the repos, worktrees, and dev wrappers.
+# Behavioral tests for the repos and worktrees wrappers.
 #
-# Everything runs against throwaway repositories and a fake container engine:
-# no network, no engine, and nothing outside $tmp is written. HOME, the global
+# Everything runs against throwaway repositories: no network, and nothing
+# outside $tmp is written. HOME, the global
 # git config, and the checkout root are all redirected, so the operator's setup
 # cannot change the result.
 set -uo pipefail
@@ -10,7 +10,6 @@ set -uo pipefail
 root=$(cd -- "$(dirname -- "$0")/.." && pwd)
 REPOS=$root/home/.local/bin/repos
 WORKTREES=$root/home/.local/bin/worktrees
-DEV=$root/home/.local/bin/dev
 
 tmp=$(mktemp -d) || exit 1
 trap 'rm -rf "$tmp"' EXIT
@@ -301,99 +300,6 @@ case $out in
     *'no default branch'*) ok "prune says why it did nothing" ;;
     *) no "prune says why it did nothing" ;;
 esac
-
-# --- dev -------------------------------------------------------------------
-
-fake=$tmp/bin
-cat > "$fake/engine" <<'EOF'
-#!/bin/sh
-{
-    printf '=== invocation\n'
-    for arg in "$@"; do printf '%s\n' "$arg"; done
-} >> "$DEV_FAKE_LOG"
-exit 0
-EOF
-chmod +x "$fake/engine"
-cp "$fake/engine" "$fake/podman"
-chmod +x "$fake/podman"
-
-printf '[user]\n\tname = test\n' > "$HOME/.gitconfig"
-mkdir -p "$HOME/.config/git"
-dev_repo=$tmp/dev-repo
-git init -q "$dev_repo"
-printf 'FROM scratch\n' > "$dev_repo/Containerfile"
-
-export DEV_FAKE_LOG=$tmp/dev.log
-agent_sock=$tmp/agent.sock
-# A run block is everything after the last "=== invocation" marker.
-run_block() { awk '/^=== invocation/{n++} n>=2' "$DEV_FAKE_LOG"; }
-in_run() { run_block | grep -qxF -- "$1"; }
-in_run_sub() { run_block | grep -qF -- "$1"; }
-
-: > "$DEV_FAKE_LOG"
-(cd "$dev_repo" && PATH="$fake:$PATH" DEV_ENGINE=engine GH_TOKEN=ghp_secret \
-    GITHUB_TOKEN=ghs_secret SSH_AUTH_SOCK=$agent_sock DEV_SSH_AGENT=1 sh "$DEV") >/dev/null 2>&1
-
-DESC="dev does not start a probe container"
-assert test "$(grep -c '^=== invocation' "$DEV_FAKE_LOG")" -eq 2
-DESC="dev passes no tty flags without a terminal"
-assert_not in_run -i
-DESC="dev passes no -t without a terminal"
-assert_not in_run -t
-DESC="dev mounts the global git config read-only"
-assert in_run_sub "$HOME/.gitconfig:/home/dev/.gitconfig:ro"
-DESC="dev mounts ~/.config/git read-only"
-assert in_run_sub "$HOME/.config/git:/home/dev/.config/git:ro"
-DESC="dev forwards the SSH agent socket"
-assert in_run_sub "$agent_sock:$agent_sock"
-DESC="dev exports SSH_AUTH_SOCK"
-assert in_run "SSH_AUTH_SOCK=$agent_sock"
-DESC="dev never mounts ~/.ssh"
-assert_not in_run_sub '/.ssh'
-DESC="dev never passes GH_TOKEN or GITHUB_TOKEN"
-assert_not in_run_sub GH_TOKEN
-DESC="dev never passes GITHUB_TOKEN"
-assert_not in_run_sub GITHUB_TOKEN
-DESC="dev trusts only the checkout's mise config"
-assert in_run "MISE_TRUSTED_CONFIG_PATHS=$dev_repo"
-DESC="dev does not trust every path"
-assert_not in_run MISE_TRUSTED_CONFIG_PATHS=/
-DESC="dev keeps mise installs on a per-repo volume"
-assert_not in_run dev-mise:/home/dev/.local/share/mise
-DESC="dev mounts a per-repo mise volume"
-assert in_run_sub :/home/dev/.local/share/mise
-DESC="dev runs no shell probe inside the image"
-assert_not in_run -c
-
-: > "$DEV_FAKE_LOG"
-(cd "$dev_repo" && PATH="$fake:$PATH" DEV_ENGINE=podman GH_TOKEN=ghp_secret \
-    SSH_AUTH_SOCK=$agent_sock sh "$DEV") >/dev/null 2>&1
-DESC="dev relabels the git config for SELinux on podman"
-assert in_run_sub "$HOME/.gitconfig:/home/dev/.gitconfig:ro,Z"
-DESC="dev relabels the git config directory for SELinux"
-assert in_run_sub "$HOME/.config/git:/home/dev/.config/git:ro,Z"
-DESC="dev maps the host uid on podman"
-assert in_run --userns=keep-id:uid=1000,gid=1000
-DESC="dev still passes no token on podman"
-assert_not in_run_sub GH_TOKEN
-
-if script -qec true /dev/null >/dev/null 2>&1; then
-    tty_wrapper=$tmp/tty-dev.sh
-    {
-        printf '#!/bin/sh\n'
-        printf 'cd %s || exit 1\n' "$(printf '%q' "$dev_repo")"
-        printf 'exec sh %s\n' "$(printf '%q' "$DEV")"
-    } > "$tty_wrapper"
-    chmod +x "$tty_wrapper"
-    : > "$DEV_FAKE_LOG"
-    PATH="$fake:$PATH" DEV_ENGINE=engine script -qec "$tty_wrapper" /dev/null >/dev/null 2>&1
-    DESC="dev allocates a tty when one is attached"
-    assert in_run -t
-    DESC="dev keeps stdin open when a tty is attached"
-    assert in_run -i
-else
-    skip "dev tty flags (script -qec unavailable)"
-fi
 
 printf '\n%d checks, %d failed\n' "$((pass + fail))" "$fail"
 [ "$fail" -eq 0 ]

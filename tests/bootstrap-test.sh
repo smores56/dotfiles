@@ -78,10 +78,8 @@ for target in \
     .config/yazi/yazi.toml \
     .config/television/cable/repos.toml \
     .config/gh/config.yml \
-    .config/containers/Containerfile.dev \
     .local/bin/repos \
     .local/bin/worktrees \
-    .local/bin/dev \
     .local/bin/sops-age-key \
     .local/bin/maki-session-search \
     .local/bin/maki-session-resume \

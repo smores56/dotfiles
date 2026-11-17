@@ -72,8 +72,7 @@ verifies the release checksum and needs `tar` plus `gzip` (or `zstd`).
 `notify-send` are optional: the pieces that use them degrade without the
 binary.
 
-`podman` is the runtime `dev` uses; it ships with the bootc image, and nothing
-in the bootstrap needs it. The host has no rpm-ostree layer: every host package
+The host has no rpm-ostree layer: every host package
 on smorespro, Tailscale included, comes from
 [smorespro-image](https://github.com/smores56/smorespro-image). rclone, a mise
 tool, handles the wallpaper sync.
@@ -101,15 +100,10 @@ repos get owner/project          # plain git clone under /srv/git/<host>/<owner>
 repos list
 worktrees new --slug add-gizmo --ticket ABC-123 --type feat
 worktrees prune              # dry run; --apply removes what it reported
-dev                              # rootless Podman shell for the current checkout
 ```
 
 `worktrees new` renders the branch name from `git config smores.branchTemplate`
-and prints JSON: use its `path`. `dev` prefers podman, uses the repository's
-`Containerfile` when present, otherwise the shared
-`~/.config/containers/Containerfile.dev`; it never mounts `~/.ssh`, never
-forwards tokens, and keeps each checkout's mise installs on its own volume. The
-SSH agent socket is opt-in with `DEV_SSH_AGENT=1`.
+and prints JSON: use its `path`.
 
 Personal checkouts live under `/srv/git` on smortress and smorespro; the work Mac keeps work repositories in `~/Blitzy` and only
 the `dotfiles` clone in `~/.dotfiles`.
@@ -228,7 +222,7 @@ tests/check.sh --shellcheck   # also shellcheck every script
 checks symlinks, templates, modes, rendered identity, and conflicts.
 `tests/shell-test.sh` starts an interactive zsh and checks the plugins,
 abbreviations, prompt, and that the Maki keys stay out of the parent shell.
-`tests/cli.sh` exercises `repos`, `worktrees`, and `dev` against throwaway
+`tests/cli.sh` exercises `repos` and `worktrees` against throwaway
 repositories. `tests/secrets-test.sh`, `tests/detect-envs-test.sh`, and
 `tests/wallpapers-test.sh` cover the SOPS cache, machine-set inference, and the
 wallpaper sync. CI runs the same suite and a real Fedora apply lane.
