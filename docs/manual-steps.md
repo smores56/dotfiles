@@ -88,21 +88,23 @@ git clone git@github.com:smores56/dotfiles.git \
 cd ~/repos/github.com/smores56/dotfiles
 ```
 
-Create the machine identity, link the files, and install the packages:
+Install the pinned mise release and apply this machine's set:
 
 ```sh
-cp local.env.example local.env
-$EDITOR local.env
-chmod 600 local.env
-./install.sh --dry-run
-./install.sh
-scripts/bootstrap.sh
+cd ~/repos/github.com/smores56/dotfiles
+scripts/install-mise.sh "$(git rev-parse HEAD)" desktop,identity
 ```
 
-`bootstrap.sh` installs the user Flatpaks, downloads the pinned mise release,
-installs every CLI tool from `packages/mise.toml`, installs the pinned `sdlc`
-CLI with `uv tool install`, and prints the root command for step 4. It uses the
-network and no sudo.
+`install-mise.sh` checks the downloaded release against its published sha256,
+then runs `mise bootstrap` pinned to that commit with `--config-dir global` and
+the `desktop,identity` set. The first run prompts for the git identity vars,
+which are saved in `$MISE_STATE_DIR/vars.toml` (mode 0700), installs every tool
+from the lockfiles, clones the pinned zim modules, applies the dotfiles, and
+runs the bootstrap task, which links the Linux zsh binary and installs the
+pinned `sdlc` CLI. It uses the network and no sudo.
+
+The login shell stays bash on Linux; an interactive TTY login hands over to
+`~/.local/bin/zsh` through the managed block in `~/.bash_profile`.
 
 ## 4. Tailscale and rsync (the only host layer)
 
@@ -141,10 +143,10 @@ the release's published `sha256sums.txt`. A mismatch aborts and installs
 nothing. An update is a pin bump in `maki/pin.env` followed by a re-run; never
 copy a release into `~/.local/bin` by hand.
 
-`sdlc` is installed by `scripts/bootstrap.sh` from the private upstream at the
-commit pinned there as `SDLC_REV`. Bump that constant, re-run the bootstrap,
-and commit the new pin. `sdlc list` must reach the `smores56/sdlc` registry,
-which needs the GitHub credential from step 3.
+`sdlc` is installed by `scripts/bootstrap-task.sh` with `uv tool install` from
+the private upstream at the commit pinned there as `SDLC_REV`. Bump that constant, re-run the
+bootstrap, and commit the new pin. `sdlc list` must reach the `smores56/sdlc`
+registry, which needs the GitHub credential from step 3.
 
 ## 6. Secrets
 
@@ -176,13 +178,13 @@ Both keys are read from named Bitwarden login items, and a failed or empty
 lookup aborts instead of leaving an empty value in the file.
 
 `<neuralwatt-item>` and `<tinyfish-item>` are the Bitwarden login item names.
-The file is `NAME=value` lines; the fish `maki` launcher exports the two keys
+The file is `NAME=value` lines; the zsh `maki` launcher exports the two keys
 into the Maki process only, so nothing else run from the shell inherits them.
 Confirm the file is mode 600 and the launcher exists, without printing a value:
 
 ```sh
 test "$(stat -c %a ~/.config/secrets.env)" = 600 && echo secrets-mode-ok
-fish -c 'type -q maki; and echo maki-launcher-ok'
+zsh -ic 'type -q maki && echo maki-launcher-ok'
 ```
 
 If a sops-consuming repository is still in use, restore its identity too:
@@ -228,25 +230,27 @@ Verify from the Mac:
 ssh smores@<laptop-tailscale-name> true && echo mac-to-laptop-ok
 ```
 
-## 8. Optional: fish as the login shell
+## 8. Shell hand-off
 
-Fish comes from mise. The stable shim path (not the versioned install path) is
-what makes a durable login shell:
+Linux keeps bash as the login shell and uses the mise zsh for interactive
+shells. No `/etc/shells` change and no `chsh` are needed:
 
 ```sh
-fish_shim="$HOME/.local/share/mise/shims/fish"
-sudo sh -c "printf '%s\n' '$fish_shim' >> /etc/shells"
-chsh -s "$fish_shim"
+readlink -f ~/.local/bin/zsh        # a binary under ~/.local/share/mise
+zsh -ic 'echo $ZSH_VERSION'         # 5.9.x, with zimfw loaded
+echo "$SHELL"                       # still bash
+env | grep '^CONDA_' || true        # no CONDA_* variables leak
 ```
 
-The terminal can run fish without this; the step only changes SSH and TTY
-logins.
+Open a new terminal and confirm the interactive shell is zsh. The hand-off
+skips any shell with a command string, so `bash -ilc 'echo $BASH_VERSION'`
+must stay in bash. If the zsh link is missing, login falls back to bash.
 
 ## 9. Verify the machine
 
 ```sh
 cd ~/repos/github.com/smores56/dotfiles
-./install.sh                       # every path should report ok
+mise dot status                    # every dotfile target is applied
 tests/check.sh                     # source tree checks
 mise ls                            # pinned tools are installed
 flatpak list --user                # GUI applications are present
