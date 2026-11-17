@@ -1,55 +1,14 @@
 # Git and SSH identity for personal machines. smoreswork does not apply this
 # environment; mise.work.toml renders its own work identity and SSH config.
-#
-# Answers are per machine: `mise bootstrap --prompt-vars` asks once and saves
-# them in $MISE_STATE_DIR/vars.toml (never in this repository); change one with
-# `mise vars NAME=VALUE`. Identity only: never a token or password.
-[vars.git_name]
-prompt = "Git author name"
-required = "Run `mise vars prompt git_name`"
-[vars.git_email]
-prompt = "Git email for personal checkouts"
-required = "Run `mise vars prompt git_email`"
-[vars.git_signing_key]
-prompt = "Public key that signs personal commits"
-default = "~/.ssh/id_ed25519.pub"
-[vars.personal_owner]
-prompt = "GitHub owner whose checkouts are personal"
-default = "smores56"
-[vars.repos_root]
-prompt = "Root of the owner/repo checkout tree"
-default = "~/repos"
-[vars.work_owners]
-prompt = "Work GitHub owners, space-separated (empty for none)"
-default = ""
-[vars.work_flat_root]
-prompt = "Employer flat checkout root (empty for none)"
-default = ""
-[vars.work_email]
-prompt = "Git email for work checkouts (empty for none)"
-default = ""
-[vars.work_signing_key]
-prompt = "Public key that signs work commits (empty: the personal key)"
-default = ""
+# Every identity value is fixed in the templates; there are no vars.
 
 [dotfiles]
-# The personal sdlc CLI is a stdlib script in this checkout, so no private
-# repository is cloned. The work laptop does not apply this environment.
-"~/.local/bin/sdlc" = { source = "sdlc/sdlc_issues.py" }
+# The work laptop does not apply this environment.
 "~/.gitconfig" = { source = "identity/.gitconfig" }
 "~/.ssh/config" = { source = "identity/.ssh/config" }
 "~/.config/git/machine.inc" = { source = "identity/.config/git/machine.inc.tera", mode = "template" }
 "~/.config/git/work.inc" = { source = "identity/.config/git/work.inc.tera", mode = "template" }
 
-# Tera's `quote` is shell quoting, not git-config quoting, so values are checked
-# before the rendered files are written; scripts/identity.sh says what is refused.
-[bootstrap.hooks.pre-dotfiles]
-description = "check the identity vars and retire the uv sdlc shim"
-run = [
-  "sh {{ config_root }}/scripts/identity.sh check {{ vars.git_name | quote }} {{ vars.git_email | quote }} {{ vars.git_signing_key | quote }} {{ vars.personal_owner | quote }} {{ vars.repos_root | quote }} {{ vars.work_owners | quote }} {{ vars.work_flat_root | quote }} {{ vars.work_email | quote }} {{ vars.work_signing_key | quote }}",
-  "sh {{ config_root }}/scripts/retire-uv-sdlc.sh",
-]
-
 [bootstrap.hooks.post-dotfiles]
 description = "render allowed_signers"
-run = "sh {{ config_root }}/scripts/identity.sh signers {{ vars.git_email | quote }} {{ vars.git_signing_key | quote }} {{ vars.work_email | quote }} {{ vars.work_signing_key | quote }}"
+run = "sh {{ config_root }}/scripts/identity.sh signers"

@@ -7,8 +7,7 @@
 "~/.gitconfig" = { source = "identity/.gitconfig" }
 "~/.ssh/config" = { source = "work/.ssh/config" }
 "~/.config/git/machine.inc" = { source = "work/.config/git/machine.inc.tera", mode = "template" }
-"~/.config/ssh/allowed_signers" = { source = "work/.config/ssh/allowed_signers.tera", mode = "template" }
-"~/.config/ssh/work.pub" = { source = "work/.config/ssh/work.pub.tera", mode = "template" }
+"~/.config/git/work-signing.pub" = { source = "work/.config/git/work-signing.pub" }
 "~/.config/gh-token-ref" = { source = "work/.config/gh-token-ref.tera", mode = "template" }
 "~/.local/bin/gh" = { source = "work/.local/bin/gh" }
 "~/.cargo/config.toml" = { source = "work/.cargo/config.toml" }
@@ -18,25 +17,10 @@
 [bootstrap.user]
 login_shell = "/bin/zsh"
 
-# Work identity. Answers live in $MISE_STATE_DIR/vars.toml; the signing key is
-# the public half of the SSH key 1Password holds (copy it from the 1Password
-# item), so nothing secret is ever a var.
-[vars.git_name]
-prompt = "Git author name"
-required = "Run `mise vars prompt git_name`"
-[vars.work_email]
-prompt = "Work Git email"
-required = "Run `mise vars prompt work_email`"
-[vars.work_gh_token_ref]
-prompt = "1Password reference to the work GitHub token (op://vault/item/field)"
-required = "Run `mise vars prompt work_gh_token_ref`"
-[vars.work_signing_pubkey]
-prompt = "Public key of the 1Password SSH key (ssh-ed25519 AAAA...)"
-required = "Run `mise vars prompt work_signing_pubkey`"
-
-[bootstrap.hooks.pre-dotfiles]
-description = "check the work identity vars"
-run = "sh {{ config_root }}/scripts/identity.sh check-work {{ vars.git_name | quote }} {{ vars.work_email | quote }} {{ vars.work_signing_pubkey | quote }} {{ vars.work_gh_token_ref | quote }}"
+# Work identity is fixed in the templates and the checked-in public key.
+[bootstrap.hooks.post-dotfiles]
+description = "render allowed_signers"
+run = "sh {{ config_root }}/scripts/identity.sh work-signers"
 
 # Apps for a fresh laptop. ~/Applications: mise refuses a group-writable
 # /Applications. Copies already installed elsewhere stay where they are.

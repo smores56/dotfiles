@@ -23,9 +23,9 @@
 # shellcheck disable=SC2088
 set -eu
 
-DOTFILES=${DOTFILES:-$HOME/repos/github.com/smores56/dotfiles}
+DOTFILES=${DOTFILES:-$HOME/.dotfiles}
 # Not NIX_CONFIG: Nix reads that variable as nix.conf contents.
-NIX_CONFIG_DIR=${NIX_CONFIG_DIR:-$HOME/repos/github.com/smores56/nix-config}
+NIX_CONFIG_DIR=${NIX_CONFIG_DIR:-/srv/git/github.com/smores56/nix-config}
 HM_TARGET=${HM_TARGET:-sam@smoreswork}
 # The environment set smoreswork applies; passed explicitly so a missing saved
 # set can never drop the work hooks silently.

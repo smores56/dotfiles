@@ -1,28 +1,33 @@
-# Rendered by mise from the identity vars; change one with
-# `mise vars NAME=VALUE`, then `mise -C <dotfiles> dot apply`.
+# Rendered by mise. Identity and routing are fixed; there are no vars.
 [user]
-    name = "{{ vars.git_name }}"
-    email = "{{ vars.git_email }}"
-    signingkey = "{{ vars.git_signing_key }}"
+    name = "Sam Mohr"
+    email = "sam@sammohr.dev"
+    signingkey = "~/.ssh/id_ed25519.pub"
 [smores]
     flow = "local"
-    workFlat = "{{ vars.work_flat_root }}"
-    workOwners = "{{ vars.work_owners }}"
-{%- for owner in vars.work_owners | split(pat=" ") %}{% if owner %}
+    workFlat = "~/Blitzy"
+    workOwners = "blitzy-ai blitzy-platform"
+[ghq]
+    root = /srv/git
 
-# Work checkouts for {{ owner }}.
-[includeIf "gitdir:{{ vars.repos_root }}/github.com/{{ owner }}/"]
+# Work checkouts, by path and by remote URL.
+[includeIf "gitdir:/srv/git/github.com/blitzy-ai/"]
     path = ~/.config/git/work.inc
-[includeIf "hasconfig:remote.*.url:git@github.com:{{ owner }}/**"]
+[includeIf "hasconfig:remote.*.url:git@github.com:blitzy-ai/**"]
     path = ~/.config/git/work.inc
-[includeIf "hasconfig:remote.*.url:ssh://git@github.com/{{ owner }}/**"]
+[includeIf "hasconfig:remote.*.url:ssh://git@github.com/blitzy-ai/**"]
     path = ~/.config/git/work.inc
-[includeIf "hasconfig:remote.*.url:https://github.com/{{ owner }}/**"]
+[includeIf "hasconfig:remote.*.url:https://github.com/blitzy-ai/**"]
     path = ~/.config/git/work.inc
-{%- endif %}{% endfor %}
-{%- if vars.work_flat_root %}
+[includeIf "gitdir:/srv/git/github.com/blitzy-platform/"]
+    path = ~/.config/git/work.inc
+[includeIf "hasconfig:remote.*.url:git@github.com:blitzy-platform/**"]
+    path = ~/.config/git/work.inc
+[includeIf "hasconfig:remote.*.url:ssh://git@github.com/blitzy-platform/**"]
+    path = ~/.config/git/work.inc
+[includeIf "hasconfig:remote.*.url:https://github.com/blitzy-platform/**"]
+    path = ~/.config/git/work.inc
 
 # The employer flat layout (<dir>/<repo>) is work.
-[includeIf "gitdir:{{ vars.work_flat_root }}/"]
+[includeIf "gitdir:~/Blitzy/"]
     path = ~/.config/git/work.inc
-{%- endif %}

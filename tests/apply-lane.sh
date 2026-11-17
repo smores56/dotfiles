@@ -34,14 +34,10 @@ run_mise() {
 
 case $env_set in
     *identity*)
-        email=ci@example.invalid
-        run_mise vars git_name=CI git_email="$email"
+        email=sam@sammohr.dev
         ;;
     *work*)
-        email=work@example.invalid
-        run_mise vars git_name=CI work_email="$email" \
-            work_gh_token_ref=op://CI/GitHub/token \
-            work_signing_pubkey='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICI ci@example'
+        email=smohr@blitzy.com
         ;;
     *)
         printf 'apply-lane: unknown environment set %s\n' "$env_set" >&2
@@ -76,6 +72,7 @@ link "$HOME/.config/zsh/.zshrc"
 link "$HOME/.config/helix/config.toml"
 link "$HOME/.config/wezterm/wezterm.lua"
 link "$HOME/.claude/CLAUDE.md"
+link "$HOME/.local/bin/sdlc"
 link "$HOME/.agents/skills/sdlc/SKILL.md"
 present "$HOME/.config/git/machine.inc"
 [ "$(git config --global --includes --get user.email)" = "$email" ] \
@@ -83,8 +80,9 @@ present "$HOME/.config/git/machine.inc"
 
 case $env_set in
     *identity*)
-        link "$HOME/.local/bin/sdlc"
         present "$HOME/.config/git/work.inc"
+        [ "$(git config --global --includes --get ghq.root)" = /srv/git ] \
+            || fail "ghq.root is not /srv/git"
         ;;
     *work*)
         grep -q 'IdentityAgent' "$HOME/.ssh/config" \

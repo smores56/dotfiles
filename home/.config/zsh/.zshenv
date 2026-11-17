@@ -9,6 +9,9 @@ typeset -U path
 path=("$HOME/.local/bin" "${XDG_DATA_HOME:-$HOME/.local/share}/mise/shims" $path)
 export PATH
 
+# The personal SDLC registry; the work environment overrides it in env.d.
+export SDLC_REPO=smores56/sdlc
+
 export EDITOR=hx
 export VISUAL=$EDITOR
 export PAGER=less

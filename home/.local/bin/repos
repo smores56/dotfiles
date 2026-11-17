@@ -1,7 +1,7 @@
 #!/bin/sh
 # repos: one checkout root for every repository.
 #
-# Layout: $REPOS_ROOT/<host>/<owner>/<repo> is an ordinary `git clone`, and
+# Layout: /srv/git/<host>/<owner>/<repo> is an ordinary `git clone`, and
 # extra worktrees live under <repo>/.worktrees (see the `worktrees` wrapper).
 # Work owners may instead use an employer's flat <WORK_FLAT>/<repo> layout
 # (see `git config smores.workFlat` / `smores.workOwners`).
@@ -9,7 +9,7 @@
 # Needs: git only.
 set -u
 
-ROOT=${REPOS_ROOT:-$HOME/repos}
+ROOT=${REPOS_ROOT:-/srv/git}
 DEFAULT_HOST=github.com
 WORK_FLAT=${REPOS_WORK_FLAT:-$(git config --global --get smores.workFlat 2>/dev/null || true)}
 # git config keeps `~/` literal; the shell will not expand it inside quotes.
@@ -27,7 +27,7 @@ usage: repos [list]
   get <ref>     clone one repository into the root and print its path
 
 environment:
-  REPOS_ROOT        checkout root (default: ~/repos)
+  REPOS_ROOT        checkout root (default: /srv/git)
   REPOS_WORK_FLAT   flat work root (default: git config smores.workFlat)
   REPOS_WORK_OWNERS work owners (default: git config smores.workOwners)
 EOF

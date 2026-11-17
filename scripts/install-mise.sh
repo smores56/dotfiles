@@ -10,11 +10,11 @@
 # Re-running updates the checkout to the current main (`--update`). The login
 # shell is always skipped here (so extra args cannot use `--only`); it is a
 # separate, interactive step afterwards because chsh prompts for a password:
-#   mise -C ~/repos/github.com/smores56/dotfiles bootstrap --only user
+#   mise -C ~/.dotfiles bootstrap --only user
 set -eu
 
 REPO_URL=https://github.com/smores56/dotfiles.git
-CHECKOUT=$HOME/repos/github.com/smores56/dotfiles
+CHECKOUT=$HOME/.dotfiles
 
 die() { printf 'install-mise: %s\n' "$*" >&2; exit 1; }
 
@@ -41,6 +41,25 @@ if [ -e "$config_dir" ] && [ ! -L "$config_dir" ]; then
     printf 'install-mise: moved the old %s to %s\n' "$config_dir" "$aside"
 fi
 
-exec "$mise" bootstrap \
+# /srv/git belongs to the user, but its creation needs root once. Refuse
+# early rather than cloning into a root-owned tree.
+if [ "$(uname -s)" != Darwin ]; then
+    [ -d /srv/git ] && [ -w /srv/git ] \
+        || die "create /srv/git once first: sudo install -d -o \"$USER\" -g \"$(id -gn)\" /srv/git"
+fi
+
+"$mise" bootstrap \
     --from "$REPO_URL" --from-dir "$CHECKOUT" --config-dir global \
-    -E "$envs" --prompt-vars --save-env --skip user --update --yes "$@"
+    -E "$envs" --save-env --skip user --update --yes "$@"
+
+# Dotfiles stay at mise's default root; the /srv/git path is the stable alias.
+if [ "$(uname -s)" != Darwin ]; then
+    link=/srv/git/github.com/smores56/dotfiles
+    mkdir -p "$(dirname "$link")"
+    if [ -L "$link" ] || [ ! -e "$link" ]; then
+        ln -sfn "$CHECKOUT" "$link"
+        printf 'install-mise: linked %s -> %s\n' "$link" "$CHECKOUT"
+    else
+        die "$link exists and is not a symlink; move it aside and re-run"
+    fi
+fi

@@ -10,7 +10,7 @@ The FIDO2 credential handles live on the old machine. Back them up first; after
 the wipe they are unrecoverable.
 
 ```sh
-cd ~/repos/github.com/smores56/nix-config
+cd /srv/git/github.com/smores56/nix-config
 nix run .#key-backup
 ```
 
@@ -87,34 +87,39 @@ install -d -m 700 ~/.config/sops
 install -m 600 /media/<usb>/sops-backup/keys.age ~/.config/sops/keys.age
 ```
 
-Then clone the repository:
+Create the shared checkout root once; it must belong to you, not root:
 
 ```sh
-mkdir -p ~/repos/github.com/smores56
-git clone git@github.com:smores56/dotfiles.git \
-    ~/repos/github.com/smores56/dotfiles
-cd ~/repos/github.com/smores56/dotfiles
+sudo install -d -o "$USER" -g "$(id -gn)" /srv/git
+```
+
+Then clone the dotfiles repository at mise's default root:
+
+```sh
+git clone git@github.com:smores56/dotfiles.git ~/.dotfiles
+cd ~/.dotfiles
 ```
 
 Install the latest mise and apply this machine's set:
 
 ```sh
-cd ~/repos/github.com/smores56/dotfiles
-scripts/install-mise.sh
+~/.dotfiles/scripts/install-mise.sh
 ```
 
 `install-mise.sh` runs the official installer for the latest stable mise
 (checksum verified), infers the set (`desktop,identity`
 on this desktop), and runs `mise bootstrap` from the latest `main` with
 `--config-dir global`. Set `DOTFILES_ENVS=desktop,identity` to override the
-inference. The first run prompts for the git identity vars,
-which are saved in `$MISE_STATE_DIR/vars.toml` (mode 0700), installs every tool
+inference. It prompts for nothing: identity and routing are hardcoded. It
+installs every tool
 from the lockfiles, clones the pinned zim modules, applies the dotfiles, and
 runs the bootstrap task, which links the Linux zsh binary. The `sdlc` CLI is
 a stdlib script linked from the checkout. It uses the network and no sudo.
 
 The login shell stays bash on Linux; an interactive TTY login hands over to
-`~/.local/bin/zsh` through the managed block in `~/.bash_profile`.
+`~/.local/bin/zsh` through the managed block in `~/.bash_profile`. The
+installer also links `/srv/git/github.com/smores56/dotfiles` to `~/.dotfiles`;
+every other checkout lives under `/srv/git`, which is `ghq.root`.
 
 ## 4. Tailscale (the only host layer)
 
@@ -142,7 +147,7 @@ tailscale status
 ## 5. Maki and sdlc
 
 ```sh
-cd ~/repos/github.com/smores56/dotfiles
+cd ~/.dotfiles
 scripts/install-maki.sh
 maki --version
 ```
@@ -153,7 +158,7 @@ nothing. An update is a pin bump in `maki/pin.env` followed by a re-run; never
 copy a release into `~/.local/bin` by hand.
 
 `sdlc` is `sdlc/sdlc_issues.py` in this checkout, linked to `~/.local/bin/sdlc`
-by the identity environment. There is no private clone or install step: update
+by the base environment. There is no private clone or install step: update
 the source in the repository and re-apply the dotfiles. `sdlc list` calls `gh`,
 so it starts working after step 6 authenticates the personal PAT.
 
@@ -181,7 +186,7 @@ The committed `sops.yaml` holds the encrypted values; edit it in place with
 `sops`, using the passphrase-wrapped admin identity:
 
 ```sh
-cd ~/repos/github.com/smores56/dotfiles
+cd ~/.dotfiles
 sops sops.yaml
 ```
 
@@ -264,7 +269,7 @@ must stay in bash. If the zsh link is missing, login falls back to bash.
 ## 9. Verify the machine
 
 ```sh
-cd ~/repos/github.com/smores56/dotfiles
+cd ~/.dotfiles
 mise dot status                    # every dotfile target is applied
 tests/check.sh                     # source tree checks
 mise ls                            # pinned tools are installed

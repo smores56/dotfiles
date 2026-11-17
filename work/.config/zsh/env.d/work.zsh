@@ -1,6 +1,8 @@
 # smoreswork's environment for every zsh (agents, launchd jobs, and editors
 # run `zsh -c`): what the employer's toolchains expect, nothing else.
 export TERMINAL=wezterm
+# The work GitHub account owns its SDLC registry.
+export SDLC_REPO=smohr-blitzy/sdlc
 # Tools that ignore ssh_config's IdentityAgent (libssh2, docker --ssh, dev's
 # agent forwarding) find the 1Password agent here.
 export SSH_AUTH_SOCK="$HOME/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"

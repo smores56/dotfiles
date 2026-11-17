@@ -14,27 +14,29 @@ configuration manager.
 
 ## Bootstrap
 
-With mise already installed:
+The checkout is mise's default dotfiles root, `~/.dotfiles`:
 
 ```sh
-mise -C ~/repos/github.com/smores56/dotfiles bootstrap
+git clone git@github.com:smores56/dotfiles.git ~/.dotfiles
+mise -C ~/.dotfiles bootstrap
 ```
 
 On a fresh machine, one script installs the latest mise and applies the
 inferred set:
 
 ```sh
-cd ~/repos/github.com/smores56/dotfiles
-scripts/install-mise.sh
+~/.dotfiles/scripts/install-mise.sh
 ```
 
-The set is `identity` on a server, `desktop,identity` on a Linux desktop, and
-`desktop,work` on macOS; `DOTFILES_ENVS` overrides it. The first run prompts
-once for the git identity and saves it in `$MISE_STATE_DIR/vars.toml`. The
-login shell is a separate step because `chsh` asks for a password:
+On smortress and smorespro, `install-mise.sh` also creates
+`/srv/git/github.com/smores56/dotfiles` as a symlink to `~/.dotfiles`. The set
+is `identity` on a server, `desktop,identity` on a Linux desktop, and
+`desktop,work` on macOS; `DOTFILES_ENVS` overrides it. No values are prompted:
+the identity and routing are hardcoded. The login shell is a separate step
+because `chsh` asks for a password:
 
 ```sh
-mise -C ~/repos/github.com/smores56/dotfiles bootstrap --only user
+mise -C ~/.dotfiles bootstrap --only user
 ```
 
 The full sequence, including the steps that need a human, is in
@@ -47,8 +49,8 @@ Environments are additive; an environment only adds files and hooks.
 
 | Environment | Adds |
 | --- | --- |
-| base | zsh, helix, zellij, yazi, lazygit, television, gh, global mise files |
-| `identity` | git identity templates, `~/.ssh/config`, `allowed_signers`, `sdlc` |
+| base | zsh, helix, zellij, yazi, lazygit, television, gh, `sdlc`, global mise files |
+| `identity` | git identity templates, `~/.ssh/config`, `allowed_signers` |
 | `desktop` | WezTerm, fonts, clipboard and trash helpers, Flatpaks or casks, wallpapers, systemd units, the zsh hand-off |
 | `work` | work zsh hooks, work git identity and 1Password signing, the github.com SSH entry, Claude work rules, macOS defaults, work casks |
 
@@ -61,6 +63,7 @@ shell file exports `MISE_ENV`.
 | --- | --- |
 | every machine | POSIX shell and coreutils, `curl`, `git`, `tar`, `gzip`, CA certificates |
 | Fedora Atomic / CoreOS | nothing more; the image ships `git`, `curl`, and, on desktops, `flatpak` |
+| smortress / smorespro | `/srv/git` created once and owned by you: `sudo install -d -o "$USER" -g "$(id -gn)" /srv/git` |
 | macOS | Command Line Tools (they provide `git`) and Homebrew; run `scripts/install-homebrew.sh` once, interactively |
 | smoreswork | also the 1Password app for its SSH agent and `op-ssh-sign`; the bootstrap installs the `op` CLI |
 
@@ -94,7 +97,7 @@ mise dot diff                    # what a dotfile apply would change
 mise dot apply                   # deploy the checkout's dotfiles
 mise bootstrap                   # tools, repos, dotfiles, and the bootstrap task
 
-repos get owner/project          # plain git clone under ~/repos/<host>/<owner>/<repo>
+repos get owner/project          # plain git clone under /srv/git/<host>/<owner>/<repo>
 repos list
 worktrees new --slug add-gizmo --ticket ABC-123 --type feat
 worktrees prune              # dry run; --apply removes what it reported
@@ -107,6 +110,10 @@ and prints JSON: use its `path`. `dev` prefers podman, uses the repository's
 `~/.config/containers/Containerfile.dev`; it never mounts `~/.ssh`, never
 forwards tokens, and keeps each checkout's mise installs on its own volume. The
 SSH agent socket is opt-in with `DEV_SSH_AGENT=1`.
+
+Personal checkouts live under `/srv/git` on smortress and smorespro, which is
+also `ghq.root`; the work Mac keeps work repositories in `~/Blitzy` and only
+the `dotfiles` clone in `~/.dotfiles`.
 
 Every dotfile target is absolute or starts with `~/`, and application
 directories deploy in `symlink-each` mode. Files that tools rewrite in place
@@ -135,20 +142,20 @@ through `[bootstrap.user] login_shell`.
 
 ## Identity and secrets
 
-Git name, email, signing key, personal owner, work owners, and the work flat
-root are `[vars]` with prompts and defaults, saved in
-`$MISE_STATE_DIR/vars.toml` with directory mode 0700. Tera templates render
-`~/.config/git/machine.inc` and `work.inc`; the base `.gitconfig` already
-carries the personal fallback. `scripts/identity.sh` rejects control characters
-before rendering and writes `~/.config/ssh/allowed_signers` from readable
-public keys. Vars are identity only, never tokens or passwords.
+Git identity is fixed: `Sam Mohr <sam@sammohr.dev>` on personal checkouts and
+`Sam Mohr <smohr@blitzy.com>` on work checkouts. There are no `[vars]`: signing
+key paths, work owners (`blitzy-ai blitzy-platform`), the flat work root, and
+the SDLC registry (`smores56/sdlc` personal, `smohr-blitzy/sdlc` work) are all
+hardcoded. Tera templates render `~/.config/git/machine.inc` and `work.inc`;
+the base `.gitconfig` carries the personal fallback. `scripts/identity.sh`
+writes `~/.config/ssh/allowed_signers` from readable public keys.
 
 smoreswork does not apply the `identity` environment. Its git identity is work
 everywhere, commits are signed by an SSH key in 1Password through `op-ssh-sign`,
 and git reaches github.com over SSH through the 1Password agent. `gh` is a
 wrapper at `~/.local/bin/gh` that reads the work token from 1Password per call;
-no personal token is on the laptop, and the private `sdlc` registry is not
-reachable from it.
+no personal token is on the laptop, the personal `sdlc` registry is not
+reachable from it, and `$SDLC_REPO` points at `smohr-blitzy/sdlc`.
 
 Personal machines keep only these secrets:
 
@@ -165,7 +172,7 @@ with the PAT if one is present. smoreswork has no age identity, so it leaves
 both alone; the ciphertext in the public repository is harmless there.
 Bootstrap needs no GitHub auth: the repository, zim modules, tool downloads,
 and `sdlc` source are all in the checkout. `sdlc` is a stdlib script linked by
-the identity environment, so no private repository is cloned.
+the base environment, so no private repository is cloned.
 
 Only personal, cross-machine secrets belong in `sops.yaml`, encrypted to the
 admin identity by `.sops.yaml`. Work credentials stay in 1Password. Homelab

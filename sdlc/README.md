@@ -11,8 +11,9 @@ broker. It keeps no local state.
 
 ## Use from dotfiles
 
-The dotfiles identity environment links `sdlc_issues.py` to
-`~/.local/bin/sdlc`; there is no install step and no private clone. Re-apply
+The dotfiles base environment links `sdlc_issues.py` to `~/.local/bin/sdlc`
+and sets `$SDLC_REPO` (personal `smores56/sdlc`, work `smohr-blitzy/sdlc`);
+there is no install step and no private clone. Re-apply
 the dotfiles after changing the source.
 
 Standalone, from this directory:

@@ -144,9 +144,9 @@ else
 fi
 
 if [ -e "$root/local.env" ]; then
-    no "local.env is retired: identity comes from the mise vars in mise.identity.toml"
+    no "local.env is retired: identity is hardcoded in the templates"
 else
-    ok "local.env is retired: identity comes from the mise vars in mise.identity.toml"
+    ok "local.env is retired: identity is hardcoded in the templates"
 fi
 
 if grep -rqE 'exec\(' "$root"/identity "$root"/desktop "$root"/home "$root"/mise*.toml 2>/dev/null; then
@@ -319,13 +319,51 @@ fi
 
 # --- one checkout root, one instruction set
 
-if grep -rn 'ghq' "$root/mise.toml" "$root/mise.identity.toml" \
-        "$root/home/.local/bin/repos" "$root/maki/config/AGENTS.md" >/dev/null 2>&1; then
-    no "the checkout root is ~/repos everywhere, not the retired ~/ghq"
-    grep -rn 'ghq' "$root/mise.toml" "$root/mise.identity.toml" \
-        "$root/home/.local/bin/repos" "$root/maki/config/AGENTS.md" | sed 's/^/     /' >&2
+if grep -q 'root = /srv/git' "$root/identity/.config/git/machine.inc.tera" \
+        && grep -q 'ROOT=${REPOS_ROOT:-/srv/git}' "$root/home/.local/bin/repos" \
+        && grep -q '/srv/git' "$root/scripts/install-mise.sh" \
+        && grep -q 'ghq = "1.12.0"' "$root/global/config.toml"; then
+    ok "every personal checkout root is /srv/git, and ghq points there"
 else
-    ok "the checkout root is ~/repos everywhere, not the retired ~/ghq"
+    no "repos, ghq.root, install-mise, and ghq must all use /srv/git"
+fi
+
+# shellcheck disable=SC2088 # matching a literal ~/ on purpose
+if grep -rnE '~/repos|~/ghq' "$root/mise.toml" "$root/mise.identity.toml" \
+        "$root/home/.local/bin/repos" "$root/maki/config/AGENTS.md" \
+        "$root/home/.claude/CLAUDE.md" "$root/README.md" \
+        "$root/docs/manual-steps.md" "$root/scripts/install-mise.sh" >/dev/null 2>&1; then
+    no "no file still points at ~/repos or ~/ghq"
+    # shellcheck disable=SC2088 # matching a literal ~/ on purpose
+    grep -rnE '~/repos|~/ghq' "$root/mise.toml" "$root/mise.identity.toml" \
+        "$root/home/.local/bin/repos" "$root/maki/config/AGENTS.md" \
+        "$root/home/.claude/CLAUDE.md" "$root/README.md" \
+        "$root/docs/manual-steps.md" "$root/scripts/install-mise.sh" | sed 's/^/     /' >&2
+else
+    ok "no file still points at ~/repos or ~/ghq"
+fi
+
+if grep -q 'name = "Sam Mohr"' "$root/identity/.config/git/machine.inc.tera" \
+        && grep -q 'email = "sam@sammohr.dev"' "$root/identity/.config/git/machine.inc.tera" \
+        && grep -q 'name = "Sam Mohr"' "$root/work/.config/git/machine.inc.tera" \
+        && grep -q 'email = "smohr@blitzy.com"' "$root/work/.config/git/machine.inc.tera"; then
+    ok "personal and work name and email are hardcoded in the templates"
+else
+    no "the templates must hardcode Sam Mohr and the two emails"
+fi
+
+if grep -qE '^\[vars\.' "$root"/mise*.toml; then
+    no "there are no [vars]; every identity value is hardcoded"
+    grep -nE '^\[vars\.' "$root"/mise*.toml | sed 's/^/     /' >&2
+else
+    ok "there are no [vars]; every identity value is hardcoded"
+fi
+
+if grep -q 'SDLC_REPO=smores56/sdlc' "$root/home/.config/zsh/.zshenv" \
+        && grep -q 'SDLC_REPO=smohr-blitzy/sdlc' "$root/work/.config/zsh/env.d/work.zsh"; then
+    ok "the SDLC registry follows the machine's GitHub account"
+else
+    no "personal and work SDLC registries must be hardcoded"
 fi
 
 if grep -qE '`worktrees prune --apply`' "$root/maki/config/AGENTS.md"; then
@@ -345,7 +383,7 @@ fi
 
 task=$root/scripts/bootstrap-task.sh
 if [ -x "$root/sdlc/sdlc_issues.py" ] \
-        && grep -q '"~/.local/bin/sdlc" = { source = "sdlc/sdlc_issues.py" }' "$root/mise.identity.toml" \
+        && grep -q '"~/.local/bin/sdlc" = { source = "sdlc/sdlc_issues.py" }' "$root/mise.toml" \
         && ! grep -q 'sdlc.git' "$task"; then
     ok "the sdlc CLI is deployed from this checkout"
 else

@@ -12,7 +12,7 @@ ABBR_USER_ABBREVIATIONS_FILE=${XDG_CONFIG_HOME:-$HOME/.config}/zsh-abbr/user-abb
 if [[ -r $ZIM_HOME/init.zsh ]]; then
   source "$ZIM_HOME/init.zsh"
 else
-  print -u2 'zsh: zim is not built; run `mise -C ~/repos/github.com/smores56/dotfiles bootstrap`'
+  print -u2 'zsh: zim is not built; run `mise -C ~/.dotfiles bootstrap`'
 fi
 
 for _f in "$ZDOTDIR"/conf.d/*.zsh(N); do source "$_f"; done

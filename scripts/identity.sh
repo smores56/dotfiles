@@ -1,99 +1,55 @@
 #!/bin/sh
-# Identity hooks for the `identity` environment (see mise.identity.toml).
-#   identity.sh check <name> <email> <key> <owner> <root> <work_owners> <flat> <work_email> <work_key>
-#   identity.sh signers <email> <key> <work_email> <work_key>
+# Identity hooks for the `identity` and `work` environments.
+# Every value is fixed: personal sam@sammohr.dev, work smohr@blitzy.com.
+#   identity.sh signers        personal machine: personal and work keys
+#   identity.sh work-signers   work machine: the checked-in 1Password key
 set -eu
 
 die() { printf 'identity: %s\n' "$*" >&2; exit 1; }
 
-# Values render verbatim inside git-config double quotes, so anything git
-# would treat as syntax there is refused: control characters (a newline would
-# start a new config line), the double quote, and the backslash.
-check_value() {
-    case $2 in
-        *[[:cntrl:]]*) die "$1 contains a control character; fix it with: mise vars $1=..." ;;
-        *'"'*|*'\'*) die "$1 contains a double quote or backslash; fix it with: mise vars $1=..." ;;
-    esac
-    case $1 in
-        *email) case $2 in *[[:space:]]*) die "$1 contains whitespace; fix it with: mise vars $1=..." ;; esac ;;
-        personal_owner|work_owners)
-            for owner in $2; do
-                case $owner in
-                    *[!A-Za-z0-9._-]*) die "$1 has an invalid GitHub owner '$owner'; fix it with: mise vars $1=..." ;;
-                esac
-            done ;;
-    esac
-}
-
 expand_home() {
-    # shellcheck disable=SC2088 # matching a literal ~/ that the vars store
+    # shellcheck disable=SC2088 # matching a literal ~/ that the config stores
     case $1 in
         '~/'*) printf '%s/%s' "$HOME" "${1#\~/}" ;;
         *) printf '%s' "$1" ;;
     esac
 }
 
+# ~/.gitconfig names ~/.config/ssh/allowed_signers literally, so this path
+# must not follow XDG_CONFIG_HOME. ssh also writes known_hosts beside it, so
+# the directory must exist before the first connection.
+dir=$HOME/.config/ssh
+
+write_signers() {
+    mkdir -p "$dir" && chmod 700 "$dir"
+    : >"$dir/allowed_signers.tmp"
+    for pair in "$@"; do
+        email=${pair%% *}
+        key=${pair#* }
+        path=$(expand_home "$key")
+        if [ ! -f "$path" ] || [ ! -r "$path" ]; then
+            printf 'identity: %s is not a readable key file; allowed_signers skips it\n' "$key" >&2
+            continue
+        fi
+        # A .pub file holds one key; anything after its first line is not part of it.
+        IFS= read -r key_line <"$path" || [ -n "$key_line" ] || continue
+        printf '%s namespaces="git" %s\n' "$email" "$key_line" >>"$dir/allowed_signers.tmp"
+    done
+    mv "$dir/allowed_signers.tmp" "$dir/allowed_signers"
+}
+
 cmd=${1:-}
 [ $# -gt 0 ] && shift
 case $cmd in
-    check)
-        [ $# -eq 9 ] || die "check takes 9 values, got $#"
-        for name in git_name git_email git_signing_key personal_owner repos_root \
-                work_owners work_flat_root work_email work_signing_key; do
-            check_value "$name" "$1"
-            eval "v_$name=\$1"
-            shift
-        done
-        # shellcheck disable=SC2154 # assigned through eval above
-        if { [ -n "$v_work_owners" ] || [ -n "$v_work_flat_root" ]; } && [ -z "$v_work_email" ]; then
-            die "work_owners or work_flat_root is set, so work_email is required: mise vars work_email=..."
-        fi
-        ;;
-    check-work)
-        [ $# -eq 4 ] || die "check-work takes 4 values, got $#"
-        check_value git_name "$1"
-        check_value work_email "$2"
-        check_value work_signing_pubkey "$3"
-        case $3 in
-            ssh-ed25519\ *|ssh-rsa\ *|ecdsa-sha2-*\ *|sk-ssh-ed25519@openssh.com\ *) ;;
-            *) die "work_signing_pubkey must be an OpenSSH public key (ssh-ed25519 AAAA...), not a path" ;;
-        esac
-        check_value work_gh_token_ref "$4"
-        case $4 in
-            op://*/*/*) ;;
-            *) die "work_gh_token_ref must be a 1Password reference (op://vault/item/field), never the token itself" ;;
-        esac
-        mkdir -p "$HOME/.config/ssh" && chmod 700 "$HOME/.config/ssh"
-        ;;
     signers)
-        [ $# -eq 4 ] || die "signers takes 4 values, got $#"
-        email=$1 key=$2 work_email=${3:-$1} work_key=${4:-$2}
-        # ~/.gitconfig names ~/.config/ssh/allowed_signers literally, so this
-        # path must not follow XDG_CONFIG_HOME.
-        dir=$HOME/.config/ssh
-        # ssh writes known_hosts beside the config, so the directory must exist
-        # before the first connection.
-        mkdir -p "$dir" && chmod 700 "$dir"
-        out=""
-        for pair in "$email $key" "$work_email $work_key"; do
-            path=$(expand_home "${pair#* }")
-            if [ ! -f "$path" ] || [ ! -r "$path" ]; then
-                printf 'identity: %s is not a readable key file; allowed_signers skips it\n' "${pair#* }" >&2
-                continue
-            fi
-            # A .pub file holds one key; anything after its first line is not part of it.
-            IFS= read -r key_line <"$path" || [ -n "$key_line" ] || continue
-            line="${pair%% *} namespaces=\"git\" $key_line"
-            case $out in *"$line"*) ;; *) out="$out$line
-" ;; esac
-        done
-        # Never clobber a populated file when the keys are not on this machine
-        # yet; create an empty one once so git has a file to read.
-        if [ -n "$out" ]; then
-            printf '%s' "$out" >"$dir/allowed_signers.tmp" && mv "$dir/allowed_signers.tmp" "$dir/allowed_signers"
-        elif [ ! -e "$dir/allowed_signers" ]; then
-            : >"$dir/allowed_signers"
-        fi
+        [ $# -eq 0 ] || die "signers takes no arguments"
+        write_signers \
+            "sam@sammohr.dev ~/.ssh/id_ed25519.pub" \
+            "smohr@blitzy.com ~/.ssh/id_work.pub"
         ;;
-    *) die "usage: identity.sh check|check-work|signers ..." ;;
+    work-signers)
+        [ $# -eq 0 ] || die "work-signers takes no arguments"
+        write_signers "smohr@blitzy.com ~/.config/git/work-signing.pub"
+        ;;
+    *) die "usage: identity.sh signers|work-signers" ;;
 esac

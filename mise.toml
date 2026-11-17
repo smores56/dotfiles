@@ -41,6 +41,8 @@ min_version = "2026.11.9"
 "~/.config/yazi" = { source = "home/.config/yazi", mode = "symlink-each" }
 "~/.config/zellij" = { source = "home/.config/zellij", mode = "symlink-each" }
 "~/.local/bin" = { source = "home/.local/bin", mode = "symlink-each" }
+# The stdlib sdlc CLI; $SDLC_REPO selects the personal or work registry.
+"~/.local/bin/sdlc" = { source = "sdlc/sdlc_issues.py" }
 "~/.config/maki" = { source = "maki/config", mode = "symlink-each" }
 "~/.agents/skills" = { source = "maki/skills", mode = "symlink-each" }
 # Claude Code: one CLAUDE.md for every machine (it imports ~/.claude/work.md,
@@ -55,7 +57,11 @@ min_version = "2026.11.9"
 "~/.local/bin/maki-session-search" = { source = "maki/bin/maki-session-search" }
 "~/.local/bin/maki-session-resume" = { source = "maki/bin/maki-session-resume" }
 
-# Runs on every `mise bootstrap`, after tools, so it must be safe to repeat.
+# Runs on every `mise bootstrap`, before dotfiles, so it must be safe to repeat.
+[bootstrap.hooks.pre-dotfiles]
+description = "retire the uv sdlc shim"
+run = "sh {{ config_root }}/scripts/retire-uv-sdlc.sh"
+
 [tasks.bootstrap]
 description = "Install the pieces mise does not manage declaratively"
 run = "sh scripts/bootstrap-task.sh"

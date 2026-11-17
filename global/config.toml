@@ -20,6 +20,7 @@ experimental = true
 # python runs the maki-session-search helper.
 python = "3.14.10"
 gh = "2.104.0"
+ghq = "1.12.0"
 jq = "1.8.2"
 yq = "4.54.3"
 ripgrep = "15.2.0"

@@ -1,8 +1,7 @@
-# Rendered by mise from the identity vars. Empty work values fall back to the
-# personal ones, so the file never carries an empty email or key.
+# Rendered by mise. Every value is fixed.
 [user]
-    email = "{% if vars.work_email %}{{ vars.work_email }}{% else %}{{ vars.git_email }}{% endif %}"
-    signingkey = "{% if vars.work_signing_key %}{{ vars.work_signing_key }}{% else %}{{ vars.git_signing_key }}{% endif %}"
+    email = "smohr@blitzy.com"
+    signingkey = "~/.ssh/id_work.pub"
 [smores]
     flow = "pr"
     branchTemplate = "{ticket}-{slug}"
