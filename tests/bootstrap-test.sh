@@ -34,7 +34,9 @@ os=$(uname -s)
 # The zsh each platform logs in with: macOS's own /bin/zsh reads /etc/zprofile
 # (path_helper), which a Nix- or Homebrew-built zsh on PATH does not.
 if [ "$os" = Darwin ] && [ -x /bin/zsh ]; then
-    zsh() { /bin/zsh "$@"; }
+    zsh_bin=/bin/zsh
+else
+    zsh_bin=$(command -v zsh || true)
 fi
 
 # run_mise <home> <env> <args...>: mise with a clean environment, trusting only
@@ -123,20 +125,20 @@ for target in \
     assert_not "base leaves ~/$target alone" test -e "$h/$target"
 done
 
-if command -v zsh >/dev/null 2>&1; then
-    path_out=$(env -i HOME="$h" PATH=/usr/bin:/bin zsh -c 'print -rl -- $path' 2>/dev/null)
+if [ -n "$zsh_bin" ]; then
+    path_out=$(env -i HOME="$h" PATH=/usr/bin:/bin "$zsh_bin" -c 'print -rl -- $path' 2>/dev/null)
     first=$(printf '%s\n' "$path_out" | sed -n 1p)
     second=$(printf '%s\n' "$path_out" | sed -n 2p)
     assert "non-interactive zsh puts ~/.local/bin first" test "$first" = "$h/.local/bin"
     assert "non-interactive zsh puts mise shims second" \
         test "$second" = "$h/.local/share/mise/shims"
     assert "the system PATH stays after them" grep -qx /usr/bin <<<"$path_out"
-    login_out=$(env -i HOME="$h" PATH=/usr/bin:/bin zsh -lc 'print -rl -- $path' 2>/dev/null)
+    login_out=$(env -i HOME="$h" PATH=/usr/bin:/bin "$zsh_bin" -lc 'print -rl -- $path' 2>/dev/null)
     assert "login zsh keeps ~/.local/bin first after the system profile" \
         test "$(printf '%s\n' "$login_out" | sed -n 1p)" = "$h/.local/bin"
     assert "login zsh keeps mise shims second after the system profile" \
         test "$(printf '%s\n' "$login_out" | sed -n 2p)" = "$h/.local/share/mise/shims"
-    zdot=$(env -i HOME="$h" PATH=/usr/bin:/bin zsh -c 'print -r -- $ZDOTDIR' 2>/dev/null)
+    zdot=$(env -i HOME="$h" PATH=/usr/bin:/bin "$zsh_bin" -c 'print -r -- $ZDOTDIR' 2>/dev/null)
     assert "the home zshenv sets ZDOTDIR to the XDG zsh directory" test "$zdot" = "$h/.config/zsh"
 else
     printf 'skip zsh PATH checks (zsh not installed)\n'
@@ -305,19 +307,19 @@ assert "work links the interactive work hook" links_into_repo "$h/.config/zsh/co
 assert "work links the Claude work rules" grep -q 'This is a work host' "$h/.claude/work.md"
 assert "work leaves the employer's ~/.zshrc a plain file" test ! -L "$h/.zshrc"
 assert_not "work does not pull in the personal identity" test -e "$h/.config/git/personal.inc"
-if command -v zsh >/dev/null 2>&1; then
+if [ -n "$zsh_bin" ]; then
     assert "non-interactive zsh points SSH at the 1Password agent" \
-        bash -c "env -i HOME='$h' PATH=/usr/bin:/bin zsh -c 'print -r -- \$SSH_AUTH_SOCK' | grep -q 2BUA8C4S2C.com.1password"
+        bash -c "env -i HOME='$h' PATH=/usr/bin:/bin '$zsh_bin' -c 'print -r -- \$SSH_AUTH_SOCK' | grep -q 2BUA8C4S2C.com.1password"
     assert "non-interactive zsh builds with Apple clang" \
-        test "$(env -i HOME="$h" PATH=/usr/bin:/bin zsh -c 'print -r -- $CC')" = /usr/bin/clang
+        test "$(env -i HOME="$h" PATH=/usr/bin:/bin "$zsh_bin" -c 'print -r -- $CC')" = /usr/bin/clang
     assert "non-interactive zsh keeps ~/.local/bin first after the hook" \
-        test "$(env -i HOME="$h" PATH=/usr/bin:/bin zsh -c 'print -r -- $path[1]')" = "$h/.local/bin"
-    login_path=$(env -i HOME="$h" PATH=/usr/bin:/bin zsh -lc 'print -rl -- $path' 2>/dev/null)
+        test "$(env -i HOME="$h" PATH=/usr/bin:/bin "$zsh_bin" -c 'print -r -- $path[1]')" = "$h/.local/bin"
+    login_path=$(env -i HOME="$h" PATH=/usr/bin:/bin "$zsh_bin" -lc 'print -rl -- $path' 2>/dev/null)
     assert "login zsh keeps ~/.local/bin ahead of /usr/bin after path_helper" \
         test "$(printf '%s\n' "$login_path" | sed -n 1p)" = "$h/.local/bin"
     assert_not "the work environment references no Nix path" grep -rqE '/nix/|nix-profile|hm-session' "$root/work"
     assert "interactive zsh sources the employer's ~/.zshrc" \
-        test "$(env -i HOME="$h" PATH=/usr/bin:/bin TERM=dumb zsh -ic 'print -r -- ${EMPLOYER_RC_TEST-}' 2>/dev/null)" = 1
+        test "$(env -i HOME="$h" PATH=/usr/bin:/bin TERM=dumb "$zsh_bin" -ic 'print -r -- ${EMPLOYER_RC_TEST-}' 2>/dev/null)" = 1
 fi
 
 # On smoreswork gh runs from mise under the 1Password shell plugin.

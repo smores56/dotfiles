@@ -76,10 +76,17 @@ zi() {  # zi <script>: run inside an interactive zsh in the test HOME
     env -i HOME="$h" PATH="$base_path" TERM=xterm-256color "$zsh_bin" -i -c "$1" 2>"$tmp/zi.err"
 }
 
-for fn in abbr prompt_pure_setup _zsh_autosuggest_start -ftb-complete _auto_notify_send \
+for fn in abbr prompt_pure_setup _zsh_autosuggest_start -ftb-complete \
         fast-theme maki ef et ms; do
     expect "zsh -i defines $fn" yes "$(zi "(( \$+functions[$fn] )) && print yes || print no")"
 done
+if [ "$(uname -s)" = Darwin ] || command -v notify-send >/dev/null 2>&1; then
+    expect "auto-notify loads when notifications are available" yes \
+        "$(zi '(( $+functions[_auto_notify_send] )) && print yes || print no')"
+else
+    expect "auto-notify stays off without notify-send" no \
+        "$(zi '(( $+functions[_auto_notify_send] )) && print yes || print no')"
+fi
 expect "pure is the prompt" yes "$(zi '(( ${precmd_functions[(Ie)prompt_pure_precmd]} )) && print yes || print no')"
 expect "abbreviation e expands to hx" hx "$(zi 'abbr expand e')"
 expect "abbreviation g expands to lazygit" lazygit "$(zi 'abbr expand g')"
