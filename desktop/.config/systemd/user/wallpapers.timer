@@ -2,6 +2,7 @@
 Description=Keep the wallpaper cache fresh
 
 [Timer]
+OnStartupSec=2min
 OnUnitInactiveSec=3h
 
 [Install]
