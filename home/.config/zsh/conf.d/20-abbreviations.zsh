@@ -26,6 +26,6 @@
   )
   local name
   for name in ${(k)abbrs}; do
-    abbr add --session --quiet --force -- "$name=${abbrs[$name]}"
+    abbr add --session --quiet --force -- "$name=${abbrs[$name]}" >/dev/null 2>&1
   done
 }
