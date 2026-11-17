@@ -26,6 +26,10 @@ export BAT_THEME=ansi
 # no plaintext identity is ever on disk.
 [[ -x $HOME/.local/bin/sops-age-key ]] && export SOPS_AGE_KEY_CMD=$HOME/.local/bin/sops-age-key
 
+# The machine's one GitHub token, for gh and git's credential helper alike.
+_f=${XDG_CONFIG_HOME:-$HOME/.config}/github-token
+[[ -r $_f ]] && read -r GH_TOKEN <"$_f" && export GH_TOKEN
+
 # Per-environment additions (the work hook on smoreswork) drop files here.
 for _f in "$ZDOTDIR"/env.d/*.zsh(N); do . "$_f"; done
 unset _f

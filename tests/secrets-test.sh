@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Behavioural tests for the combined SOPS secrets file, with fake sops/gh.
+# Behavioural tests for the combined SOPS secrets file, with a fake sops.
 set -uo pipefail
 
 root=$(cd -- "$(dirname -- "$0")/.." && pwd)
@@ -10,6 +10,8 @@ pass=0
 fail=0
 ok() { pass=$((pass + 1)); printf 'ok   %s\n' "$*"; }
 no() { fail=$((fail + 1)); printf 'FAIL %s\n' "$*" >&2; }
+check() { local desc=$1; shift; if "$@"; then ok "$desc"; else no "$desc"; fi; }
+mode_of() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
 
 home=$tmp/home
 mkdir -p "$home/.config/sops" "$tmp/bin"
@@ -19,147 +21,88 @@ printf 'encrypted\n' >"$tmp/secrets.yaml"
 cat >"$tmp/bin/sops" <<'EOF'
 #!/bin/sh
 printf 'sops\n' >>"$SECRETS_LOG"
-printf 'NEURALWATT_API_KEY=%s\n' "${FAKE_NEURALWATT-nw-test}"
-printf 'TINYFISH_API_KEY=%s\n' "${FAKE_TINYFISH-tf-test}"
-[ -n "${FAKE_PAT-ghp_test}" ] && printf 'GITHUB_PERSONAL_PAT=%s\n' "$FAKE_PAT"
-[ -n "${FAKE_WORK_PAT-}" ] && printf 'GITHUB_WORK_PAT=%s\n' "$FAKE_WORK_PAT"
+printf 'NEURALWATT_API_KEY=%s\n' "$FAKE_NEURALWATT"
+printf 'TINYFISH_API_KEY=%s\n' "$FAKE_TINYFISH"
+[ -n "$FAKE_PAT" ] && printf 'GITHUB_PERSONAL_PAT=%s\n' "$FAKE_PAT"
+[ -n "$FAKE_WORK_PAT" ] && printf 'GITHUB_WORK_PAT=%s\n' "$FAKE_WORK_PAT"
 exit 0
 EOF
-
+# The token is exported by zsh, never handed to gh: any gh call is a failure.
 cat >"$tmp/bin/gh" <<'EOF'
 #!/bin/sh
-printf '%s\n' "$*" >>"$SECRETS_LOG"
-case $1 in
-    auth)
-        case $2 in
-            status) [ -f "$GH_LOGIN" ] ;;
-            login) tee -a "$GH_LOGINS" >"$GH_LOGIN" ;;
-        esac ;;
-esac
+printf 'gh %s\n' "$*" >>"$SECRETS_LOG"
 EOF
 chmod +x "$tmp/bin/sops" "$tmp/bin/gh"
 
 run() {
     env -i HOME="$home" PATH="$tmp/bin:/usr/bin:/bin" \
-        SECRETS_LOG="$tmp/log" GH_LOGIN="$tmp/login" GH_LOGINS="$tmp/logins" \
-        MISE_ENV="${MISE_ENV-}" FAKE_WORK_PAT="${FAKE_WORK_PAT-}" \
+        SECRETS_LOG="$tmp/log" MISE_ENV="${MISE_ENV-}" \
         FAKE_NEURALWATT="${FAKE_NEURALWATT-nw-test}" \
         FAKE_TINYFISH="${FAKE_TINYFISH-tf-test}" \
         FAKE_PAT="${FAKE_PAT-ghp_test}" \
+        FAKE_WORK_PAT="${FAKE_WORK_PAT-ghp_work}" \
         DOTFILES_SECRETS="$tmp/secrets.yaml" \
-        sh "$root/scripts/secrets.sh"
+        sh "$root/scripts/secrets.sh" >"$tmp/out" 2>&1
 }
+decrypts() { grep -c '^sops$' "$tmp/log"; }
 
-if run; then ok "decrypt exits 0"; else no "decrypt exits 0"; fi
 secrets=$home/.config/secrets.env
-if [ -f "$secrets" ] && grep -qx 'NEURALWATT_API_KEY=nw-test' "$secrets" \
-        && grep -qx 'TINYFISH_API_KEY=tf-test' "$secrets"; then
-    ok "the provider keys are written"
-else
-    no "the provider keys are written"
-fi
-if [ "$(stat -c %a "$secrets" 2>/dev/null || stat -f %Lp "$secrets")" = 600 ]; then
-    ok "secrets.env is mode 600"
-else
-    no "secrets.env is mode 600"
-fi
-if [ -f "$tmp/login" ] && [ "$(cat "$tmp/login")" = ghp_test ]; then
-    ok "the PAT reaches gh on stdin"
-else
-    no "the PAT reaches gh on stdin"
-fi
+token=$home/.config/github-token
+
+check "decrypt exits 0" run
+check "the provider keys are written" \
+    grep -qx 'NEURALWATT_API_KEY=nw-test' "$secrets"
+check "secrets.env is mode 600" test "$(mode_of "$secrets")" = 600
+check "a personal machine gets the personal PAT" test "$(cat "$token" 2>/dev/null)" = ghp_test
+check "the token file is mode 600" test "$(mode_of "$token" 2>/dev/null)" = 600
+check "the PATs stay out of the Maki cache" bash -c "! grep -q ghp_ '$secrets'"
+check "the PATs are never printed" bash -c "! grep -q ghp_ '$tmp/out'"
+check "gh is never called" bash -c "! grep -q '^gh ' '$tmp/log'"
 
 run
-if [ "$(grep -c '^sops$' "$tmp/log")" -eq 1 ]; then
-    ok "an unchanged file skips the second decrypt"
-else
-    no "an unchanged file skips the second decrypt"
-fi
+check "an unchanged file skips the second decrypt" test "$(decrypts)" -eq 1
 
-rm "$tmp/login"
+chmod 644 "$token"
 run
-if [ "$(grep -c '^sops$' "$tmp/log")" -eq 2 ] \
-        && [ "$(grep -c 'auth login' "$tmp/log")" -eq 2 ]; then
-    ok "a revoked gh login is restored without a changed file"
-else
-    no "a revoked gh login is restored without a changed file"
-fi
+check "a loosened token file is tightened without decrypting" \
+    test "$(mode_of "$token")" = 600 -a "$(decrypts)" -eq 1
 
-# bootstrap-task.sh runs without mise's shims when the caller has not activated
-# mise. gh is then absent, and the cached keys must be left exactly as they are.
-# GitHub's runners ship /usr/bin/gh, so the system directories are mirrored
-# without it.
-mkdir -p "$tmp/nogh"
-cp "$tmp/bin/sops" "$tmp/nogh/sops"
-for f in /usr/bin/* /bin/*; do
-    [ "${f##*/}" = gh ] || [ -e "$tmp/nogh/${f##*/}" ] || ln -s "$f" "$tmp/nogh/"
-done
-if env -i HOME="$home" PATH="$tmp/nogh" \
-        SECRETS_LOG="$tmp/log" GH_LOGIN="$tmp/login" \
-        DOTFILES_SECRETS="$tmp/secrets.yaml" \
-        sh "$root/scripts/secrets.sh" \
-        && [ "$(grep -c '^sops$' "$tmp/log")" -eq 2 ]; then
-    ok "a missing gh keeps the cached secrets without decrypting"
-else
-    no "a missing gh keeps the cached secrets without decrypting"
-fi
+rm "$token"
+run
+check "a deleted token file is restored without a changed file" \
+    test "$(cat "$token" 2>/dev/null)" = ghp_test -a "$(decrypts)" -eq 2
+
+MISE_ENV=desktop,work run
+check "a work machine gets only the work PAT, even with an unchanged file" \
+    test "$(cat "$token" 2>/dev/null)" = ghp_work -a "$(decrypts)" -eq 3
+MISE_ENV=desktop,work run
+check "a work machine skips the second decrypt" test "$(decrypts)" -eq 3
 
 printf 'changed\n' >"$tmp/secrets.yaml"
 run
-if [ "$(grep -c '^sops$' "$tmp/log")" -eq 3 ]; then
-    ok "a changed file decrypts again"
-else
-    no "a changed file decrypts again"
-fi
+check "a changed file decrypts again" test "$(decrypts)" -eq 4
 
 printf 'old\n' >"$secrets"
 printf 'changed2\n' >"$tmp/secrets.yaml"
-if FAKE_NEURALWATT='' run 2>/dev/null; then
-    no "missing provider keys fail"
-else
-    ok "missing provider keys fail"
-fi
-if grep -qx 'old' "$secrets"; then
-    ok "missing provider keys keep the existing file"
-else
-    no "missing provider keys keep the existing file"
-fi
+if FAKE_NEURALWATT='' run; then no "missing provider keys fail"; else ok "missing provider keys fail"; fi
+check "missing provider keys keep the existing file" grep -qx old "$secrets"
 
 printf 'changed3\n' >"$tmp/secrets.yaml"
-printf 'auth\n' >"$tmp/log"
-FAKE_PAT='' run >/dev/null 2>&1
-if grep -q 'auth login' "$tmp/log"; then
-    no "an empty PAT skips gh auth"
-else
-    ok "an empty PAT skips gh auth"
-fi
-
-printf 'changed4\n' >"$tmp/secrets.yaml"
-: >"$tmp/logins"
-MISE_ENV=desktop,work FAKE_WORK_PAT=github_pat_work run >/dev/null
-if [ "$(cat "$tmp/logins")" = "$(printf 'ghp_test\ngithub_pat_work')" ]; then
-    ok "a work machine logs gh in with the work PAT last, so it is active"
-else
-    no "a work machine logs gh in with the work PAT last, so it is active"
-fi
-
-printf 'changed5\n' >"$tmp/secrets.yaml"
-: >"$tmp/logins"
-MISE_ENV=desktop FAKE_WORK_PAT=github_pat_work run >/dev/null
-if grep -q github_pat_work "$tmp/logins"; then
-    no "a personal machine never hands gh the work PAT"
-else
-    ok "a personal machine never hands gh the work PAT"
-fi
+FAKE_PAT='' run
+check "an empty PAT removes the token file" test ! -e "$token"
+check "an empty PAT warns that git and gh have no token" grep -q 'no GITHUB_PERSONAL_PAT' "$tmp/out"
+run_before=$(decrypts)
+FAKE_PAT='' run
+check "an empty PAT is not decrypted again on every run" test "$(decrypts)" -eq "$run_before"
+MISE_ENV=work FAKE_PAT='' run
+check "switching to work picks up the work PAT despite the empty personal one" \
+    test "$(cat "$token" 2>/dev/null)" = ghp_work
 
 rm "$home/.config/sops/keys.age"
-printf 'auth\n' >"$tmp/log"
+printf 'changed4\n' >"$tmp/secrets.yaml"
+run_before=$(decrypts)
 run
-if grep -q 'auth login' "$tmp/log"; then
-    no "a machine without the age identity is left alone"
-else
-    ok "a machine without the age identity is left alone"
-fi
+check "a machine without the age identity is left alone" test "$(decrypts)" -eq "$run_before"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

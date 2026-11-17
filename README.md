@@ -17,7 +17,7 @@ configuration manager.
 The checkout is mise's default dotfiles root, `~/.dotfiles`:
 
 ```sh
-git clone git@github.com:smores56/dotfiles.git ~/.dotfiles
+git clone https://github.com/smores56/dotfiles.git ~/.dotfiles
 mise -C ~/.dotfiles bootstrap
 ```
 
@@ -142,25 +142,29 @@ hardcoded. Tera templates render `~/.config/git/machine.inc` and `work.inc`;
 the base `.gitconfig` carries the shared git settings.
 
 smoreswork does not apply the `identity` environment. Its git identity is work
-everywhere, and git reaches github.com over https with `gh`'s token. The
-bootstrap logs `gh` in with `GITHUB_WORK_PAT` from `sops.yaml`, after the
-personal PAT, so `smohr-blitzy` is the active account; `$SDLC_REPO` points at
-`smohr-blitzy/sdlc`. The work token grants `dotfiles` Contents,
-`smohr-blitzy/sdlc` Issues, and work-organization Contents read plus Issues.
+everywhere, and `$SDLC_REPO` points at `smohr-blitzy/sdlc`.
 
-Personal machines keep only these secrets:
+Every machine holds one GitHub token, which every zsh exports as `GH_TOKEN`:
+`gh` reads it, and git's credential helper (`gh auth git-credential`) hands it
+to every https remote. `identity/.gitconfig` rewrites `git@github.com:` and
+`ssh://git@github.com/` remotes to https, so old ssh clones use it too. The
+work laptop's token is `GITHUB_WORK_PAT`, a classic token with `repo` scope,
+because a fine-grained token reaches only one of the two work organizations;
+every other machine's is `GITHUB_PERSONAL_PAT`.
+
+Every machine keeps only these secrets:
 
 | Path | Format | Used by |
 | --- | --- | --- |
-| `sops.yaml` | SOPS ciphertext with `NEURALWATT_API_KEY`, `TINYFISH_API_KEY`, optional `GITHUB_PERSONAL_PAT` and `GITHUB_WORK_PAT` | `scripts/secrets.sh` at bootstrap |
+| `sops.yaml` | SOPS ciphertext with `NEURALWATT_API_KEY`, `TINYFISH_API_KEY`, `GITHUB_PERSONAL_PAT` and `GITHUB_WORK_PAT` | `scripts/secrets.sh` at bootstrap |
 | `~/.config/secrets.env` | derived cache, mode 600, `NAME=value` lines | the zsh `maki` launcher, for the Maki process only |
-| `~/.config/gh/hosts.yml` | gh's token store, mode 600 | `gh` and `sdlc` |
+| `~/.config/github-token` | derived, mode 600, the machine's one token | `.zshenv`, exported as `GH_TOKEN` for `gh`, git, and `sdlc` |
 | `~/.config/sops/keys.age` | passphrase-wrapped age identity | `~/.local/bin/sops-age-key` through `SOPS_AGE_KEY_CMD` |
 
 The bootstrap task decrypts `sops.yaml` once when the age identity exists and
-the ciphertext changed, writes the mode-600 provider cache, and logs `gh` in
-with each PAT present; `GITHUB_WORK_PAT` is used only where `MISE_ENV`
-includes `work`, and logs in last.
+the ciphertext changed, writes the mode-600 provider cache, and writes the
+token file: `GITHUB_WORK_PAT` where `MISE_ENV` includes `work`,
+`GITHUB_PERSONAL_PAT` everywhere else.
 Bootstrap needs no GitHub auth: the repository, zim modules, tool downloads,
 and `sdlc` source are all in the checkout. `sdlc` is a stdlib script linked by
 the base environment, so no private repository is cloned.
@@ -176,7 +180,7 @@ enter this repository; public keys and `known_hosts` are plain files.
 
 CLI tools are pinned per platform in `global/config.toml` and
 `global/config.desktop.toml`, with lockfiles covering linux-x64, linux-arm64,
-and macos-arm64; `global/config.work.toml` only disables the mise `gh`.
+and macos-arm64.
 `[settings] locked = true` means an unlocked tool is an install error, not a
 silent resolve. Bump one tool at a time:
 

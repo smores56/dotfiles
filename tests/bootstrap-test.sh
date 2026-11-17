@@ -125,6 +125,8 @@ for target in \
     assert_not "base leaves ~/$target alone" test -e "$h/$target"
 done
 
+assert "gh clones and checks out over https" grep -qx 'git_protocol: https' "$h/.config/gh/config.yml"
+
 if [ -n "$zsh_bin" ]; then
     path_out=$(env -i HOME="$h" PATH=/usr/bin:/bin "$zsh_bin" -c 'print -rl -- $path' 2>/dev/null)
     first=$(printf '%s\n' "$path_out" | sed -n 1p)
@@ -140,6 +142,12 @@ if [ -n "$zsh_bin" ]; then
         test "$(printf '%s\n' "$login_out" | sed -n 2p)" = "$h/.local/share/mise/shims"
     zdot=$(env -i HOME="$h" PATH=/usr/bin:/bin "$zsh_bin" -c 'print -r -- $ZDOTDIR' 2>/dev/null)
     assert "the home zshenv sets ZDOTDIR to the XDG zsh directory" test "$zdot" = "$h/.config/zsh"
+    printf 'tok-test\n' >"$h/.config/github-token"
+    assert "every zsh exports GH_TOKEN from the token file" \
+        test "$(env -i HOME="$h" PATH=/usr/bin:/bin "$zsh_bin" -c 'print -r -- $GH_TOKEN' 2>&1)" = tok-test
+    rm "$h/.config/github-token"
+    assert "zsh starts cleanly without a token file" \
+        test "$(env -i HOME="$h" PATH=/usr/bin:/bin "$zsh_bin" -c 'print -r -- ${GH_TOKEN-unset}' 2>&1)" = unset
 else
     printf 'skip zsh PATH checks (zsh not installed)\n'
 fi
@@ -195,6 +203,14 @@ assert "a work checkout uses the pr flow" test "$(gitcfg "$h/wip/elsewhere" smor
 assert "the flat work root is work" test "$(gitcfg "$h/Blitzy/flat" user.email)" = smohr@blitzy.com
 assert "an unmatched checkout falls back to the personal identity" \
     test "$(gitcfg "$h/scratch" user.email)" = sam@sammohr.dev
+mkrepo "$h/wip/old-personal" ssh://git@github.com/smores56/old.git
+mkrepo "$h/wip/https-work" https://github.com/blitzy-ai/other.git
+assert "a git@ remote is fetched over https" \
+    test "$(env -i HOME="$h" PATH=/usr/bin:/bin git -C "$h/wip/elsewhere" ls-remote --get-url origin)" = https://github.com/blitzy-ai/service.git
+assert "an ssh:// remote is fetched over https" \
+    test "$(env -i HOME="$h" PATH=/usr/bin:/bin git -C "$h/wip/old-personal" ls-remote --get-url origin)" = https://github.com/smores56/old.git
+assert "an https work remote uses the work identity" \
+    test "$(gitcfg "$h/wip/https-work" user.email)" = smohr@blitzy.com
 for repo in "$h/scratch" "$h/wip/elsewhere"; do
     assert "$(basename "$repo") commits are not signed" test -z "$(gitcfg "$repo" commit.gpgsign)"
 done
@@ -269,7 +285,7 @@ if [ -n "$zsh_bin" ]; then
         test "$(env -i HOME="$h" PATH=/usr/bin:/bin TERM=dumb "$zsh_bin" -ic 'print -r -- ${EMPLOYER_RC_TEST-}' 2>/dev/null)" = 1
 fi
 
-# On smoreswork gh comes from Homebrew, not mise.
+# Every environment, smoreswork included, takes gh from mise.
 h=$(new_home work-tools)
 mkdir -p "$h/.config"
 ln -s "$root/global" "$h/.config/mise"
@@ -277,7 +293,7 @@ current_tools() {
     (cd / && env -i HOME="$h" PATH=/usr/bin:/bin MISE_ENV="$1" "$mise_bin" ls --current 2>/dev/null | awk '{print $1}')
 }
 assert "the base tool set includes gh" grep -qx gh <<<"$(current_tools "")"
-assert_not "the work environment takes gh from Homebrew" grep -qx gh <<<"$(current_tools desktop,work)"
+assert "the work environment takes gh from mise" grep -qx gh <<<"$(current_tools desktop,work)"
 
 # --- work identity: work everywhere ------------------------------------------
 
@@ -292,6 +308,9 @@ gitcfg() { env -i HOME="$h" PATH=/usr/bin:/bin git -C "$1" config --get "$2"; }
 mkdir -p "$h/Blitzy/svc" "$h/scratch"
 git init -q "$h/Blitzy/svc"; git -C "$h/Blitzy/svc" remote add origin https://github.com/blitzy-ai/svc.git
 git init -q "$h/scratch"
+mkdir -p "$h/Blitzy/old"; git init -q "$h/Blitzy/old"; git -C "$h/Blitzy/old" remote add origin git@github.com:blitzy-platform/old.git
+assert "an old work ssh remote is fetched over https" \
+    test "$(env -i HOME="$h" PATH=/usr/bin:/bin git -C "$h/Blitzy/old" ls-remote --get-url origin)" = https://github.com/blitzy-platform/old.git
 for repo in "$h/Blitzy/svc" "$h/scratch"; do
     assert "$(basename "$repo") commits as the work identity" test "$(gitcfg "$repo" user.email)" = smohr@blitzy.com
 done

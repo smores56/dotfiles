@@ -98,7 +98,7 @@ install -m 600 /media/<usb>/sops-backup/keys.age ~/.config/sops/keys.age
 Clone the dotfiles repository at mise's default root:
 
 ```sh
-git clone git@github.com:smores56/dotfiles.git ~/.dotfiles
+git clone https://github.com/smores56/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
 ```
 
@@ -147,13 +147,12 @@ so it starts working after step 6 authenticates the personal PAT.
 
 ## 6. Agent keys and personal token
 
-The local agent's provider keys and an optional personal GitHub token live
-encrypted in `sops.yaml`. The bootstrap task decrypts that file once into
+The local agent's provider keys and the GitHub tokens live encrypted in
+`sops.yaml`. The bootstrap task decrypts that file once into
 `~/.config/secrets.env` (mode 600) when the admin age identity is present and
-the ciphertext changed; the zsh `maki` launcher reads only that cache. A
-`GITHUB_PERSONAL_PAT` in the same file is passed to
-`gh auth login --with-token`, so `gh` and the `sdlc` CLI need no interactive
-login. Nothing else inherits the values.
+the ciphertext changed; the zsh `maki` launcher reads only that cache. The
+machine's GitHub token goes to `~/.config/github-token` (mode 600), which
+every zsh exports as `GH_TOKEN` for `gh`, git, and the `sdlc` CLI.
 
 Verify without printing a key:
 
@@ -161,6 +160,7 @@ Verify without printing a key:
 test -s ~/.config/secrets.env && echo keys-present
 test "$(stat -c %a ~/.config/secrets.env)" = 600 && echo secrets-mode-ok
 zsh -ic 'type -q maki && echo maki-launcher-ok'
+test "$(stat -c %a ~/.config/github-token)" = 600 && echo token-mode-ok
 gh auth status
 sdlc list
 ```
@@ -174,13 +174,13 @@ sops sops.yaml
 ```
 
 Set `NEURALWATT_API_KEY` and `TINYFISH_API_KEY` from the named Bitwarden login
-items. Optionally set `GITHUB_PERSONAL_PAT` to a fine-grained token with Issues
-read/write on `smores56/sdlc` and Metadata read; add Contents read for private
-repositories `gh` should clone or read. Save, commit the new ciphertext, and
-run the bootstrap task again. A token is optional: without it, run
-`gh auth login` once per personal machine. Set `GITHUB_WORK_PAT` to the
-`smohr-blitzy` fine-grained token (lifetime at most 366 days, which the Blitzy
-enterprise requires); only machines in the `work` environment log in with it.
+items. Set `GITHUB_PERSONAL_PAT` to a token with Contents read/write on your
+repositories and Issues read/write on `smores56/sdlc`: without it, personal
+machines have no git or `gh` access to GitHub. Set `GITHUB_WORK_PAT` to the
+`smohr-blitzy` classic token with `repo` scope (lifetime at most 366 days,
+which the Blitzy enterprise requires); only machines in the `work`
+environment use it. Save, commit the new ciphertext, and run the bootstrap
+task again.
 
 The desktop Flatpak ships the `bw` CLI if you prefer to read the values from
 Bitwarden in a terminal:
@@ -198,11 +198,11 @@ unset BW_SESSION
 `<neuralwatt-item>` and `<tinyfish-item>` are the Bitwarden login item names.
 Never commit the plaintext values; `sops` re-encrypts on save.
 
-## 7. Log the work laptop's gh in
+## 7. The work laptop's GitHub token
 
 Restore the admin age identity (`~/.config/sops/keys.age`) before
-smoreswork's first bootstrap; the bootstrap then logs `gh` in with
-`GITHUB_WORK_PAT` from `sops.yaml`.
+smoreswork's first bootstrap; the bootstrap then writes `GITHUB_WORK_PAT` from
+`sops.yaml` to `~/.config/github-token`.
 
 ## 7a. Reach smortress over its tunnel
 

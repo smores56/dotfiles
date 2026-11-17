@@ -1,4 +1,0 @@
-# smoreswork: gh comes from Homebrew, and the Keychain grants its stored token
-# to that binary.
-[settings]
-disable_tools = ["gh"]
