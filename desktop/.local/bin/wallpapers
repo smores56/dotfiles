@@ -17,7 +17,7 @@ source=${WALLPAPERS_SOURCE:-smortress:/srv/wallpapers/}
 cache=${WALLPAPERS_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/wallpapers}
 dest=$cache/Wallpapers
 state=$cache/state
-user=${WALLPAPERS_USER:-core}
+user=${WALLPAPERS_USER:-smores}
 key=${WALLPAPERS_KEY:-$HOME/.ssh/id_smortress-access}
 known_hosts=${WALLPAPERS_KNOWN_HOSTS:-$HOME/.config/ssh/known_hosts}
 

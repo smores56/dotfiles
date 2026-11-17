@@ -85,7 +85,7 @@ fi
 [ -f "$home/.cache/wallpapers/Wallpapers/a.jpg" ] \
     && ok "the cache holds the synced files" || no "the cache holds the synced files"
 
-if grep -q ':sftp,host=smortress,user=core,known_hosts_file=.*,key_file=.*:/srv/wallpapers/' "$tmp/log"; then
+if grep -q ':sftp,host=smortress,user=smores,known_hosts_file=.*,key_file=.*:/srv/wallpapers/' "$tmp/log"; then
     ok "rclone gets the pinned host, key, and known_hosts"
 else
     no "rclone gets the pinned host, key, and known_hosts"
