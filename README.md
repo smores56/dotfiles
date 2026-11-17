@@ -155,6 +155,14 @@ identity exists and the ciphertext changed, and writes the mode-600 cache.
 smoreswork has no age identity, so it leaves the cache alone; the ciphertext in
 the public repository is harmless there.
 
+Only personal, cross-machine secrets belong under `secrets/`, encrypted to the
+admin identity by `.sops.yaml`: the agent provider keys now, and optionally a
+separate file for a personal GitHub token or software SSH key. Work credentials
+stay in 1Password. Homelab material (Cloudflare, restic, R2, ingest)
+stays in homelab-platform, where it is used. Host and YubiKey private material
+and the age identity itself never enter this repository; public keys and
+`known_hosts` are plain files, not secrets.
+
 ## Tools and packages
 
 CLI tools are pinned per platform in `global/config.toml`,
