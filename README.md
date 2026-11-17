@@ -145,7 +145,7 @@ Git identity is fixed: `Sam Mohr <sam@sammohr.dev>` on personal checkouts and
 `Sam Mohr <smohr@blitzy.com>` on work checkouts. Signing key paths, work owners (`blitzy-ai blitzy-platform`), the flat work root, and
 the SDLC registry (`smores56/sdlc` personal, `smohr-blitzy/sdlc` work) are all
 hardcoded. Tera templates render `~/.config/git/machine.inc` and `work.inc`;
-the base `.gitconfig` carries the personal fallback. `scripts/identity.sh`
+the base `.gitconfig` carries the shared git settings. `scripts/identity.sh`
 writes `~/.config/ssh/allowed_signers` from readable public keys.
 
 smoreswork does not apply the `identity` environment. Its git identity is work
