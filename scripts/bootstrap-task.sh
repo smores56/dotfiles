@@ -18,6 +18,15 @@ link_conda_zsh() {
     [ "$(uname -s)" = Linux ] || return 0
     prefix=$(mise where conda:zsh) || die "conda:zsh is not installed; Linux has no other zsh"
     [ -x "$prefix/bin/zsh" ] || die "no zsh binary under $prefix/bin"
+    # conda bakes the install prefix into its binaries, so a moved $HOME
+    # leaves zsh unable to load its modules. Reinstall at the current path
+    # rather than link a shell that cannot start.
+    if ! "$prefix/bin/zsh" -fc 'zmodload zsh/parameter' >/dev/null 2>&1; then
+        log "conda:zsh at $prefix cannot load its modules; reinstalling"
+        mise install --force --yes conda:zsh || die "could not reinstall conda:zsh"
+        prefix=$(mise where conda:zsh) || die "conda:zsh is not installed"
+        [ -x "$prefix/bin/zsh" ] || die "no zsh binary under $prefix/bin"
+    fi
     mkdir -p "$HOME/.local/bin"
     ln -sfn "$prefix/bin/zsh" "$HOME/.local/bin/zsh"
     log "linked ~/.local/bin/zsh -> $prefix/bin/zsh"
