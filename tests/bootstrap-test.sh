@@ -343,7 +343,7 @@ mkdir -p "$h/pub"; git init -q "$h/pub"; git -C "$h/pub" remote add origin https
 assert "public GitHub remotes stay on https" \
     test "$(env -i HOME="$h" PATH=/usr/bin:/bin git -C "$h/pub" ls-remote --get-url origin)" = https://github.com/someone/public.git
 assert "the gh wrapper is first on PATH" links_into_repo "$h/.local/bin/gh"
-assert "the gh wrapper knows where the token lives" grep -qx op://Work/GitHub/token "$h/.config/gh-token-ref"
+assert "the gh wrapper knows where the token lives" grep -qx "op://Employee/GitHub Personal Access Token/token" "$h/.config/gh-token-ref"
 
 assert "allowed_signers lists the work key" \
     grep -qx "smohr@blitzy.com namespaces=\"git\" $key" "$h/.config/ssh/allowed_signers"
