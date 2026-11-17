@@ -399,7 +399,6 @@ if grep -qE '`worktrees prune --apply`' "$root/maki/config/AGENTS.md"; then
 else
     no "AGENTS.md must prune with 'worktrees prune --apply' (prune is a dry run by default)"
 fi
-
 if grep -qF 'worktrees prune              # dry run' "$root/README.md" \
         && ! grep -q 'one root step' "$root/README.md"; then
     ok "README describes the dry-run prune and the root steps truthfully"
@@ -490,6 +489,14 @@ require "the desktop lane empties the trash" \
     "$root/desktop/.config/zsh/conf.d/80-desktop.zsh" 'gtrash find --rm --force'
 require "the desktop lane drives the nym VPN" \
     "$root/desktop/.config/zsh/conf.d/80-desktop.zsh" 'sudo nym-vpnc connect --wait'
+forbid "AGENTS.md names no retired shell abbreviation" \
+    "$root/maki/config/AGENTS.md" '`sl`/`ss`/`st`/`sn`'
+forbid "CLAUDE.md names no retired shell abbreviation" \
+    "$root/home/.claude/CLAUDE.md" '`sl`/`ss`/`st`/`sn`'
+require "AGENTS.md points at the sdlc picker" \
+    "$root/maki/config/AGENTS.md" '`s` (`sdlc ui`)'
+require "CLAUDE.md points at the sdlc picker" \
+    "$root/home/.claude/CLAUDE.md" '`s` (`sdlc ui`)'
 forbid "no fish residue in the check images" "$root/.github/workflows/check.yml" 'fish'
 forbid "no fish residue in the repository Containerfile" "$root/Containerfile" 'fish'
 forbid "no fish residue in the shared dev image" \
