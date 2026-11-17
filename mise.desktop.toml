@@ -5,6 +5,10 @@
 "~/.local/bin/wallpapers" = { source = "desktop/.local/bin/wallpapers", variants = [{ os = "linux" }] }
 "~/.config/systemd/user" = { source = "desktop/.config/systemd/user", mode = "symlink-each", variants = [{ os = "linux" }] }
 "~/.config/wezterm" = { source = "desktop/.config/wezterm", mode = "symlink-each" }
+# niri owns the session and Noctalia the shell surfaces. mise deploys both
+# directories per file so each can be edited without replacing the others.
+"~/.config/niri" = { source = "desktop/.config/niri", mode = "symlink-each", variants = [{ os = "linux" }] }
+"~/.config/noctalia" = { source = "desktop/.config/noctalia", mode = "symlink-each", variants = [{ os = "linux" }] }
 # Google Sans Code v7.001 from the upstream release (googlefonts/googlesans-code,
 # GoogleSansCode-v7.001.zip sha256 eebba2a438882396e8530cad6d6cb80182b0afb6e9e0ad07b7340359a53ba2e9),
 # with its MONO axis; renamed because mise reads "[MONO,wght]" as a glob.

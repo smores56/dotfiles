@@ -1,0 +1,27 @@
+# Noctalia owns the surfaces niri does not: bar, launcher, notifications, lock
+# screen, idle handling, screenshots, and wallpaper. This file only turns on
+# the idle behaviors, deliberately replacing swayidle and swaylock.
+#
+# Hot reload: Noctalia re-reads this file on change.
+
+[shell]
+telemetry_enabled = false
+
+[idle]
+behavior_order = ["lock", "screen-off", "suspend"]
+pre_action_fade_seconds = 2.0
+
+[idle.behavior.lock]
+timeout = 600
+action = "lock"
+enabled = true
+
+[idle.behavior.screen-off]
+timeout = 660
+action = "screen_off"
+enabled = true
+
+[idle.behavior.suspend]
+timeout = 900
+action = "lock_and_suspend"
+enabled = true
