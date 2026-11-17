@@ -229,7 +229,7 @@ if [ "$os" = Darwin ]; then
     assert "desktop links ~/.aerospace.toml on macOS" links_into_repo "$h/.aerospace.toml"
     assert "desktop installs Google Sans Code on macOS" test -f "$h/Library/Fonts/GoogleSansCode-MONO-VF.ttf"
     assert "desktop installs Google Sans Code Italic on macOS" test -f "$h/Library/Fonts/GoogleSansCode-Italic-MONO-VF.ttf"
-    assert "desktop links the WezTerm config" links_into_repo "$h/.config/wezterm/wezterm.lua"
+    assert "desktop links the kitty config on macOS" links_into_repo "$h/.config/kitty/macos.conf"
     assert_not "desktop skips the Linux wallpaper sync on macOS" test -e "$h/.local/bin/wallpapers"
     assert_not "desktop skips systemd units on macOS" test -e "$h/.config/systemd"
     assert_not "desktop skips the Linux font links on macOS" \

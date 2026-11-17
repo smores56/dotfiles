@@ -7,7 +7,7 @@
 # On the work laptop the agent is Claude Code, not maki.
 (( $+functions[abbr] )) && abbr add --session --quiet --force -- 'a=claude'
 
-# kitty stays installed beside WezTerm until it is retired.
+# ZDOTDIR is ours, so kitty cannot inject its zsh integration; load it here.
 if [[ -n ${KITTY_INSTALLATION_DIR-} ]]; then
   export KITTY_SHELL_INTEGRATION=no-rc
   autoload -Uz -- "$KITTY_INSTALLATION_DIR"/shell-integration/zsh/kitty-integration

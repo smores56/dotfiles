@@ -17,7 +17,7 @@ persistent-workspaces = ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
 2 = ["^built-in", "^27e6qca"]
 
 [[on-window-detected]]
-if.app-id = "com.github.wez.wezterm"
+if.app-id = "net.kovidgoyal.kitty"
 run = "move-node-to-workspace 1"
 
 [[on-window-detected]]
@@ -47,7 +47,7 @@ outer.bottom = [{ monitor.built-in = 6 }, 12]
 
 [mode.main.binding]
 # Apps
-cmd-ctrl-t = "exec-and-forget /usr/bin/open -b com.github.wez.wezterm"
+cmd-ctrl-t = "exec-and-forget /usr/bin/open -b net.kovidgoyal.kitty"
 cmd-ctrl-b = "exec-and-forget /usr/bin/open -b com.brave.Browser"
 cmd-q = "close --quit-if-last-window"
 # Lock the screen; fall back to display sleep if System Events is slow.

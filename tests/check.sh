@@ -114,15 +114,9 @@ else
     ok "every flatpak id looks like a reverse-DNS app id"
 fi
 
-if grep -q 'flatpak-user:org.wezfurlong.wezterm' "$root/mise.desktop.toml"; then
-    no "WezTerm must not come from Flathub; that build predates this GPU's Mesa"
-else
-    ok "WezTerm is not the abandoned Flathub build"
-fi
-
-kitty_conf="$root/desktop/.config/kitty/kitty.conf"
+kitty_conf="$root/desktop/.config/kitty/linux.conf"
 if [ -f "$kitty_conf" ] && grep -qxF 'shell ${HOME}/.local/bin/zsh' "$kitty_conf"; then
-    ok "kitty starts the mise zsh, not bash"
+    ok "kitty on Linux starts the mise zsh, not bash"
 else
     no "kitty must start the mise zsh directly: it skips ~/.bash_profile"
 fi

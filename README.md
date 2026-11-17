@@ -50,7 +50,7 @@ Environments are additive; an environment only adds files and hooks.
 | --- | --- |
 | base | zsh, helix, zellij, yazi, lazygit, television, gh, `sdlc`, global mise files |
 | `identity` | git identity templates, `~/.ssh/config`, `allowed_signers` |
-| `desktop` | kitty (Linux) and WezTerm (macOS), fonts, clipboard and trash helpers, Flatpaks or casks, wallpapers, systemd units, the bash-to-zsh login hook |
+| `desktop` | kitty, fonts, clipboard and trash helpers, Flatpaks or casks, wallpapers, systemd units, the bash-to-zsh login hook |
 | `work` | work zsh hooks, work git identity and 1Password signing, the github.com SSH entry, Claude work rules, macOS defaults, work casks |
 
 `install-mise.sh` saves the set in `~/.config/mise/miserc.local.toml`, so no
