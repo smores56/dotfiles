@@ -1,5 +1,6 @@
 # Tool integrations, each guarded so a machine before `mise install` (or a
-# container) still gets a working shell.
+# container) still gets a working shell. After 99-mise, so each init runs the
+# real binary: through a mise shim it costs ~20ms more.
 (( $+commands[zoxide] )) && eval "$(zoxide init zsh --cmd c)"
 # atuin after zim so its Ctrl-R and up-arrow bindings win over zim's input
 # module; it prepends itself to the suggestion strategy, so reset that after.

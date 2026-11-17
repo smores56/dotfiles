@@ -15,5 +15,6 @@ else
   print -u2 'zsh: zim is not built; run `mise -C ~/.dotfiles bootstrap`'
 fi
 
-for _f in "$ZDOTDIR"/conf.d/*.zsh(N); do source "$_f"; done
+# (-.) skips a link whose source was renamed until `mise dot apply --prune`.
+for _f in "$ZDOTDIR"/conf.d/*.zsh(N-.); do source "$_f"; done
 unset _f
