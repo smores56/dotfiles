@@ -93,6 +93,7 @@ fi
 expect "pure is the prompt" yes "$(zi '(( ${precmd_functions[(Ie)prompt_pure_precmd]} )) && print yes || print no')"
 expect "abbreviation e expands to hx" hx "$(zi 'abbr expand e')"
 expect "abbreviation g expands to lazygit" lazygit "$(zi 'abbr expand g')"
+expect "abbreviation s expands to the sdlc picker" 'sdlc ui' "$(zi 'abbr expand s')"
 expect "the shared abbreviations are session abbreviations" yes \
     "$(zi 'abbr list-abbreviations --session | grep -qx "\"e\"" && print yes || print no')"
 expect "abbreviations are session-scoped, not written to a file" no \

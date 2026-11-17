@@ -7,6 +7,8 @@
 "~/.config/systemd/user" = { source = "desktop/.config/systemd/user", mode = "symlink-each", variants = [{ os = "linux" }] }
 "~/.config/wezterm" = { source = "desktop/.config/wezterm", mode = "symlink-each", variants = [{ os = "macos" }] }
 "~/.config/kitty" = { source = "desktop/.config/kitty", mode = "symlink-each", variants = [{ os = "linux" }] }
+# gtrash and nym-vpnc abbreviations; neither tool exists on the work Mac.
+"~/.config/zsh/conf.d/80-desktop.zsh" = { source = "desktop/.config/zsh/conf.d/80-desktop.zsh", variants = [{ os = "linux" }] }
 "~/.config/mimeapps.list" = { source = "desktop/.config/mimeapps.list", mode = "copy", variants = [{ os = "linux" }] }
 # niri owns the session and Noctalia the shell surfaces. mise deploys both
 # directories per file so each can be edited without replacing the others.

@@ -14,6 +14,7 @@
     t     'zellij a -c main'
     gp    'gh pr create'
     a     'maki'
+    s     'sdlc ui'
     dot   'mise -C ~/.dotfiles dot apply'
     boot  'mise -C ~/.dotfiles bootstrap'
     cr    'repos'

@@ -478,6 +478,18 @@ require "the repos picker changes directory" \
     "$root/home/.config/zsh/conf.d/30-pickers.zsh" "alias r='cd \"\$(tv repos)\"'"
 require "the worktrees picker changes directory" \
     "$root/home/.config/zsh/conf.d/30-pickers.zsh" "alias w='cd \"\$(tv worktrees)\"'"
+require "the sdlc picker abbreviation is shared" \
+    "$root/home/.config/zsh/conf.d/20-abbreviations.zsh" "s     'sdlc ui'"
+require "the identity lane deploys its abbreviations" \
+    "$root/mise.identity.toml" 'identity/.config/zsh/conf.d/85-identity.zsh'
+require "the identity lane reaches smortress over Tailscale SSH" \
+    "$root/identity/.config/zsh/conf.d/85-identity.zsh" 'tailscale ssh smortress -t zsh'
+require "the desktop lane deploys its abbreviations on Linux" \
+    "$root/mise.desktop.toml" 'desktop/.config/zsh/conf.d/80-desktop.zsh'
+require "the desktop lane empties the trash" \
+    "$root/desktop/.config/zsh/conf.d/80-desktop.zsh" 'gtrash find --rm --force'
+require "the desktop lane drives the nym VPN" \
+    "$root/desktop/.config/zsh/conf.d/80-desktop.zsh" 'sudo nym-vpnc connect --wait'
 forbid "no fish residue in the check images" "$root/.github/workflows/check.yml" 'fish'
 forbid "no fish residue in the repository Containerfile" "$root/Containerfile" 'fish'
 forbid "no fish residue in the shared dev image" \
