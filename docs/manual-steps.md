@@ -178,7 +178,9 @@ items. Optionally set `GITHUB_PERSONAL_PAT` to a fine-grained token with Issues
 read/write on `smores56/sdlc` and Metadata read; add Contents read for private
 repositories `gh` should clone or read. Save, commit the new ciphertext, and
 run the bootstrap task again. A token is optional: without it, run
-`gh auth login` once per personal machine.
+`gh auth login` once per personal machine. Set `GITHUB_WORK_PAT` to the
+`smohr-blitzy` fine-grained token (lifetime at most 366 days, which the Blitzy
+enterprise requires); only machines in the `work` environment log in with it.
 
 The desktop Flatpak ships the `bw` CLI if you prefer to read the values from
 Bitwarden in a terminal:
@@ -194,16 +196,13 @@ unset BW_SESSION
 ```
 
 `<neuralwatt-item>` and `<tinyfish-item>` are the Bitwarden login item names.
-Never commit the plaintext values; `sops` re-encrypts on save. Work credentials
-stay in 1Password, not here.
+Never commit the plaintext values; `sops` re-encrypts on save.
 
 ## 7. Log the work laptop's gh in
 
-After smoreswork's first bootstrap, log `gh` in once:
-
-```sh
-op read 'op://Employee/GitHub Personal Access Token/token' | gh auth login --with-token
-```
+Restore the admin age identity (`~/.config/sops/keys.age`) before
+smoreswork's first bootstrap; the bootstrap then logs `gh` in with
+`GITHUB_WORK_PAT` from `sops.yaml`.
 
 ## 7a. Reach smortress over its tunnel
 
