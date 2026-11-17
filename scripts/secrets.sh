@@ -1,13 +1,15 @@
 #!/bin/sh
 # Materialize the single SOPS secrets file: the agent provider keys go to
-# ~/.config/secrets.env, and the optional PATs become gh's auth. One decrypt
-# covers all of them, so bootstrap prompts for the age passphrase once.
+# ~/.config/secrets.env, and the machine's one GitHub token to
+# ~/.config/github-token, which zsh exports as GH_TOKEN. One decrypt covers
+# both, so bootstrap prompts for the age passphrase once.
 set -eu
 
 root=$(cd -- "$(dirname -- "$0")/.." && pwd)
 cipher=${DOTFILES_SECRETS:-$root/sops.yaml}
 config=${XDG_CONFIG_HOME:-$HOME/.config}
 secrets=$config/secrets.env
+token=$config/github-token
 key=$config/sops/keys.age
 state=${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/secrets.sha256
 
@@ -20,26 +22,23 @@ sha256_of() {
     if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d' ' -f1
 }
 
+# One token per machine: the work PAT where the work environment is applied,
+# the personal PAT everywhere else.
+case ",${MISE_ENV-}," in
+    *,work,*) pat_name=GITHUB_WORK_PAT ;;
+    *) pat_name=GITHUB_PERSONAL_PAT ;;
+esac
+
 want=$(sha256_of "$cipher")
 state_line=$(cat "$state" 2>/dev/null || true)
-case $state_line in
-    *' '*) have=${state_line%% *} gh_marker=${state_line#* } ;;
-    *) have=$state_line gh_marker= ;;
-esac
+have=${state_line%% *}
+token_marker=${state_line#* }
 if [ "$want" = "$have" ] && [ -s "$secrets" ]; then
-    # A restored or copied cache can lose its mode; repair it on every run.
+    # A restored or copied file can lose its mode; repair it on every run.
     chmod 600 "$secrets"
-    case $gh_marker in
-        none) exit 0 ;;
-        gh)
-            # gh is a mise tool. Without it on PATH the PAT cannot be applied,
-            # so decrypting again would only ask for the passphrase.
-            if ! command -v gh >/dev/null 2>&1; then
-                exit 0
-            fi
-            if gh auth status --hostname github.com >/dev/null 2>&1; then
-                exit 0
-            fi ;;
+    case $token_marker in
+        "$pat_name:none") exit 0 ;;
+        "$pat_name") [ -s "$token" ] && { chmod 600 "$token"; exit 0; } ;;
     esac
 fi
 
@@ -64,13 +63,7 @@ value_of() {
 
 neuralwatt=$(value_of NEURALWATT_API_KEY)
 tinyfish=$(value_of TINYFISH_API_KEY)
-pat=$(value_of GITHUB_PERSONAL_PAT)
-# The work PAT reaches gh only where the work environment is applied, and logs
-# in last so it is the active account there.
-case ",${MISE_ENV-}," in
-    *,work,*) work_pat=$(value_of GITHUB_WORK_PAT) ;;
-    *) work_pat= ;;
-esac
+pat=$(value_of "$pat_name")
 
 if [ -z "$neuralwatt" ] || [ -z "$tinyfish" ]; then
     log "$cipher needs NEURALWATT_API_KEY and TINYFISH_API_KEY; leaving $secrets alone"
@@ -87,28 +80,17 @@ tmp_env=$secrets.tmp.$$
 mv "$tmp_env" "$secrets"
 chmod 600 "$secrets"
 
-gh_login() {
-    # The token goes over stdin, never argv or the environment. gh writes
-    # only its own hosts.yml, not the tracked config.yml.
-    if printf '%s\n' "$1" | gh auth login --with-token --hostname github.com; then
-        log "gh authenticated for github.com"
-    else
-        log "gh auth login failed; run it by hand if gh commands fail"
-        exit 1
-    fi
-}
-
-gh_marker=none
-if [ -n "$pat$work_pat" ]; then
-    gh_marker=gh
-    if command -v gh >/dev/null 2>&1; then
-        [ -z "$pat" ] || gh_login "$pat"
-        [ -z "$work_pat" ] || gh_login "$work_pat"
-    else
-        log "gh is not installed; the next bootstrap will retry the PATs"
-    fi
+token_marker=$pat_name:none
+if [ -n "$pat" ]; then
+    printf '%s\n' "$pat" >"$token.tmp.$$"
+    mv "$token.tmp.$$" "$token"
+    chmod 600 "$token"
+    token_marker=$pat_name
+else
+    rm -f "$token"
+    log "$cipher has no $pat_name; git and gh have no GitHub token"
 fi
 
 mkdir -p "$(dirname "$state")"
-printf '%s %s\n' "$want" "$gh_marker" >"$state"
+printf '%s %s\n' "$want" "$token_marker" >"$state"
 log "wrote $secrets"

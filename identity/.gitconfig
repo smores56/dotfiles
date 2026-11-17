@@ -53,5 +53,10 @@
     helper =
     helper = !PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:$PATH" gh auth git-credential
 
+# Every remote goes over https with the machine's token, old ssh remotes too.
+[url "https://github.com/"]
+    insteadOf = git@github.com:
+    insteadOf = ssh://git@github.com/
+
 [include]
     path = ~/.config/git/machine.inc

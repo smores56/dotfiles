@@ -57,8 +57,8 @@ make_repo "$seed"
 git -C "$seed" remote add origin "$tmp/remotes/acme/demo.git"
 git -C "$seed" push -q origin main
 git -C "$tmp/remotes/acme/demo.git" symbolic-ref HEAD refs/heads/main
-# The wrapper builds ssh URLs; rewrite them to the local fixture remotes.
-git config --global url."file://$tmp/remotes/".insteadOf "git@github.com:"
+# The wrapper builds https URLs; rewrite them to the local fixture remotes.
+git config --global url."file://$tmp/remotes/".insteadOf "https://github.com/"
 
 repos_root=$tmp/repo-root
 checkout=$(REPOS_ROOT=$repos_root sh "$REPOS" get acme/demo 2>"$tmp/repos.err")
@@ -69,6 +69,8 @@ assert test -f "$checkout/file"
 DESC="repos get clones into <root>/<host>/<owner>/<repo>"
 assert test -d "$checkout/.git"
 assert test -d "$repos_root/github.com/acme/demo"
+DESC="repos get records an https remote"
+assert test "$(git -C "$checkout" config --get remote.origin.url)" = https://github.com/acme/demo.git
 DESC="repos get sets branch.main.remote"
 assert test "$(git -C "$checkout" config --get branch.main.remote)" = origin
 DESC="repos get sets branch.main.merge"

@@ -18,13 +18,9 @@ login_shell = "/bin/zsh"
 # AeroSpace comes from a tap that mise can only evaluate with Ruby 3, so it
 # is installed by hand: brew install --cask nikitabobko/tap/aerospace
 [bootstrap.packages]
-"brew:gh" = "latest"
 # The Cloudflare tunnel client is the SSH transport to smortress; work/.ssh/config
 # names the host and the access key.
 "brew:cloudflared" = "latest"
-# The op CLI reads the work token and signs through the app's SSH agent; the
-# 1Password app itself is provided by the employer, not installed here.
-"brew-cask:1password-cli" = "latest"
 "brew-cask:brave-browser" = { version = "latest", appdir = "~/Applications" }
 "brew-cask:docker-desktop" = { version = "latest", appdir = "~/Applications" }
 "brew-cask:caffeine" = { version = "latest", appdir = "~/Applications" }

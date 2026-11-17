@@ -175,7 +175,7 @@ get_repo() {
     fi
 
     mkdir -p "$(dirname "$dest")"
-    url="git@$host:$owner/$repo.git"
+    url="https://$host/$owner/$repo.git"
 
     if ! git clone "$url" "$dest"; then
         cleanup_failed_get "$dest"
