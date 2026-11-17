@@ -3,6 +3,7 @@
 [dotfiles]
 "~/.aerospace.toml" = { source = "desktop/.aerospace.toml", variants = [{ os = "macos" }] }
 "~/.local/bin/wallpapers" = { source = "desktop/.local/bin/wallpapers", variants = [{ os = "linux" }] }
+"~/.local/bin/smortress-sftp" = { source = "desktop/.local/bin/smortress-sftp", variants = [{ os = "linux" }] }
 "~/.config/systemd/user" = { source = "desktop/.config/systemd/user", mode = "symlink-each", variants = [{ os = "linux" }] }
 "~/.config/wezterm" = { source = "desktop/.config/wezterm", mode = "symlink-each", variants = [{ os = "macos" }] }
 "~/.config/kitty" = { source = "desktop/.config/kitty", mode = "symlink-each", variants = [{ os = "linux" }] }

@@ -21,6 +21,19 @@ user=${WALLPAPERS_USER:-core}
 key=${WALLPAPERS_KEY:-$HOME/.ssh/id_smortress-access}
 known_hosts=${WALLPAPERS_KNOWN_HOSTS:-$HOME/.config/ssh/known_hosts}
 
+# Tailscale SSH intercepts port 22 and the tailnet policy rejects `ssh`, so the
+# SFTP transport goes through `tailscale ssh`; see smortress-sftp.
+ssh_client=${WALLPAPERS_SSH:-}
+if [ -z "$ssh_client" ]; then
+    for candidate in "$(command -v smortress-sftp 2>/dev/null || true)" \
+            "$HOME/.local/bin/smortress-sftp"; do
+        if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+            ssh_client=$candidate
+            break
+        fi
+    done
+fi
+
 log() { printf 'wallpapers: %s\n' "$*" >&2; }
 usage() {
     log "usage: wallpapers [sync|apply|classify W H|pick LIST QUEUE [USED]|unpick QUEUE FILE|buckets DIR OUT]"
@@ -63,6 +76,9 @@ remote_url() {
     [ -f "$known_hosts" ] \
         || { log "no known_hosts at $known_hosts; cannot verify $host"; exit 1; }
     opts="host=$host,user=$user,known_hosts_file=$known_hosts"
+    if [ -n "$ssh_client" ]; then
+        opts="ssh=$ssh_client,$opts"
+    fi
     if [ -f "$key" ]; then
         opts="$opts,key_file=$key"
     fi

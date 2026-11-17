@@ -92,6 +92,15 @@ else
     sed 's/^/     /' "$tmp/log" >&2
 fi
 
+printf '#!/bin/sh\nexit 0\n' >"$tmp/bin/smortress-sftp"
+chmod +x "$tmp/bin/smortress-sftp"
+if WALLPAPERS_CACHE="$home/.cache/wallpapers2" run sync >/dev/null 2>&1; then :; fi
+if grep -q 'ssh='"$tmp"'/bin/smortress-sftp,host=smortress' "$tmp/log"; then
+    ok "the SFTP transport goes through smortress-sftp when present"
+else
+    no "the SFTP transport goes through smortress-sftp when present"
+fi
+
 if PATH="$tmp/bin:/usr/bin:/bin" command -v jq >/dev/null 2>&1; then
     got_edp=$(cat "$tmp/state/set-eDP-1" 2>/dev/null)
     got_dp=$(cat "$tmp/state/set-DP-1" 2>/dev/null)

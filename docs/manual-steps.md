@@ -322,3 +322,6 @@ journalctl --user -u wallpapers -n 20
 ```
 
 A run with no session (greetd, SSH) logs a skip instead of failing the unit.
+The SFTP transport goes through `smortress-sftp`, because Tailscale SSH
+intercepts port 22 and rejects plain `ssh`; `/srv/wallpapers` on smortress must
+hold the images, and an empty source is reported and the cache kept.
