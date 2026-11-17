@@ -3,7 +3,6 @@
 [dotfiles]
 "~/.aerospace.toml" = { source = "desktop/.aerospace.toml", variants = [{ os = "macos" }] }
 "~/.local/bin/wallpapers" = { source = "desktop/.local/bin/wallpapers", variants = [{ os = "linux" }] }
-"~/.local/bin/tty" = { source = "desktop/.local/bin/tty", variants = [{ os = "linux" }] }
 "~/.config/systemd/user" = { source = "desktop/.config/systemd/user", mode = "symlink-each", variants = [{ os = "linux" }] }
 "~/.config/wezterm" = { source = "desktop/.config/wezterm", mode = "symlink-each" }
 # Google Sans Code v7.001 from the upstream release (googlefonts/googlesans-code,

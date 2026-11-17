@@ -20,9 +20,10 @@ On each container start, in this order:
    `apps/nanobot/config/skills/` in `homelab-apps` — currently
    `broker-requests`, `git-change`, `tinyfish-search`. The same step writes
    the platform prompt to the workspace `AGENTS.md`.
-2. `entrypoint.sh` clones `$BROKER_URL/github-sdlc-git/smores56/sdlc.git` into
-   `$HOME/tools/sdlc-src`, copies `skills/.` over that same workspace
-   directory, and installs the CLI onto the tools PVC.
+2. `entrypoint.sh` clones this dotfiles checkout through the broker into
+   `$HOME/tools/sdlc-src`, copies `sdlc/skills/.` over that same workspace
+   directory, and links the CLI onto the tools PVC. The old clone pointed at
+   the `smores56/sdlc` registry, which now holds issue state only.
 
 The copy is an overlay: a repository without `skills/` leaves the ConfigMap's
 skills alone, and a failed clone keeps the previously installed tree. Nothing
@@ -40,7 +41,7 @@ agent which rules it holds.
 |---|---|---|
 | `homelab-platform`: `nanobot-policy` ConfigMap | system prompt, model catalog | platform PR; admission pins the two paths |
 | `homelab-apps`: `apps/nanobot/config/` | the broker and cluster contract skills, cron | tenant PR, which rolls the Deployment via the kustomize hash |
-| `smores56/sdlc` (this repository) | the CLI and these SDLC phase skills | merge to `main`, effective at the next restart |
+| `smores56/dotfiles` (`sdlc/`) | the CLI and these SDLC phase skills | merge to `main`, effective at the next restart |
 
 There is no system prompt file here. A rule that must hold no matter which
 skills load — the approval gate, the no-merge rule, the untrusted-data rule —

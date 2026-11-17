@@ -8,16 +8,6 @@
     flow = "local"
     workFlat = "{{ vars.work_flat_root }}"
     workOwners = "{{ vars.work_owners }}"
-
-# Personal checkouts, by path and by remote URL.
-[includeIf "gitdir:{{ vars.repos_root }}/github.com/{{ vars.personal_owner }}/"]
-    path = ~/.config/git/personal.inc
-[includeIf "hasconfig:remote.*.url:git@github.com:{{ vars.personal_owner }}/**"]
-    path = ~/.config/git/personal.inc
-[includeIf "hasconfig:remote.*.url:ssh://git@github.com/{{ vars.personal_owner }}/**"]
-    path = ~/.config/git/personal.inc
-[includeIf "hasconfig:remote.*.url:https://github.com/{{ vars.personal_owner }}/**"]
-    path = ~/.config/git/personal.inc
 {%- for owner in vars.work_owners | split(pat=" ") %}{% if owner %}
 
 # Work checkouts for {{ owner }}.

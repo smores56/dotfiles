@@ -79,53 +79,29 @@ gh api repos/OWNER/REPO/hooks -X POST --input -   # JSON body on stdin
 
 ## Agent bootstrap
 
-Agents have no GitHub credential of their own; they clone through the broker's
-git proxy and install the CLI from the clone:
+Agents have no GitHub credential of their own; they clone this repository
+through the broker's git proxy and run the stdlib CLI from the checkout:
 
 ```sh
-git clone "$BROKER_URL/github-sdlc-git/smores56/sdlc.git"
-uv tool install ./sdlc
+git clone "$BROKER_URL/github-sdlc-git/smores56/dotfiles.git"
 export SDLC_TRANSPORT=broker BROKER_URL=http://broker:8080   # in the agent env
-sdlc list
+./dotfiles/sdlc/sdlc_issues.py list
 ```
+
+The nanobot entrypoint previously copied `skills/` from the `smores56/sdlc`
+registry; that repository is issue state only, so its clone must point at this
+checkout instead.
 
 Approval stays procedural: agents must not run `sdlc approve` (or pass `--yes`)
 unless the user explicitly says to approve. The broker grants the App write
 access and enforces no approval predicate, so the rule lives with the human and
 the `sdlc` skill, not the server.
 
-## nix-config fallback
-
-`nix-config` builds this package rather than carrying a copy. If a pinned build
-is needed before that wiring lands, pin this repo by commit and build the same
-`pyproject.toml`:
-
-```nix
-sdlc = pkgs.python3.pkgs.buildPythonApplication {
-  pname = "smores-sdlc";
-  version = "0.1.0";
-  src = pkgs.fetchFromGitHub {
-    owner = "smores56";
-    repo = "sdlc";
-    rev = "<commit sha of smores56/sdlc>";
-    hash = "<sha256 of that commit>";
-  };
-  pyproject = true;
-  build-system = [ pkgs.python3.pkgs.setuptools ];
-};
-```
-
-The equivalent shell fallback is to check out a pinned commit and install from
-it: `git -C sdlc checkout <sha> && uv tool install ./sdlc`.
-
 ## Layout
 
-- `.github/ISSUE_TEMPLATE/` — feature and task templates
-- `.github/workflows/ci.yml` — unittest (3.11, 3.12) and wheel/sdist build
 - `sdlc_issues.py` — the CLI
 - `skills/` — nanobot agent skills, overlaid at pod start (`skills/README.md`)
 - `tests/` — stdlib unittest suite (`python -m unittest discover -s tests -v`)
-- `pyproject.toml` — package metadata and the `sdlc` console script
 
 ## Commands
 

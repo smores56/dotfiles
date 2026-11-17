@@ -66,7 +66,7 @@ printf 'child:%s:%s\n' "${NEURALWATT_API_KEY:-unset}" "${TINYFISH_API_KEY:-unset
 EOF
 chmod +x "$h/.local/bin/maki"
 mkdir -p "$h/.config"
-# Every shape the fish launcher accepted: comments, blank lines, CRLF, spaces
+# Every shape the zsh launcher accepted: comments, blank lines, CRLF, spaces
 # around =, an export prefix, and one layer of quotes.
 printf '# provider keys\r\n\r\n  # indented comment\r\nexport NEURALWATT_API_KEY = "nw-test"  \r\n\r\nTINYFISH_API_KEY=tf-test\r\n' \
     >"$h/.config/secrets.env"

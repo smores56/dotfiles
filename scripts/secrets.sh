@@ -28,6 +28,8 @@ case $state_line in
     *) have=$state_line gh_marker= ;;
 esac
 if [ "$want" = "$have" ] && [ -s "$secrets" ]; then
+    # A restored or copied cache can lose its mode; repair it on every run.
+    chmod 600 "$secrets"
     case $gh_marker in
         none) exit 0 ;;
         gh)

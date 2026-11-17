@@ -113,7 +113,7 @@ case $out in
     *) no "repos list includes the flat work checkout" ;;
 esac
 
-# The same routing comes from git config, so an install.sh-rendered machine needs
+# The same routing comes from git config, so a mise-rendered machine needs
 # no exported environment.
 git config --global smores.workFlat "$work_flat"
 git config --global smores.workOwners "blitzy-ai"

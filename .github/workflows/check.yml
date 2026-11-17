@@ -48,9 +48,12 @@ jobs:
           version: 2026.11.9
           sha256: ${{ matrix.sha256 }}
           install: false
+      - name: Stage the global config the way bootstrap links it
+        run: |
+          mkdir -p "$HOME/.config/mise"
+          cp -a global/. "$HOME/.config/mise/"
       - name: Install the locked global tools
         env:
-          MISE_GLOBAL_CONFIG_FILE: ${{ github.workspace }}/global/config.toml
           MISE_ENV: desktop
           MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
         run: mise install --locked
@@ -71,9 +74,12 @@ jobs:
           version: 2026.11.9
           sha256: f3bb0e8cbe0217a0b52444ecc0042364563ddd1de0490313bb7e702ecab41a14
           install: false
+      - name: Stage the global config the way bootstrap links it
+        run: |
+          mkdir -p "$HOME/.config/mise"
+          cp -a global/. "$HOME/.config/mise/"
       - name: Install the locked global tools
         env:
-          MISE_GLOBAL_CONFIG_FILE: ${{ github.workspace }}/global/config.toml
           MISE_ENV: desktop
           MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
         run: mise install --locked

@@ -5,7 +5,7 @@ maki() {
   emulate -L zsh
   # The whitespace patterns below need extendedglob, which emulate turns off.
   setopt localoptions extendedglob
-  local secrets=$HOME/.config/secrets.env
+  local secrets=${XDG_CONFIG_HOME:-$HOME/.config}/secrets.env
   if [[ ! -e $secrets ]]; then
     print -u2 "maki: $secrets is missing; the providers will reject the session"
     command maki "$@"

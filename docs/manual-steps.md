@@ -145,7 +145,6 @@ tailscale status
 cd ~/repos/github.com/smores56/dotfiles
 scripts/install-maki.sh
 maki --version
-sdlc list
 ```
 
 The Maki installer verifies the downloaded tarball against `maki/pin.env` and
@@ -155,9 +154,8 @@ copy a release into `~/.local/bin` by hand.
 
 `sdlc` is `sdlc/sdlc_issues.py` in this checkout, linked to `~/.local/bin/sdlc`
 by the identity environment. There is no private clone or install step: update
-the source in the repository and re-apply the dotfiles. `sdlc list` must reach
-the `smores56/sdlc` registry; it calls `gh`, which uses the PAT from
-`sops.yaml` or a one-time `gh auth login`.
+the source in the repository and re-apply the dotfiles. `sdlc list` calls `gh`,
+so it starts working after step 6 authenticates the personal PAT.
 
 ## 6. Agent keys and personal token
 
@@ -176,10 +174,11 @@ test -s ~/.config/secrets.env && echo keys-present
 test "$(stat -c %a ~/.config/secrets.env)" = 600 && echo secrets-mode-ok
 zsh -ic 'type -q maki && echo maki-launcher-ok'
 gh auth status
+sdlc list
 ```
 
-The committed `sops.yaml` is an encrypted template with empty values. Fill it
-once from Bitwarden, using the passphrase-wrapped admin identity:
+The committed `sops.yaml` holds the encrypted values; edit it in place with
+`sops`, using the passphrase-wrapped admin identity:
 
 ```sh
 cd ~/repos/github.com/smores56/dotfiles
@@ -212,9 +211,9 @@ stay in 1Password, not here.
 
 ## 7. Re-authorize the Mac's public key
 
-The Mac stays unmanaged except Tailscale and ordinary OpenSSH. Its existing
-public key must be registered again on GitHub after the old machine's keys are
-retired.
+smoreswork is managed by the `work` environment; a Mac kept outside the fleet
+needs only Tailscale and ordinary OpenSSH. Either way, its existing public key
+must be registered again on GitHub after the old machine's keys are retired.
 
 On the Mac:
 

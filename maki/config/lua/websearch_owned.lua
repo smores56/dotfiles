@@ -2,8 +2,8 @@
 --
 -- The bundled `websearch` plugin is disabled in init.lua; this file reclaims its
 -- tool name, schema, and audiences so nothing downstream (delegation, the
--- interpreter) changes. The key comes from `TINYFISH_API_KEY`, which the fish
--- `maki` launcher exports from ~/.config/secrets.env.
+-- interpreter) changes. The key comes from `TINYFISH_API_KEY`, which the zsh
+-- `maki` launcher passes from ~/.config/secrets.env.
 
 local ENDPOINT = "https://api.search.tinyfish.ai"
 local REQUEST_TIMEOUT_SECS = 20

@@ -80,7 +80,7 @@ curl -fL --proto '=https' --tlsv1.2 -o "$work/$asset" "$url" \
 curl -fL --proto '=https' --tlsv1.2 -o "$work/sha256sums.txt" "$sums_url" \
     || fail "could not download $sums_url; refusing to install without a published checksum"
 
-got=$(sha256sum "$work/$asset" | awk '{ print $1 }')
+got=$({ sha256sum "$work/$asset" 2>/dev/null || shasum -a 256 "$work/$asset"; } | awk '{ print $1 }')
 [ "$got" = "$MAKI_SHA256" ] \
     || fail "$asset is $got, not the pinned $MAKI_SHA256"
 

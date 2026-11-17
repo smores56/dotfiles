@@ -15,8 +15,15 @@ if command -v brew >/dev/null 2>&1; then
     exit 0
 fi
 
-# The official installer checks for the Command Line Tools and prompts for the
-# sudo password it needs to create /opt/homebrew on Apple Silicon.
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+# Fetch first: a failed command substitution would otherwise run `bash -c ''`
+# and report success. The official installer checks for the Command Line Tools
+# and prompts for the sudo password it needs to create /opt/homebrew.
+tmp=$(mktemp) || die "cannot create a temporary file"
+trap 'rm -f "$tmp"' EXIT HUP INT TERM
+curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh -o "$tmp" \
+    || die "could not download the Homebrew installer"
+/bin/bash "$tmp" || die "the Homebrew installer failed"
 
+[ -x /opt/homebrew/bin/brew ] \
+    || die "the installer finished but /opt/homebrew/bin/brew is missing"
 printf 'install-homebrew: installed; /opt/homebrew/bin is added by the work environment\n'

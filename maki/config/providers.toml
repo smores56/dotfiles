@@ -1,5 +1,5 @@
 # Custom providers for Maki. The key comes from the environment
-# (NEURALWATT_API_KEY, exported by the fish `maki` launcher), never from this
+# (NEURALWATT_API_KEY, passed by the zsh `maki` launcher), never from this
 # file.
 #
 # Model ids, windows, vision support, and prices mirror the previous host

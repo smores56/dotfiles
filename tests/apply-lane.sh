@@ -76,7 +76,6 @@ link "$HOME/.config/zsh/.zshrc"
 link "$HOME/.config/helix/config.toml"
 link "$HOME/.config/wezterm/wezterm.lua"
 link "$HOME/.claude/CLAUDE.md"
-link "$HOME/.local/bin/sdlc"
 link "$HOME/.agents/skills/sdlc/SKILL.md"
 present "$HOME/.config/git/machine.inc"
 [ "$(git config --global --includes --get user.email)" = "$email" ] \
@@ -84,11 +83,10 @@ present "$HOME/.config/git/machine.inc"
 
 case $env_set in
     *identity*)
-        present "$HOME/.config/git/personal.inc"
+        link "$HOME/.local/bin/sdlc"
         present "$HOME/.config/git/work.inc"
         ;;
     *work*)
-        absent "$HOME/.config/git/personal.inc"
         grep -q 'IdentityAgent' "$HOME/.ssh/config" \
             || fail "the github.com host entry does not use the 1Password agent"
         present "$HOME/.claude/work.md"

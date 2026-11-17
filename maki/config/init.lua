@@ -1,4 +1,4 @@
--- Maki configuration, symlinked by install.sh to ~/.config/maki/init.lua.
+-- Maki configuration, linked by mise to ~/.config/maki/init.lua.
 --
 -- Maki talks directly to Neuralwatt (models) and TinyFish (web search) with
 -- keys from ~/.config/secrets.env. There is no capability broker, no agent VM,

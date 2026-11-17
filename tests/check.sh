@@ -143,7 +143,7 @@ else
     no "maki/pin.env must pin MAKI_VERSION, MAKI_TARGET, and a 64-hex MAKI_SHA256"
 fi
 
-if [ -e "$root/local.env.example" ]; then
+if [ -e "$root/local.env" ]; then
     no "local.env is retired: identity comes from the mise vars in mise.identity.toml"
 else
     ok "local.env is retired: identity comes from the mise vars in mise.identity.toml"
@@ -282,9 +282,10 @@ else
     ok "no nix reference remains outside docs/manual-steps.md"
 fi
 
-secret_pattern='BEGIN [A-Z ]*PRIVATE KEY|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}'
+secret_pattern='BEGIN [A-Z ]*PRIVATE KEY|AGE-SECRET-KEY-[A-Z0-9]|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}'
 if grep -rInE "$secret_pattern" "$root/home" "$root/identity" "$root/desktop" \
-        "$root/maki" "$root/global" "$root/scripts" >/dev/null 2>&1; then
+        "$root/work" "$root/maki" "$root/global" "$root/scripts" "$root/tests" \
+        "$root/.github" >/dev/null 2>&1; then
     no "secret material in a managed file"
 else
     ok "no secret material in managed files"

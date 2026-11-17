@@ -1,187 +1,185 @@
 # dotfiles
 
-One mise bootstrap project that defines the development environment on three
-machines: Fedora CoreOS `smortress`, Fedora COSMIC Atomic `smorespro`, and the
-macOS work laptop `smoreswork`. mise owns the tools, the dotfiles, the desktop
-packages, the bootstrap task, and the login shell; plain Git is the only other
-source of truth. There is no symlink installer and no second configuration
-manager.
+One mise project for three machines:
 
-## Layout
-
-| Path | Role |
+| Machine | System |
 | --- | --- |
-| `mise.toml` | machine definition: bootstrap repos, base dotfiles, bootstrap task |
-| `mise.desktop.toml` | displays: WezTerm, fonts, Flatpaks, casks, wallpapers, bash hand-off |
-| `mise.identity.toml` | git and SSH identity, rendered from vars |
-| `mise.work.toml` | smoreswork: work identity, 1Password `gh`, macOS defaults |
-| `global/` | global tool config and lockfiles, linked to `~/.config/mise` |
-| `home/` | dotfiles shared by every machine |
-| `identity/`, `desktop/`, `work/` | sources each environment adds |
-| `sdlc/` | the stdlib sdlc CLI, its tests, and the phase-skill source |
-| `scripts/` | installer, bootstrap task, identity checks, handoff |
-| `tests/` | source checks and throwaway-HOME behavioural tests |
-| `maki/` | Maki configuration, skills, and session helpers |
+| `smortress` | Fedora CoreOS server |
+| `smorespro` | Fedora COSMIC Atomic desktop |
+| `smoreswork` | macOS work laptop |
 
-Environments are additive, so no exclusion list is ever duplicated:
-
-| Environment | Adds |
-| --- | --- |
-| base | zsh config, helix, zellij, yazi, lazygit, television, gh, global mise files |
-| `identity` | git identity templates, `~/.ssh/config`, `allowed_signers` |
-| `desktop` | WezTerm, the font, clipboard and trash helpers, Flatpaks or casks, wallpapers, the TTY shim, systemd units, the zsh hand-off |
-| `work` | the work zsh hooks, work git identity and 1Password signing, the github.com SSH entry, the Claude work rules, macOS defaults, the work casks |
-
-Machine sets: smortress `identity`; smorespro `desktop,identity`; smoreswork
-`desktop,work`. `install-mise.sh` infers the set once: macOS is the work laptop,
-a Linux machine with Flatpak, a graphical default target, or a display is a
-desktop, and any other Linux is a server. Set `DOTFILES_ENVS` to override that
-inference, for example on a personal Mac. `--save-env` records the set in
-`miserc.local.toml` under `~/.config/mise`, so no shell file exports
-`MISE_ENV`.
+mise owns the tools, dotfiles, desktop packages, bootstrap task, and login
+shell; Git holds the configuration. There is no symlink installer and no second
+configuration manager.
 
 ## Bootstrap
 
-The full sequence, with the operator-only steps, is in
-[docs/manual-steps.md](docs/manual-steps.md). Read it before wiping the old
-disk: the FIDO2 credential handles only exist there.
-
-On an existing machine with mise installed:
+With mise already installed:
 
 ```sh
 mise -C ~/repos/github.com/smores56/dotfiles bootstrap
 ```
 
-On a machine without mise, `scripts/install-mise.sh` runs the official
-installer for the latest stable mise (checksum verified), infers the machine set, and bootstraps this repository's latest
-main:
+On a fresh machine, one script installs the latest mise and applies the
+inferred set:
 
 ```sh
 cd ~/repos/github.com/smores56/dotfiles
 scripts/install-mise.sh
 ```
 
-The bootstrap applies `[bootstrap]`, `[dotfiles]`, and the tasks from the
-checkout. It tracks `main`; `--update` moves an existing checkout to the
-current commit, and a tag remains the rollback path. `DOTFILES_ENVS` overrides
-the inferred set. Identity answers are prompted once and saved in
-`$MISE_STATE_DIR/vars.toml`, never in this repository. The login shell is a
-separate step because `chsh` prompts for a password:
+The set is `identity` on a server, `desktop,identity` on a Linux desktop, and
+`desktop,work` on macOS; `DOTFILES_ENVS` overrides it. The first run prompts
+once for the git identity and saves it in `$MISE_STATE_DIR/vars.toml`. The
+login shell is a separate step because `chsh` asks for a password:
 
 ```sh
 mise -C ~/repos/github.com/smores56/dotfiles bootstrap --only user
 ```
 
-A dotfile-only apply is `mise -C <checkout> dot apply`; preview it with
-`mise -C <checkout> dot diff` or `mise -C <checkout> dot apply --dry-run`.
+The full sequence, including the steps that need a human, is in
+[docs/manual-steps.md](docs/manual-steps.md). Read it before wiping a disk: the
+FIDO2 credential handles only exist there.
+
+## Environments
+
+Environments are additive; an environment only adds files and hooks.
+
+| Environment | Adds |
+| --- | --- |
+| base | zsh, helix, zellij, yazi, lazygit, television, gh, global mise files |
+| `identity` | git identity templates, `~/.ssh/config`, `allowed_signers`, `sdlc` |
+| `desktop` | WezTerm, fonts, clipboard and trash helpers, Flatpaks or casks, wallpapers, systemd units, the zsh hand-off |
+| `work` | work zsh hooks, work git identity and 1Password signing, the github.com SSH entry, Claude work rules, macOS defaults, work casks |
+
+`install-mise.sh` saves the set in `~/.config/mise/miserc.local.toml`, so no
+shell file exports `MISE_ENV`.
 
 ## Host prerequisites
 
-The bootstrap assumes only what the base system provides:
-
 | Platform | Before the first bootstrap |
 | --- | --- |
-| every machine | POSIX shell and coreutils, `curl`, `git`, `tar`, `gzip`, and CA certificates |
-| Fedora Atomic / CoreOS | nothing more; the stock image ships `git`, `curl`, and, on desktops, `flatpak` |
-| macOS | Command Line Tools (they provide `git`) and Homebrew for the casks and `brew:gh`; run `scripts/install-homebrew.sh` once, interactively |
+| every machine | POSIX shell and coreutils, `curl`, `git`, `tar`, `gzip`, CA certificates |
+| Fedora Atomic / CoreOS | nothing more; the image ships `git`, `curl`, and, on desktops, `flatpak` |
+| macOS | Command Line Tools (they provide `git`) and Homebrew; run `scripts/install-homebrew.sh` once, interactively |
 | smoreswork | also the 1Password app for its SSH agent and `op-ssh-sign`; the bootstrap installs the `op` CLI |
 
-`install-mise.sh` runs the official installer for the latest stable mise; it
-verifies the release checksum itself and needs `tar` plus `gzip` (or `zstd`),
-which the base images ship. `zim-build.sh` uses `curl` once for the pinned
-`zimfw.zsh`.
-
-`fc-cache`, `notify-send`, and `timeout` are optional: the pieces that use them
-degrade without the binary. The only root layer is Tailscale; rclone, a mise tool,
-handles the wallpaper sync.
+`install-mise.sh` runs the official installer for the latest stable mise, which
+verifies the release checksum and needs `tar` plus `gzip` (or `zstd`).
+`zim-build.sh` uses `curl` once for the pinned `zimfw.zsh`. `fc-cache` and
+`notify-send` are optional: the pieces that use them degrade without the
+binary.
 
 `podman` is the runtime `dev` uses; it ships with Fedora Atomic, and nothing in
-the bootstrap needs it.
+the bootstrap needs it. The only root layer is Tailscale
+(`rpm-ostree install tailscale`); rclone, a mise tool, handles the wallpaper
+sync.
 
-## Dotfiles and recovery
+## Layout
 
-Every target is an absolute path or starts with `~/`, and each application
-directory is deployed in `symlink-each` mode. Files that tools rewrite in place
-are never managed: zsh-abbr's own abbreviation file stays local, and zimfw's
-state and completion dump live under `$XDG_CACHE_HOME`. `~/.bash_profile` on
-Fedora is a managed block, not a whole-file entry, because the image ships one.
+| Path | Role |
+| --- | --- |
+| `mise.toml`, `mise.*.toml` | machine definition and one file per environment |
+| `global/` | global tool config and lockfiles, linked to `~/.config/mise` |
+| `home/`, `identity/`, `desktop/`, `work/` | dotfiles shared by every machine or added by one environment |
+| `scripts/` | installer, bootstrap task, identity and secret materializers |
+| `sdlc/` | the stdlib sdlc CLI, its tests, and the phase-skill source |
+| `maki/` | Maki configuration, skills, and session helpers |
+| `tests/` | source checks and throwaway-HOME behavioural tests |
 
-Deployment has no history for symlinked files, so recovery is the tagged
-pre-mise commit plus re-apply; `mise dot unapply` removes what mise created.
-Without `--force-dotfiles`, mise refuses to replace an existing file and
-bootstrap never passes that flag: resolve a conflict by hand.
+## Daily use
+
+```sh
+mise dot diff                    # what a dotfile apply would change
+mise dot apply                   # deploy the checkout's dotfiles
+mise bootstrap                   # tools, repos, dotfiles, and the bootstrap task
+
+repos get owner/project          # plain git clone under ~/repos/<host>/<owner>/<repo>
+repos list
+worktrees new --slug add-gizmo --ticket ABC-123 --type feat
+worktrees prune              # dry run; --apply removes what it reported
+dev                              # rootless Podman shell for the current checkout
+```
+
+`worktrees new` renders the branch name from `git config smores.branchTemplate`
+and prints JSON: use its `path`. `dev` prefers podman, uses the repository's
+`Containerfile` when present, otherwise the shared
+`~/.config/containers/Containerfile.dev`; it never mounts `~/.ssh`, never
+forwards tokens, and keeps each checkout's mise installs on its own volume. The
+SSH agent socket is opt-in with `DEV_SSH_AGENT=1`.
+
+Every dotfile target is absolute or starts with `~/`, and application
+directories deploy in `symlink-each` mode. Files that tools rewrite in place
+stay local: zsh-abbr's abbreviation file, zimfw's state and completion dump.
+`~/.bash_profile` on Fedora is a managed block, not a whole-file entry.
+Deployment keeps no history, so recovery is the tagged pre-mise commit plus a
+re-apply; `mise dot unapply` removes what mise created. Without
+`--force-dotfiles`, mise refuses to replace an existing file and bootstrap
+never passes that flag: resolve a conflict by hand.
 
 ## Shell
 
 zsh is the only interactive shell, built from pinned upstream plugins under
 zimfw with the pure prompt. `~/.zshenv` sets `ZDOTDIR=~/.config/zsh`; the
-config sources `conf.d/*.zsh`, zimfw's `init.zsh`, atuin, and
-`mise activate zsh`. zimfw never touches the network at shell start: the
-bootstrap task downloads the pinned zimfw release and every module is cloned by
-`[bootstrap.repos]` at a commit.
+config sources `conf.d/*.zsh`, zimfw, atuin, and `mise activate zsh`. zimfw
+never touches the network at shell start: the bootstrap task downloads the
+pinned zimfw release and every module is cloned by `[bootstrap.repos]` at a
+commit.
 
 On Linux the zsh binary comes from the mise `conda:zsh` tool; a bootstrap task
-links the real binary to `~/.local/bin/zsh` and a managed block in the stock
+links the real binary to `~/.local/bin/zsh`, and a managed block in the stock
 `~/.bash_profile` hands an interactive TTY login to it. `bash -ilc` keeps
 running bash, so editors resolving their environment are never hijacked. macOS
-uses `/bin/zsh`, already in `/etc/shells`. smoreswork sets it with `chsh`
+uses `/bin/zsh`, already in `/etc/shells`; smoreswork sets it with `chsh`
 through `[bootstrap.user] login_shell`.
 
 ## Identity and secrets
 
-Git name, email, signing key, personal owner, work owner, and the work flat root
-are `[vars]` with prompts and defaults, saved in `$MISE_STATE_DIR/vars.toml`
-with directory mode 0700. Tera templates render `~/.config/git/machine.inc`,
-`personal.inc`, and `work.inc`; `scripts/identity.sh` rejects control
-characters before rendering and writes `~/.config/ssh/allowed_signers` from
-readable public keys. Vars are identity only, never tokens or passwords.
+Git name, email, signing key, personal owner, work owners, and the work flat
+root are `[vars]` with prompts and defaults, saved in
+`$MISE_STATE_DIR/vars.toml` with directory mode 0700. Tera templates render
+`~/.config/git/machine.inc` and `work.inc`; the base `.gitconfig` already
+carries the personal fallback. `scripts/identity.sh` rejects control characters
+before rendering and writes `~/.config/ssh/allowed_signers` from readable
+public keys. Vars are identity only, never tokens or passwords.
 
 smoreswork does not apply the `identity` environment. Its git identity is work
 everywhere, commits are signed by an SSH key in 1Password through `op-ssh-sign`,
-and git reaches github.com over SSH through the 1Password agent. The `gh` CLI
-gets its API token from a 1Password shell plugin; no personal token is on the
-laptop, and the private `sdlc` registry is not reachable from it.
+and git reaches github.com over SSH through the 1Password agent. `gh` is a
+wrapper at `~/.local/bin/gh` that reads the work token from 1Password per call;
+no personal token is on the laptop, and the private `sdlc` registry is not
+reachable from it.
 
-The agent's provider keys and an optional personal GitHub token are tracked
-only as SOPS ciphertext; the plaintext caches and the age identity stay outside
-the repository:
+Personal machines keep only these secrets:
 
 | Path | Format | Used by |
 | --- | --- | --- |
-| `sops.yaml` | SOPS-encrypted YAML with `NEURALWATT_API_KEY`, `TINYFISH_API_KEY`, and optional `GITHUB_PERSONAL_PAT` | `scripts/secrets.sh` at bootstrap |
-| `~/.config/secrets.env` | derived cache, mode 600, `NAME=value` lines | the zsh `maki` launcher exports the two keys into the Maki process only |
-| `~/.config/gh/hosts.yml` | gh's own token store, mode 600 | `gh` and the `sdlc` CLI on personal machines |
-| `~/.config/sops/keys.age` | age-encrypted, passphrase-wrapped identity | `~/.local/bin/sops-age-key`, invoked by sops through `SOPS_AGE_KEY_CMD` |
+| `sops.yaml` | SOPS ciphertext with `NEURALWATT_API_KEY`, `TINYFISH_API_KEY`, optional `GITHUB_PERSONAL_PAT` | `scripts/secrets.sh` at bootstrap |
+| `~/.config/secrets.env` | derived cache, mode 600, `NAME=value` lines | the zsh `maki` launcher, for the Maki process only |
+| `~/.config/gh/hosts.yml` | gh's token store, mode 600 | `gh` and `sdlc` |
+| `~/.config/sops/keys.age` | passphrase-wrapped age identity | `~/.local/bin/sops-age-key` through `SOPS_AGE_KEY_CMD` |
 
-On a personal machine the bootstrap task decrypts the file once when the age
-identity exists and the ciphertext changed, writes the mode-600 provider cache,
-and logs `gh` in with the PAT if one is present. smoreswork has no age identity,
-so it leaves both alone; the ciphertext in the public repository is harmless
-there.
-
-Bootstrap itself needs no GitHub auth: the repository, the zim modules, the
-tool downloads, and the `sdlc` CLI source are all in the checkout. `sdlc` is a
-stdlib script linked to `~/.local/bin/sdlc` by the identity environment, so no
-private repository is cloned. smoreswork does not apply that environment and
-never runs `gh auth` because its `gh` wrapper reads the token from 1Password.
-On personal machines, `gh` and the `sdlc` CLI use gh's own auth: add
-`GITHUB_PERSONAL_PAT` to `sops.yaml` and the bootstrap task logs in
-non-interactively, or run `gh auth login` once.
+The bootstrap task decrypts `sops.yaml` once when the age identity exists and
+the ciphertext changed, writes the mode-600 provider cache, and logs `gh` in
+with the PAT if one is present. smoreswork has no age identity, so it leaves
+both alone; the ciphertext in the public repository is harmless there.
+Bootstrap needs no GitHub auth: the repository, zim modules, tool downloads,
+and `sdlc` source are all in the checkout. `sdlc` is a stdlib script linked by
+the identity environment, so no private repository is cloned.
 
 Only personal, cross-machine secrets belong in `sops.yaml`, encrypted to the
 admin identity by `.sops.yaml`. Work credentials stay in 1Password. Homelab
 material (Cloudflare, restic, R2, ingest) stays in homelab-platform, where it
 is used. Host and YubiKey private material and the age identity itself never
-enter this repository; public keys and `known_hosts` are plain files, not
-secrets.
+enter this repository; public keys and `known_hosts` are plain files.
 
 ## Tools and packages
 
-CLI tools are pinned per platform in `global/config.toml`,
-`global/config.desktop.toml`, and `global/config.work.toml`, with lockfiles
-covering linux-x64, linux-arm64, and macos-arm64. `[settings] locked = true`
-means an unlocked tool is an install error, not a silent resolve. Bump one tool
-at a time:
+CLI tools are pinned per platform in `global/config.toml` and
+`global/config.desktop.toml`, with lockfiles covering linux-x64, linux-arm64,
+and macos-arm64; `global/config.work.toml` only disables the mise `gh`.
+`[settings] locked = true` means an unlocked tool is an install error, not a
+silent resolve. Bump one tool at a time:
 
 ```sh
 # edit the pin, then, once per environment set:
@@ -190,35 +188,8 @@ mise lock --global --platform linux-x64,linux-arm64,macos-arm64
 
 Desktop apps are user Flatpaks from Flathub on Linux and Homebrew casks into
 `~/Applications` on macOS, both declared in `mise.desktop.toml`. Flatpaks
-cannot be pinned and install at `latest`. The only host layer is Tailscale (`rpm-ostree install tailscale`); nothing
-else needs a new layer.
-
-Project-only tools belong to the repositories that use them, not to the host.
-
-## Daily use
-
-```sh
-mise dot diff                    # what a dotfile apply would change
-mise dot apply                   # deploy the checkout's dotfiles
-mise bootstrap                   # tools, repos, dotfiles, and the bootstrap task
-```
-
-### `repos`, `worktrees`, and `dev`
-
-```sh
-repos get owner/project      # plain git clone under ~/repos/<host>/<owner>/<repo>
-repos list
-worktrees new --slug add-gizmo --ticket ABC-123 --type feat
-worktrees prune              # dry run; --apply removes what it reported
-dev                          # rootless Podman shell for the current checkout
-```
-
-`worktrees new` renders the branch name from `git config smores.branchTemplate`
-and prints JSON: use its `path`. `dev` prefers podman, uses the repository's
-`Containerfile` when present, otherwise the shared
-`~/.config/containers/Containerfile.dev`; it never mounts `~/.ssh`, never
-forwards tokens, and keeps each checkout's mise installs on its own volume.
-The SSH agent socket is opt-in with `DEV_SSH_AGENT=1`.
+cannot be pinned and install at `latest`. Project-only tools belong to the
+repositories that use them, not to the host.
 
 ## Maki
 
@@ -248,9 +219,11 @@ checks symlinks, templates, modes, rendered identity, and conflicts.
 abbreviations, prompt, and that the Maki keys stay out of the parent shell.
 `tests/handoff-test.sh` covers the smoreswork home-manager handoff, and
 `tests/cli.sh` exercises `repos`, `worktrees`, and `dev` against throwaway
-repositories. CI runs the same suite and a real Fedora apply lane. The macOS lanes are opt-in
-with the `MACOS_CI` repository variable, because hosted macOS runners are not
-available to this account; smoreswork is verified by hand until they are.
+repositories. `tests/secrets-test.sh`, `tests/detect-envs-test.sh`, and
+`tests/wallpapers-test.sh` cover the SOPS cache, machine-set inference, and the
+wallpaper sync. CI runs the same suite and a real Fedora apply lane; the macOS
+lanes are opt-in with the `MACOS_CI` repository variable, because hosted macOS
+runners are not available to this account.
 
 ## Rollout
 
@@ -258,4 +231,4 @@ Rollout is staged with a canary. Tag the pre-mise commit first. smoreswork is
 ported in a throwaway HOME, then cut over from the previous manager in one
 sitting; smorespro follows with a dry run then an apply; smortress is last,
 applied over SSH with a second session held open. A half-applied run is resumed
-by rerunning bootstrap after fixing the reported failure.
+by re-running bootstrap.

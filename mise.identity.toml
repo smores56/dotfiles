@@ -1,5 +1,5 @@
-# Git and SSH identity. Not applied on smoreswork, where home-manager keeps git
-# and ssh until PIV signing and the sops keys have another home.
+# Git and SSH identity for personal machines. smoreswork does not apply this
+# environment; mise.work.toml renders its own work identity and SSH config.
 #
 # Answers are per machine: `mise bootstrap --prompt-vars` asks once and saves
 # them in $MISE_STATE_DIR/vars.toml (never in this repository); change one with
@@ -39,13 +39,12 @@ default = ""
 "~/.gitconfig" = { source = "identity/.gitconfig" }
 "~/.ssh/config" = { source = "identity/.ssh/config" }
 "~/.config/git/machine.inc" = { source = "identity/.config/git/machine.inc.tera", mode = "template" }
-"~/.config/git/personal.inc" = { source = "identity/.config/git/personal.inc.tera", mode = "template" }
 "~/.config/git/work.inc" = { source = "identity/.config/git/work.inc.tera", mode = "template" }
 
 # Tera's `quote` is shell quoting, not git-config quoting, so values are checked
 # before the rendered files are written; scripts/identity.sh says what is refused.
 [bootstrap.hooks.pre-dotfiles]
-description = "check the identity vars"
+description = "check the identity vars and retire the uv sdlc shim"
 run = [
   "sh {{ config_root }}/scripts/identity.sh check {{ vars.git_name | quote }} {{ vars.git_email | quote }} {{ vars.git_signing_key | quote }} {{ vars.personal_owner | quote }} {{ vars.repos_root | quote }} {{ vars.work_owners | quote }} {{ vars.work_flat_root | quote }} {{ vars.work_email | quote }} {{ vars.work_signing_key | quote }}",
   "sh {{ config_root }}/scripts/retire-uv-sdlc.sh",

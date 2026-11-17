@@ -119,7 +119,6 @@ for target in \
     .ssh/config \
     .aerospace.toml \
     .local/bin/wallpapers \
-    .local/bin/tty \
     .config/systemd/user/wallpapers.timer \
     .config/mise; do
     assert_not "base leaves ~/$target alone" test -e "$h/$target"
@@ -183,7 +182,7 @@ fi
 assert "identity links ~/.gitconfig" links_into_repo "$h/.gitconfig"
 assert "identity links ~/.ssh/config" links_into_repo "$h/.ssh/config"
 assert "identity keeps the base links" links_into_repo "$h/.config/helix/config.toml"
-for inc in machine personal work; do
+for inc in machine work; do
     assert "identity renders ~/.config/git/$inc.inc" test -f "$h/.config/git/$inc.inc"
 done
 
@@ -271,13 +270,11 @@ if [ "$os" = Darwin ]; then
     assert "desktop installs Google Sans Code Italic on macOS" test -f "$h/Library/Fonts/GoogleSansCode-Italic-MONO-VF.ttf"
     assert "desktop links the WezTerm config" links_into_repo "$h/.config/wezterm/wezterm.lua"
     assert_not "desktop skips the Linux wallpaper sync on macOS" test -e "$h/.local/bin/wallpapers"
-    assert_not "desktop skips the Linux TTY shim on macOS" test -e "$h/.local/bin/tty"
     assert_not "desktop skips systemd units on macOS" test -e "$h/.config/systemd"
     assert_not "desktop skips the Linux font links on macOS" \
         test -e "$h/.local/share/fonts/GoogleSansCode-MONO-VF.ttf"
 else
     assert "desktop links the wallpaper sync on Linux" links_into_repo "$h/.local/bin/wallpapers"
-    assert "desktop links the TTY shim on Linux" links_into_repo "$h/.local/bin/tty"
     assert "desktop links the wallpaper timer on Linux" \
         links_into_repo "$h/.config/systemd/user/wallpapers.timer"
     assert "desktop links Google Sans Code on Linux" \
@@ -306,7 +303,6 @@ assert "work links the zsh environment hook" links_into_repo "$h/.config/zsh/env
 assert "work links the interactive work hook" links_into_repo "$h/.config/zsh/conf.d/90-work.zsh"
 assert "work links the Claude work rules" grep -q 'This is a work host' "$h/.claude/work.md"
 assert "work leaves the employer's ~/.zshrc a plain file" test ! -L "$h/.zshrc"
-assert_not "work does not pull in the personal identity" test -e "$h/.config/git/personal.inc"
 if [ -n "$zsh_bin" ]; then
     assert "non-interactive zsh points SSH at the 1Password agent" \
         bash -c "env -i HOME='$h' PATH=/usr/bin:/bin '$zsh_bin' -c 'print -r -- \$SSH_AUTH_SOCK' | grep -q 2BUA8C4S2C.com.1password"
@@ -381,7 +377,6 @@ run_mise "$h2" desktop,work dot apply >"$tmp/work-token.log" 2>&1
 assert_not "a raw token in place of a 1Password reference stops the apply" test -e "$h2/.config/gh-token-ref"
 assert "allowed_signers lists the work key" \
     grep -qx "me@work.example namespaces=\"git\" $key" "$h/.config/ssh/allowed_signers"
-assert_not "no personal identity on the work host" test -e "$h/.config/git/personal.inc"
 
 # mise reports an entry whose source is missing as a warning and exits 0.
 if grep -h 'matched no files' "$tmp"/*.log >"$tmp/nomatch" 2>/dev/null; then

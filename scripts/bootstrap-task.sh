@@ -33,4 +33,4 @@ link_conda_zsh
 sh "$(dirname "$0")/zim-build.sh" || die "zim build failed; the shell has no plugins until it succeeds"
 tighten_ssh_dir
 sh "$(dirname "$0")/secrets.sh" \
-    || log "secrets not refreshed; maki and gh keep their existing credentials"
+    || log "secrets refresh failed; run scripts/secrets.sh by hand to see why"

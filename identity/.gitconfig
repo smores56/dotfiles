@@ -2,9 +2,8 @@
 #
 # Machine identity lives in ~/.config/git/machine.inc, rendered from the vars
 # of whichever environment the machine applies (mise.identity.toml on personal
-# hosts, with includeIf routing; mise.work.toml on the work laptop). Personal and work
-# checkouts then pick up their own email, signing key, flow, and branch
-# templates from personal.inc and work.inc.
+# hosts, with includeIf routing; mise.work.toml on the work laptop). Work
+# checkouts override the personal fallback below through work.inc.
 #
 # The include is deliberately the last thing in this file: an include is read
 # where it appears, so a plain section below it would override the identity and
@@ -85,7 +84,7 @@
     path = ~/.config/git/machine.inc
 [credential "https://github.com"]
 	helper = 
-	helper = !/opt/homebrew/bin/gh auth git-credential
+	helper = !gh auth git-credential
 [credential "https://gist.github.com"]
 	helper = 
-	helper = !/opt/homebrew/bin/gh auth git-credential
+	helper = !gh auth git-credential
