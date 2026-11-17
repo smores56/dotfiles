@@ -104,10 +104,10 @@ done
 # --- desktop packages and shell hand-off
 
 flatpaks=$(sed -n 's/^"flatpak-user:\([^"]*\)".*/\1/p' "$root/mise.desktop.toml")
-if [ "$(printf '%s\n' "$flatpaks" | grep -c .)" -eq 13 ]; then
-    ok "the desktop environment declares all 13 user Flatpaks"
+if [ "$(printf '%s\n' "$flatpaks" | grep -c .)" -eq 12 ]; then
+    ok "the desktop environment declares all 12 user Flatpaks"
 else
-    no "the desktop environment must declare 13 user Flatpaks (the 12 apps plus WezTerm)"
+    no "the desktop environment must declare 12 user Flatpaks"
 fi
 
 if printf '%s\n' "$flatpaks" | grep -qvE '^[A-Za-z0-9_]+(\.[A-Za-z0-9_-]+)+$'; then
@@ -116,10 +116,20 @@ else
     ok "every flatpak id looks like a reverse-DNS app id"
 fi
 
-if grep -q '"flatpak-user:org.wezfurlong.wezterm"' "$root/mise.desktop.toml"; then
-    ok "WezTerm comes from Flathub on Linux"
+if grep -q 'flatpak-user:org.wezfurlong.wezterm' "$root/mise.desktop.toml"; then
+    no "WezTerm must not come from Flathub; that build predates this GPU's Mesa"
 else
-    no "WezTerm must be a user Flatpak on Linux"
+    ok "WezTerm is not the abandoned Flathub build"
+fi
+
+wezterm_installer="$root/scripts/wezterm-appimage.sh"
+if [ -f "$wezterm_installer" ] \
+    && grep -q '^SHA256=[0-9a-f]\{64\}$' "$wezterm_installer" \
+    && grep -q 'wezterm-appimage.sh' "$root/scripts/bootstrap-task.sh" \
+    && grep -q 'exec "$dest/AppRun"' "$wezterm_installer"; then
+    ok "WezTerm comes from the pinned AppImage, installed by the bootstrap"
+else
+    no "WezTerm must come from the pinned AppImage, installed by the bootstrap"
 fi
 
 if grep -q 'flatpak remote-add --user --if-not-exists flathub' "$root/mise.desktop.toml"; then
@@ -407,10 +417,10 @@ else
 fi
 
 for file in "$root/docs/manual-steps.md" "$root/README.md"; do
-    if grep -q 'rpm-ostree install tailscale' "$file" && ! grep -q 'rsync' "$file"; then
-        ok "the host layer is Tailscale only in $(rel "$file")"
+    if grep -qE '^[[:space:]]*sudo rpm-ostree install' "$file"; then
+        no "the host is a bootc image; $(rel "$file") must not layer host packages"
     else
-        no "the host layer must be Tailscale only, with no rsync, in $(rel "$file")"
+        ok "$(rel "$file") never layers host packages"
     fi
 done
 

@@ -46,9 +46,10 @@ fi
 "flatpak-user:com.bitwarden.desktop" = { version = "latest", os = ["linux"] }
 "flatpak-user:com.tutanota.Tutanota" = { version = "latest", os = ["linux"] }
 "flatpak-user:org.kde.dolphin" = { version = "latest", os = ["linux"] }
-# The terminal. Its default home access lets it spawn host shells through the
-# portal, so it is a launcher rather than a sandbox.
-"flatpak-user:org.wezfurlong.wezterm" = { version = "latest", os = ["linux"] }
+# The terminal is not a Flatpak: the Flathub build is stuck on
+# org.freedesktop.Platform 23.08, whose Mesa cannot drive this GPU. mise does
+# not manage AppImages, so scripts/wezterm-appimage.sh installs the pinned one
+# from the bootstrap task instead.
 # ~/Applications: mise refuses to install through a group-writable
 # /Applications (root:admin 0775 on the work laptop), and it needs no sudo.
 "brew-cask:wezterm" = { version = "latest", os = ["macos"], appdir = "~/Applications" }
