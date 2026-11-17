@@ -8,8 +8,6 @@
 "~/.ssh/config" = { source = "work/.ssh/config" }
 "~/.config/git/machine.inc" = { source = "work/.config/git/machine.inc.tera", mode = "template" }
 "~/.config/git/work-signing.pub" = { source = "work/.config/git/work-signing.pub" }
-"~/.config/gh-token-ref" = { source = "work/.config/gh-token-ref.tera", mode = "template" }
-"~/.local/bin/gh" = { source = "work/.local/bin/gh" }
 "~/.cargo/config.toml" = { source = "work/.cargo/config.toml" }
 
 # macOS ships zsh 5.9 in /etc/shells already, so no sudo; chsh asks for the

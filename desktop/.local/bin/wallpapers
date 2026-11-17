@@ -134,7 +134,7 @@ classify_cache() {
             *) continue ;;
         esac
         # [0] pins the first frame: animated webp emits one dimension pair per frame.
-        dims=$(identify -ping -format '%w %h' "$file[0]" 2>/dev/null) || continue
+        dims=$(identify -ping -format '%w %h' "${file}[0]" 2>/dev/null) || continue
         width=${dims% *}
         height=${dims#* }
         if bucket=$(bucket_of "${width:-}" "${height:-}"); then

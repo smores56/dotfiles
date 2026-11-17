@@ -85,9 +85,14 @@ fi
 
 # bootstrap-task.sh runs without mise's shims when the caller has not activated
 # mise. gh is then absent, and the cached keys must be left exactly as they are.
+# GitHub's runners ship /usr/bin/gh, so the system directories are mirrored
+# without it.
 mkdir -p "$tmp/nogh"
 cp "$tmp/bin/sops" "$tmp/nogh/sops"
-if env -i HOME="$home" PATH="$tmp/nogh:/usr/bin:/bin" \
+for f in /usr/bin/* /bin/*; do
+    [ "${f##*/}" = gh ] || [ -e "$tmp/nogh/${f##*/}" ] || ln -s "$f" "$tmp/nogh/"
+done
+if env -i HOME="$home" PATH="$tmp/nogh" \
         SECRETS_LOG="$tmp/log" GH_LOGIN="$tmp/login" \
         DOTFILES_SECRETS="$tmp/secrets.yaml" \
         sh "$root/scripts/secrets.sh" \

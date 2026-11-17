@@ -212,8 +212,9 @@ stay in 1Password, not here.
 ## 7. Re-authorize the Mac's public key
 
 smoreswork is managed by the `work` environment; before its first bootstrap,
-replace the generated key in `work/.config/git/work-signing.pub` and the
-placeholder `op://` reference in `work/.config/gh-token-ref.tera`. A Mac kept
+replace the generated key in `work/.config/git/work-signing.pub`, and after it
+log `gh` in once with
+`op read 'op://Employee/GitHub Personal Access Token/token' | gh auth login --with-token`. A Mac kept
 outside the fleet needs only Tailscale and ordinary OpenSSH. Either way, its existing public key
 must be registered again on GitHub after the old machine's keys are retired.
 
