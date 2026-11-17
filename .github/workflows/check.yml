@@ -22,7 +22,7 @@ jobs:
       - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
         with:
           version: 2026.11.9
-          sha256: 23ba592fcbc61f057e2b82c1eafd085832712ba0c759b714ca16cd06babca378
+          sha256: f13f3e5ec88807e0161669b3aa07a91d84478cdf1e95b5b92b63f85a25d42395
           install: false
       - name: Run the checks
         run: tests/check.sh --shellcheck
@@ -35,11 +35,11 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            sha256: 23ba592fcbc61f057e2b82c1eafd085832712ba0c759b714ca16cd06babca378
+            sha256: f13f3e5ec88807e0161669b3aa07a91d84478cdf1e95b5b92b63f85a25d42395
           - os: ubuntu-24.04-arm
-            sha256: cf2900bfb4279f8d8f8a19d5c27bf1bde826b3e742182f3f67511c588498c786
+            sha256: b8dd05af6447cee933928664982a8cb2fa646e6951cfc8539db23ce2554a7b04
           - os: macos-14
-            sha256: e4509f159e0492e89065edcf52f2918e2751e3574620586058468ba0563aed59
+            sha256: f3bb0e8cbe0217a0b52444ecc0042364563ddd1de0490313bb7e702ecab41a14
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -66,7 +66,7 @@ jobs:
       - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
         with:
           version: 2026.11.9
-          sha256: 23ba592fcbc61f057e2b82c1eafd085832712ba0c759b714ca16cd06babca378
+          sha256: f13f3e5ec88807e0161669b3aa07a91d84478cdf1e95b5b92b63f85a25d42395
           install: false
       - name: Install podman
         run: |
@@ -93,7 +93,7 @@ jobs:
       - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
         with:
           version: 2026.11.9
-          sha256: e4509f159e0492e89065edcf52f2918e2751e3574620586058468ba0563aed59
+          sha256: f3bb0e8cbe0217a0b52444ecc0042364563ddd1de0490313bb7e702ecab41a14
           install: false
       - name: Apply into a throwaway HOME
         env:
