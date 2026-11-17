@@ -57,4 +57,6 @@ sh "$(dirname "$0")/zim-build.sh" || die "zim build failed; the shell has no plu
 tighten_ssh_dir
 sh "$(dirname "$0")/agent-secrets.sh" \
     || log "provider keys not refreshed; maki keeps the existing ~/.config/secrets.env"
+sh "$(dirname "$0")/github-auth.sh" \
+    || log "GitHub auth not refreshed; run gh auth login if gh commands fail"
 install_sdlc

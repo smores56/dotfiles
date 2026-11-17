@@ -543,6 +543,12 @@ if command -v git >/dev/null 2>&1 && command -v bash >/dev/null 2>&1; then
         no "behavioral tests (tests/detect-envs-test.sh)"
         sed 's/^/     /' "$tmp/detect-envs.log" >&2
     fi
+    if bash "$root/tests/github-auth-test.sh" >"$tmp/github-auth.log" 2>&1; then
+        ok "behavioral tests (tests/github-auth-test.sh)"
+    else
+        no "behavioral tests (tests/github-auth-test.sh)"
+        sed 's/^/     /' "$tmp/github-auth.log" >&2
+    fi
 else
     skip "behavioral tests (git or bash not installed)"
 fi

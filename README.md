@@ -148,12 +148,20 @@ cache and the age identity stay outside the repository:
 | --- | --- | --- |
 | `secrets/agent.yaml` | SOPS-encrypted dotenv with the local agent's `NEURALWATT_API_KEY` and `TINYFISH_API_KEY` | `scripts/agent-secrets.sh` at bootstrap |
 | `~/.config/secrets.env` | derived cache, mode 600, `NAME=value` lines | the zsh `maki` launcher exports the two keys into the Maki process only |
+| `secrets/github.yaml` | optional SOPS-encrypted dotenv with `github-personal-pat` | `scripts/github-auth.sh` runs `gh auth login --with-token` on personal machines |
 | `~/.config/sops/keys.age` | age-encrypted, passphrase-wrapped identity | `~/.local/bin/sops-age-key`, invoked by sops through `SOPS_AGE_KEY_CMD` |
 
 On a personal machine the bootstrap task decrypts the ciphertext when the age
 identity exists and the ciphertext changed, and writes the mode-600 cache.
 smoreswork has no age identity, so it leaves the cache alone; the ciphertext in
 the public repository is harmless there.
+
+Bootstrap itself needs no GitHub auth: the repository, the zim modules, and
+the tool downloads are public. `sdlc` installs from a private repository over
+SSH, not `gh`; smoreswork skips that and never runs `gh auth` because its `gh`
+wrapper reads the token from 1Password. On personal machines, `gh` and the
+`sdlc` CLI use gh's own auth: provide `secrets/github.yaml` and the bootstrap
+task logs in non-interactively, or run `gh auth login` once.
 
 Only personal, cross-machine secrets belong under `secrets/`, encrypted to the
 admin identity by `.sops.yaml`: the agent provider keys now, and optionally a

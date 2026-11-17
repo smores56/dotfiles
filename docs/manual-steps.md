@@ -154,9 +154,11 @@ nothing. An update is a pin bump in `maki/pin.env` followed by a re-run; never
 copy a release into `~/.local/bin` by hand.
 
 `sdlc` is installed by `scripts/bootstrap-task.sh` with `uv tool install` from
-the private upstream at the commit pinned there as `SDLC_REV`. Bump that constant, re-run the
+the private upstream at the commit pinned there as `SDLC_REV`. That install
+uses the SSH credential restored in step 3. Bump the constant, re-run the
 bootstrap, and commit the new pin. `sdlc list` must reach the `smores56/sdlc`
-registry, which needs the GitHub credential from step 3.
+registry; it calls `gh`, which uses the auth installed by `secrets/github.yaml`
+or a one-time `gh auth login`.
 
 ## 6. Provider keys
 
@@ -172,6 +174,11 @@ test -s ~/.config/secrets.env && echo keys-present
 test "$(stat -c %a ~/.config/secrets.env)" = 600 && echo secrets-mode-ok
 zsh -ic 'type -q maki && echo maki-launcher-ok'
 ```
+
+A personal GitHub token is optional. Put a fine-grained token with Issues
+read/write on `smores56/sdlc` and Metadata read into `secrets/github.yaml` as
+`github-personal-pat`; the bootstrap task then runs
+`gh auth login --with-token`. Without that file, run `gh auth login` once.
 
 If the ciphertext is missing or needs rotation, fetch the two keys from
 Bitwarden and re-encrypt them to the admin identity. The desktop Flatpak ships
