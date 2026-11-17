@@ -1,11 +1,66 @@
-# Noctalia owns the surfaces niri does not: bar, launcher, notifications, lock
-# screen, idle handling, screenshots, and wallpaper. This file only turns on
-# the idle behaviors, deliberately replacing swayidle and swaylock.
-#
+# Noctalia owns the shell surfaces niri does not: bar, launcher, notifications,
+# lock screen, idle handling, and wallpaper. Colors come from the community
+# "Rose Pine Moon" palette, which Noctalia caches after the first fetch.
 # Hot reload: Noctalia re-reads this file on change.
 
 [shell]
 telemetry_enabled = false
+clipboard_enabled = true
+clipboard_auto_paste = "auto"
+time_format = "{:%-I:%M %p}"
+font_family = "Google Sans Code"
+avatar_path = "~/.config/noctalia/avatar.png"
+
+[theme]
+mode = "dark"
+source = "community"
+community_palette = "Rose Pine Moon"
+
+[location]
+auto_locate = true
+
+[bar.main]
+position = "top"
+start = ["launcher", "clock", "sysmon", "active_window", "media"]
+center = ["workspaces"]
+end = ["tray", "notifications", "battery", "volume", "brightness", "control-center"]
+
+[widget.workspaces]
+hide_when_empty = true
+
+[widget.clock]
+format = "{:%-I:%M %p %a, %b %d}"
+vertical_format = "{:%-I:%M %p}"
+tooltip_format = "{:%-I:%M %p %a, %b %d}"
+
+[wallpaper]
+enabled = true
+fill_color = "#232136"
+automation.enabled = false
+
+[weather]
+enabled = true
+unit = "fahrenheit"
+
+[audio]
+enable_overdrive = true
+enable_sounds = true
+
+[nightlight]
+enabled = true
+
+[dock]
+enabled = false
+
+[lockscreen]
+enabled = true
+lock_before_suspend = true
+fingerprint = true
+blur_intensity = 0.4
+tint_intensity = 0.4
+
+[shell.launcher.providers.session]
+global = true
 
 [idle]
 behavior_order = ["lock", "screen-off", "suspend"]

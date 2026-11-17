@@ -7,7 +7,7 @@ StartLimitBurst=10
 [Service]
 Type=oneshot
 TimeoutStartSec=20min
-ExecStart=%h/.local/bin/wallpapers sync-and-pick
+ExecStart=%h/.local/bin/wallpapers sync
 Restart=on-failure
 RestartSec=30
 # rclone comes from the mise shims; systemd does not read the shell PATH.

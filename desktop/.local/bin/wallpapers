@@ -1,38 +1,57 @@
 #!/bin/sh
-# Sync the canonical wallpaper tree into a local cache and pick one file.
+# Sync the canonical wallpaper tree into a local cache, then give every display
+# an image that matches its measured aspect, set through Noctalia's IPC.
 #
-# COSMIC (the desktop this repository targets) has no scriptable wallpaper
-# setting, so `pick` selects a file and prints it: set it by hand in the
-# desktop's Appearance settings. The systemd timer keeps the cache fresh.
-# The source is the #660 path on the private host; override it with
-# WALLPAPERS_SOURCE for a migration or a test.
+# Noctalia owns the wallpaper surfaces; its own rotation stays disabled in
+# config.toml because this script tracks which images each aspect has already
+# shown, and Noctalia's state file would outrank the setting.
 #
-# The sync uses rclone's SFTP backend, so no host sync package is needed: rclone is a
-# mise tool, and the smortress key and known_hosts come from the identity env.
-# WALLPAPERS_SOURCE is host:path; WALLPAPERS_USER, WALLPAPERS_KEY, and
-# WALLPAPERS_KNOWN_HOSTS override the defaults below.
+# The sync uses rclone's SFTP backend, so no host sync package is needed: rclone
+# is a mise tool, and the smortress key and known_hosts come from the identity
+# env. WALLPAPERS_SOURCE is host:path; WALLPAPERS_USER, WALLPAPERS_KEY,
+# WALLPAPERS_KNOWN_HOSTS, WALLPAPERS_RCLONE and WALLPAPERS_CACHE override the
+# defaults below, which is also how the tests drive it.
 set -eu
 
 source=${WALLPAPERS_SOURCE:-smortress:/srv/wallpapers/}
-cache=${XDG_CACHE_HOME:-$HOME/.cache}/wallpapers
+cache=${WALLPAPERS_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/wallpapers}
 dest=$cache/Wallpapers
+state=$cache/state
 user=${WALLPAPERS_USER:-core}
 key=${WALLPAPERS_KEY:-$HOME/.ssh/id_smortress-access}
 known_hosts=${WALLPAPERS_KNOWN_HOSTS:-$HOME/.config/ssh/known_hosts}
 
 log() { printf 'wallpapers: %s\n' "$*" >&2; }
+usage() {
+    log "usage: wallpapers [sync|apply|classify W H|pick LIST QUEUE [USED]|unpick QUEUE FILE|buckets DIR OUT]"
+    exit 2
+}
 
-rclone_bin=${WALLPAPERS_RCLONE:-}
-if [ -z "$rclone_bin" ]; then
+# 16:9 (1.78) is standard, 21:9 (2.33)+ ultrawide; 2.0 splits them.
+bucket_of() {
+    [ -n "${1:-}" ] && [ -n "${2:-}" ] || return 1
+    case "$1$2" in
+        *[!0-9]*) return 1 ;;
+    esac
+    [ "$1" -gt 0 ] && [ "$2" -gt 0 ] || return 1
+    if awk -v w="$1" -v h="$2" 'BEGIN { exit !(w / h >= 2.0) }'; then
+        printf 'Ultrawide\n'
+    else
+        printf 'Standard\n'
+    fi
+}
+
+find_rclone() {
+    [ -n "${WALLPAPERS_RCLONE:-}" ] && { printf '%s\n' "$WALLPAPERS_RCLONE"; return 0; }
     for candidate in "$(command -v rclone 2>/dev/null || true)" \
             "$HOME/.local/bin/rclone" "$HOME/.local/share/mise/shims/rclone"; do
         if [ -n "$candidate" ] && [ -x "$candidate" ]; then
-            rclone_bin=$candidate
-            break
+            printf '%s\n' "$candidate"
+            return 0
         fi
     done
-fi
-[ -n "$rclone_bin" ] || { log 'rclone is required; run mise bootstrap'; exit 1; }
+    return 1
+}
 
 remote_url() {
     host=${source%%:*}
@@ -50,35 +69,224 @@ remote_url() {
     printf ':sftp,%s:%s' "$opts" "$path"
 }
 
+# The timer and a manual run must not classify under each other's deletes.
+lock() {
+    mkdir -p "$cache" "$state"
+    exec 9>"$cache/.lock"
+    if ! flock -n 9; then
+        log "another run holds $cache/.lock; skipping"
+        exit 0
+    fi
+}
+
 sync_cache() {
+    rclone_bin=$(find_rclone) \
+        || { log 'rclone is required; run mise bootstrap'; return 1; }
     remote=$(remote_url)
-    mkdir -p "$cache" "$dest"
+    mkdir -p "$dest"
     # Probe before syncing, so an unreachable host never empties the cache.
     if ! listing=$("$rclone_bin" lsf "$remote" --files-only --max-depth 1 \
             --contimeout 20s --timeout 240s --retries 2 2>/dev/null); then
         log "cannot list $source; keeping the cached set"
-        exit 1
+        return 1
     fi
     if [ -z "$listing" ]; then
         log "source listing is empty; keeping the cached set"
-        exit 1
+        return 1
     fi
     "$rclone_bin" sync "$remote" "$dest" \
         --contimeout 20s --timeout 780s --retries 2 --stats 0
 }
 
-pick_one() {
-    [ -d "$dest" ] || { log "no cached wallpapers at $dest"; exit 1; }
-    file=$(find "$dest" -type f \
-        \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) \
-        | awk 'BEGIN { srand() } { a[NR] = $0 } END { if (NR) print a[int(rand() * NR) + 1] }')
-    [ -n "$file" ] || { log "no wallpapers in $dest"; exit 1; }
-    log "selected $file; set it in COSMIC's Appearance settings"
+# Bucket by measured pixels, not folder: images get misfiled and the display's
+# mode is what matters. The identify(1) shell-out is ImageMagick, which the
+# image installs for exactly this.
+classify_cache() {
+    dir=$1
+    out=$2
+    if [ ! -d "$dir" ]; then
+        log "no cached wallpapers at $dir yet"
+        return 1
+    fi
+    mkdir -p "$out"
+    : >"$out/Standard.list"
+    : >"$out/Ultrawide.list"
+    find "$dir" -type f | while IFS= read -r file; do
+        case "$file" in
+            *.jpg | *.jpeg | *.png | *.webp | *.jxl | \
+            *.JPG | *.JPEG | *.PNG | *.WEBP | *.JXL) ;;
+            *) continue ;;
+        esac
+        dims=$(identify -ping -format '%w %h' "$file" 2>/dev/null) || continue
+        width=${dims% *}
+        height=${dims#* }
+        if bucket=$(bucket_of "${width:-}" "${height:-}"); then
+            printf '%s\n' "$file" >>"$out/$bucket.list"
+        fi
+    done
+    LC_ALL=C sort -o "$out/Standard.list" "$out/Standard.list"
+    LC_ALL=C sort -o "$out/Ultrawide.list" "$out/Ultrawide.list"
 }
 
-case ${1:-} in
-    sync) sync_cache ;;
-    pick) pick_one ;;
-    sync-and-pick) sync_cache; pick_one ;;
-    *) printf 'usage: wallpapers sync|pick|sync-and-pick\n' >&2; exit 2 ;;
+# Random without replacement: each aspect keeps a queue of unshown images, and
+# <used> holds what this run already placed so two displays of one aspect cannot
+# get the same picture.
+next_pick() {
+    if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
+        usage
+    fi
+    list=$1
+    queue=$2
+    used=${3:-}
+    if [ ! -s "$list" ]; then
+        log "no wallpapers in $list"
+        return 1
+    fi
+    candidates=$queue.candidates
+    if [ -n "$used" ] && [ -s "$used" ]; then
+        awk 'NR == FNR { used[$0] = 1; next } !($0 in used)' \
+            "$used" "$list" >"$candidates"
+    else
+        cp "$list" "$candidates"
+    fi
+    # Every image shown: start the cycle over rather than leave a display blank.
+    if [ ! -s "$candidates" ]; then
+        cp "$list" "$candidates"
+    fi
+    picked=
+    if [ -s "$queue" ]; then
+        : >"$queue.new"
+        while IFS= read -r file; do
+            if [ -z "$picked" ] && grep -Fxq -e "$file" "$candidates"; then
+                picked=$file
+                continue
+            fi
+            if grep -Fxq -e "$file" "$candidates"; then
+                printf '%s\n' "$file" >>"$queue.new"
+            fi
+        done <"$queue"
+        mv "$queue.new" "$queue"
+    fi
+    if [ -z "$picked" ]; then
+        shuffled=$queue.shuffled
+        awk 'BEGIN { srand() } { printf "%.9f\t%s\n", rand(), $0 }' "$candidates" \
+            | LC_ALL=C sort | cut -f2- >"$shuffled"
+        picked=$(head -n 1 "$shuffled")
+        tail -n +2 "$shuffled" >"$queue"
+        rm -f "$shuffled"
+    fi
+    rm -f "$candidates"
+    if [ -z "$picked" ]; then
+        log "could not pick from $list"
+        return 1
+    fi
+    printf '%s\n' "$picked"
+}
+
+# A display that could not be set must not consume its image: put it back at the
+# head so the next run tries it again.
+unpick() {
+    queue=$1
+    file=$2
+    {
+        printf '%s\n' "$file"
+        if [ -s "$queue" ]; then
+            cat "$queue"
+        fi
+    } >"$queue.new"
+    mv "$queue.new" "$queue"
+}
+
+apply() {
+    work=$(mktemp -d)
+    trap 'rm -rf "$work"' EXIT
+    classify_cache "$dest" "$work" || return 1
+    if ! outputs=$(niri msg --json outputs); then
+        log "niri msg failed (is the session up?)"
+        return 1
+    fi
+    printf '%s' "$outputs" | jq -r '
+        to_entries[] | select(.value.current_mode != null) |
+        "\(.key)\t\(.value.modes[.value.current_mode].width)\t\(.value.modes[.value.current_mode].height)"
+    ' >"$work/displays"
+    if [ ! -s "$work/displays" ]; then
+        log "no active outputs"
+        return 1
+    fi
+    applied_count=0
+    while IFS="$(printf '\t')" read -r connector width height; do
+        if ! bucket=$(bucket_of "$width" "$height"); then
+            log "$connector has an unusable mode ${width}x${height}; skipping"
+            continue
+        fi
+        if ! picture=$(next_pick "$work/$bucket.list" \
+                "$state/queue-$bucket" "$work/used-$bucket"); then
+            log "$connector has no $bucket images; leaving it unchanged"
+            continue
+        fi
+        log "$connector ${width}x${height} -> $bucket $(basename "$picture")"
+        if ! noctalia msg wallpaper-set "$connector" "$picture"; then
+            log "noctalia rejected $connector"
+            unpick "$state/queue-$bucket" "$picture"
+            continue
+        fi
+        applied=$(noctalia msg wallpaper-get "$connector") || {
+            unpick "$state/queue-$bucket" "$picture"
+            continue
+        }
+        if [ "$applied" != "$picture" ]; then
+            log "$connector reports '$applied' after setting '$picture'"
+            unpick "$state/queue-$bucket" "$picture"
+            continue
+        fi
+        # Recorded only now: a pick that failed to land may go to the next
+        # display of this aspect.
+        printf '%s\n' "$picture" >>"$work/used-$bucket"
+        applied_count=$((applied_count + 1))
+    done <"$work/displays"
+    if [ "$applied_count" -eq 0 ]; then
+        log "no display could be set"
+        return 1
+    fi
+}
+
+case ${1:-sync} in
+    sync)
+        lock
+        # Apply even when the sync failed: the cache is the source of truth, and
+        # the failure still reaches the unit status.
+        status=0
+        sync_cache || status=$?
+        apply || status=$?
+        exit "$status"
+        ;;
+    apply)
+        lock
+        apply
+        ;;
+    classify)
+        shift
+        if [ "$#" -ne 2 ]; then
+            usage
+        fi
+        bucket_of "$1" "$2"
+        ;;
+    pick)
+        shift
+        next_pick "$@"
+        ;;
+    unpick)
+        shift
+        unpick "$@"
+        ;;
+    buckets)
+        shift
+        if [ "$#" -ne 2 ]; then
+            usage
+        fi
+        classify_cache "$1" "$2"
+        ;;
+    *)
+        usage
+        ;;
 esac

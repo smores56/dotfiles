@@ -104,10 +104,10 @@ done
 # --- desktop packages and shell hand-off
 
 flatpaks=$(sed -n 's/^"flatpak-user:\([^"]*\)".*/\1/p' "$root/mise.desktop.toml")
-if [ "$(printf '%s\n' "$flatpaks" | grep -c .)" -eq 12 ]; then
-    ok "the desktop environment declares all 12 user Flatpaks"
+if [ "$(printf '%s\n' "$flatpaks" | grep -c .)" -eq 10 ]; then
+    ok "the desktop environment declares all 10 user Flatpaks"
 else
-    no "the desktop environment must declare 12 user Flatpaks"
+    no "the desktop environment must declare 10 user Flatpaks"
 fi
 
 if printf '%s\n' "$flatpaks" | grep -qvE '^[A-Za-z0-9_]+(\.[A-Za-z0-9_-]+)+$'; then
@@ -122,14 +122,19 @@ else
     ok "WezTerm is not the abandoned Flathub build"
 fi
 
-wezterm_installer="$root/scripts/wezterm-appimage.sh"
-if [ -f "$wezterm_installer" ] \
-    && grep -q '^SHA256=[0-9a-f]\{64\}$' "$wezterm_installer" \
-    && grep -q 'wezterm-appimage.sh' "$root/scripts/bootstrap-task.sh" \
-    && grep -q 'exec "$dest/AppRun"' "$wezterm_installer"; then
-    ok "WezTerm comes from the pinned AppImage, installed by the bootstrap"
+kitty_conf="$root/desktop/.config/kitty/kitty.conf"
+if [ -f "$kitty_conf" ] \
+    && grep -q "^font_family family='Google Sans Code'" "$kitty_conf" \
+    && grep -q '"~/.config/kitty"' "$root/mise.desktop.toml"; then
+    ok "the Linux terminal is kitty from the image"
 else
-    no "WezTerm must come from the pinned AppImage, installed by the bootstrap"
+    no "the Linux terminal must be kitty from the image"
+fi
+
+if grep -qE 'flatpak-user:(com\.brave\.Browser|org\.kde\.dolphin)' "$root/mise.desktop.toml"; then
+    no "Brave Origin and Dolphin must come from the image, not Flathub"
+else
+    ok "Brave Origin and Dolphin are not Flathub packages"
 fi
 
 if grep -q 'flatpak remote-add --user --if-not-exists flathub' "$root/mise.desktop.toml"; then

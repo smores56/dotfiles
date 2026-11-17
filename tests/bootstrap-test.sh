@@ -252,6 +252,8 @@ if [ "$os" = Darwin ]; then
         test -e "$h/.local/share/fonts/GoogleSansCode-MONO-VF.ttf"
 else
     assert "desktop links the wallpaper sync on Linux" links_into_repo "$h/.local/bin/wallpapers"
+    assert "desktop links the kitty config on Linux" links_into_repo "$h/.config/kitty/kitty.conf"
+    assert "desktop links the mimeapps list on Linux" links_into_repo "$h/.config/mimeapps.list"
     assert "desktop links the wallpaper timer on Linux" \
         links_into_repo "$h/.config/systemd/user/wallpapers.timer"
     assert "desktop links Google Sans Code on Linux" \

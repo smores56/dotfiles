@@ -1,0 +1,3 @@
+# Dolphin is the graphical file manager; yazi stays the terminal one.
+[Default Applications]
+inode/directory=org.kde.dolphin.desktop

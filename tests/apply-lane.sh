@@ -71,6 +71,7 @@ absent() { [ ! -e "$1" ] || fail "$1 should not exist"; }
 link "$HOME/.config/zsh/.zshrc"
 link "$HOME/.config/helix/config.toml"
 link "$HOME/.config/wezterm/wezterm.lua"
+link "$HOME/.config/kitty/kitty.conf"
 link "$HOME/.claude/CLAUDE.md"
 link "$HOME/.local/bin/sdlc"
 link "$HOME/.agents/skills/sdlc/SKILL.md"

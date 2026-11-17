@@ -66,12 +66,15 @@ In the installer:
 3. Use the default filesystem layout and finish the install.
 4. Reboot into the installed system and unlock the disk.
 
-Do not add third-party repositories or layer packages during the install.
+Do not add third-party repositories or layer packages during the install. The
+image itself bakes in the one third-party repository this machine needs, Brave's
+own RPM repository, for `brave-origin`; kitty, Dolphin, ImageMagick and jq come
+from Fedora.
 
 Then switch the host to the image this repository runs, following
 [smorespro-image/docs/switch.md](https://github.com/smores56/smorespro-image/blob/main/docs/switch.md).
-That switch is what brings niri, Noctalia, and the host packages; nothing is
-ever added with `rpm-ostree install`.
+That switch is what brings niri, Noctalia, kitty, Dolphin, Brave Origin and the
+other host packages; nothing is ever added with `rpm-ostree install`.
 
 ## 3. First login: base tools and the checkout
 

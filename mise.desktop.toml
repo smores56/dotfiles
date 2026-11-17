@@ -5,6 +5,8 @@
 "~/.local/bin/wallpapers" = { source = "desktop/.local/bin/wallpapers", variants = [{ os = "linux" }] }
 "~/.config/systemd/user" = { source = "desktop/.config/systemd/user", mode = "symlink-each", variants = [{ os = "linux" }] }
 "~/.config/wezterm" = { source = "desktop/.config/wezterm", mode = "symlink-each" }
+"~/.config/kitty" = { source = "desktop/.config/kitty", mode = "symlink-each", variants = [{ os = "linux" }] }
+"~/.config/mimeapps.list" = { source = "desktop/.config/mimeapps.list", variants = [{ os = "linux" }] }
 # niri owns the session and Noctalia the shell surfaces. mise deploys both
 # directories per file so each can be edited without replacing the others.
 "~/.config/niri" = { source = "desktop/.config/niri", mode = "symlink-each", variants = [{ os = "linux" }] }
@@ -32,10 +34,10 @@ fi
 ''' }
 
 [bootstrap.packages]
-# Linux desktops get their GUI apps as user Flatpaks from Flathub; mise does
-# not configure remotes, so the pre-packages hook adds the user remote first.
+# Most Linux GUI apps are user Flatpaks from Flathub; mise does not configure
+# remotes, so the pre-packages hook adds the user remote first. kitty, Dolphin
+# and Brave Origin are system packages from the smorespro image instead.
 "flatpak-user:md.obsidian.Obsidian" = { version = "latest", os = ["linux"] }
-"flatpak-user:com.brave.Browser" = { version = "latest", os = ["linux"] }
 "flatpak-user:org.videolan.VLC" = { version = "latest", os = ["linux"] }
 "flatpak-user:org.gimp.GIMP" = { version = "latest", os = ["linux"] }
 "flatpak-user:org.gnome.Evince" = { version = "latest", os = ["linux"] }
@@ -45,11 +47,8 @@ fi
 "flatpak-user:com.valvesoftware.Steam" = { version = "latest", os = ["linux"] }
 "flatpak-user:com.bitwarden.desktop" = { version = "latest", os = ["linux"] }
 "flatpak-user:com.tutanota.Tutanota" = { version = "latest", os = ["linux"] }
-"flatpak-user:org.kde.dolphin" = { version = "latest", os = ["linux"] }
-# The terminal is not a Flatpak: the Flathub build is stuck on
-# org.freedesktop.Platform 23.08, whose Mesa cannot drive this GPU. mise does
-# not manage AppImages, so scripts/wezterm-appimage.sh installs the pinned one
-# from the bootstrap task instead.
+# Linux runs kitty from the image; WezTerm stays the macOS terminal, installed
+# as a cask and configured from the shared desktop/.config/wezterm entry.
 # ~/Applications: mise refuses to install through a group-writable
 # /Applications (root:admin 0775 on the work laptop), and it needs no sudo.
 "brew-cask:wezterm" = { version = "latest", os = ["macos"], appdir = "~/Applications" }

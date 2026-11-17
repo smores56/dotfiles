@@ -51,7 +51,7 @@ Environments are additive; an environment only adds files and hooks.
 | --- | --- |
 | base | zsh, helix, zellij, yazi, lazygit, television, gh, `sdlc`, global mise files |
 | `identity` | git identity templates, `~/.ssh/config`, `allowed_signers` |
-| `desktop` | WezTerm, fonts, clipboard and trash helpers, Flatpaks or casks, wallpapers, systemd units, the zsh hand-off |
+| `desktop` | kitty (Linux) and WezTerm (macOS), fonts, clipboard and trash helpers, Flatpaks or casks, wallpapers, systemd units, the zsh hand-off |
 | `work` | work zsh hooks, work git identity and 1Password signing, the github.com SSH entry, Claude work rules, macOS defaults, work casks |
 
 `install-mise.sh` saves the set in `~/.config/mise/miserc.local.toml`, so no
@@ -200,7 +200,9 @@ mise lock --global --platform linux-x64,linux-arm64,macos-arm64
 
 Desktop apps are user Flatpaks from Flathub on Linux and Homebrew casks into
 `~/Applications` on macOS, both declared in `mise.desktop.toml`. Flatpaks
-cannot be pinned and install at `latest`. Project-only tools belong to the
+cannot be pinned and install at `latest`. kitty, Dolphin and Brave Origin are
+not Flatpaks: the smorespro image ships them as system packages, Brave Origin
+from Brave's own RPM repository. Project-only tools belong to the
 repositories that use them, not to the host.
 
 ## Maki
