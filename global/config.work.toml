@@ -1,5 +1,4 @@
 # smoreswork: gh comes from Homebrew, and the Keychain grants its stored token
-# to that binary. ghq is disabled too: the work Mac uses the repos wrapper and
-# the ~/Blitzy flat layout.
+# to that binary.
 [settings]
-disable_tools = ["gh", "ghq"]
+disable_tools = ["gh"]

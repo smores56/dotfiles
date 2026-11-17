@@ -1,57 +1,96 @@
 ---
 name: grill-me
-description: Interrogate a plan or design one decision at a time until aligned — adversarial, never bundled, stopping when the user says done. Triggers "grill me", "stress-test this design".
+description: Interrogate a plan or design one decision at a time until aligned. Use to stress-test a plan before building. Triggers "grill me", "interrogate this plan", "stress-test this design".
 ---
 
 # Grill Me
 
-A pre-build stress test. Walk the decision tree one question at a time until
-every branch is explicit. The goal is not quick agreement; it is that nothing
-important stays silently assumed.
+A pre-build stress test. Walk every branch of the decision tree, one question
+at a time, until you and the user share an explicit understanding of the whole
+plan. The point is not to agree quickly — it is to make every implicit call
+explicit so nothing important is left silently assumed.
 
-Write nothing. The only artifact is the sharpened understanding in the
-conversation — and, for an SDLC feature, the design section it updates.
+Stateless: write nothing. The only artifact is the sharpened understanding in
+the conversation itself.
 
 ## Stance
 
 You are an interrogator, not an implementer. Do not start building. Surface
-soft spots and force them into the open.
+the soft spots and force them into the open. End only when every branch has
+been visited.
 
-## Rules
+## The Rules
 
-1. **One question at a time.** Never bundle. Two questions in one message get
-   one shallow answer and one ignored.
-2. **Recommend an answer every time.** State your call and a one-line reason,
-   then ask. "What do you think?" is lazy and gets nothing.
-3. **Facts are yours, decisions are theirs.** If the answer is in the code,
-   the docs or the issue, look it up instead of asking. Only genuine decisions
-   go to the user.
-4. **Depth-first.** Finish a branch before opening another. If B depends on A,
-   settle A first.
-5. **Track dependencies.** A parent decision gates its children; do not ask a
-   child question whose premise an open parent may delete.
-6. **Adversarial, not hostile.** Ask what breaks it: the failure mode, the
-   blast radius, the second-order cost, the assumption that must hold, the
-   thing that will be regretted in six months. Quote the plan when you attack
-   it.
-7. **Stop when the user says done.** Also stop when every branch is visited or
-   the answers only restate settled ones. Say which branches remain rather
-   than grinding on.
+1. **One question at a time.** Never batch. Multiple questions at once are
+   bewildering and get shallow answers.
+2. **Ask through the harness's user-prompt mechanism.** Where the harness
+   supports structured prompts (multiple-choice, recommended option first),
+   use them. Present a focused set of options — your recommended answer first
+   and marked `(Recommended)`, then the real alternatives the decision could
+   take. The user reacts to a proposal, not a blank prompt. Where a free-form
+   answer is more likely, ask an open question instead — do not force a bad
+   fit.
+3. **Recommend an answer every time.** "What do you think?" is lazy. State
+   your call and a one-line rationale, then let the user confirm or correct.
+4. **Codebase-first.** If a question is a *fact* resolvable by reading the
+   code, look it up (search and read the codebase) instead of asking. Only
+   *decisions* go to the user — never facts you could look up.
+5. **Walk the tree depth-first.** Finish a branch before opening another. If
+   decision B depends on A, settle A first.
+6. **Track dependencies.** A parent decision gates its children; resolving it
+   may collapse or open downstream branches.
+7. **Do not re-litigate.** Once a branch is settled, do not question it again
+   unless a later answer contradicts it.
 
-## What to grill
+## The Loop
 
-- Scope: what is explicitly not in this, and who is it for?
-- State: what owns the truth, what happens when the write fails halfway?
-- Boundaries: what is public, what is private, what must never leave?
-- Failure: what does the operator see when this breaks at 03:00?
-- Reversibility: how is this rolled back, and what cannot be?
-- Cost: which dependency, permission or quota does this add, and who
-  maintains it?
-- Evidence: which claim here is an assumption, and what would prove it false?
+Repeat until the tree is fully resolved:
 
-## Close
+1. Pick the highest-uncertainty unresolved branch — the one whose answer most
+   loads the rest of the plan. Avoid "tell me more"; ask something narrow
+   whose wrong choice would bite later.
+2. If the answer is a fact in the codebase, look it up, state the finding, and
+   ask only for confirmation that it is load-bearing.
+3. Otherwise, frame the decision as a single question to the user:
+   - One question, scoped to this branch.
+   - Where structured options are available, offer them: your recommended first
+     (`(Recommended)`), then genuine alternatives (not cosmetic variations).
+     Allow selecting several only when the options can genuinely coexist.
+   - Where the answer is likely free-form, ask an open question instead.
+4. Record the user's choice as the resolved value for that branch.
+5. Note any new branches the answer opens, or branches it makes moot.
 
-Summarize the settled decisions as a short list — decision, chosen answer,
-one line of why — plus anything still open with who decides it. For an SDLC
-feature, fold that list into `## Design`; do not append a "locked decisions"
-log, and never approve it yourself.
+## Stop Condition
+
+Stop when **every branch is resolved** — 100% alignment, nothing left
+implicit. Do not stop early because it "feels done"; if an unresolved branch
+remains, ask about it. If the user says "ship it" or "good enough," respect
+that and stop, but name the branches left unresolved.
+
+When done, emit a consolidated summary in the conversation:
+
+```
+Shared understanding reached. Locked decisions:
+- [branch] → [choice] (rationale)
+- ...
+Unresolved / deferred: [list, or "none"]
+```
+
+Stateless by design — but if the locked decisions feed later sessions,
+offer to persist them (the sdlc feature issue for tracked features, or a
+repository document)
+before the session ends. When grilling feeds an sdlc feature, fold the
+locked decisions into the issue's Design write-up structure (see `sdlc`) as
+design prose; never append them as a decision log. Grilling that evaporates at the session boundary
+is wasted interrogation.
+
+Do not begin implementation unless explicitly asked — grilling is the job.
+
+## When NOT to Use
+
+- The plan is already locked and you just want execution.
+- The task is a single reversible step with a fully constrained decision
+  space — grilling adds overhead with no value.
+- There is no downstream artifact. If the sharpened understanding won't feed a
+  spec, PRD, or implementation, stateless grilling is discarded at the next
+  session boundary; consider capturing it instead.

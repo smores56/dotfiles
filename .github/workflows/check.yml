@@ -58,32 +58,6 @@ jobs:
           MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
         run: mise install --locked
 
-  # GitHub refuses to schedule the macOS runner configuration for this account
-  # ("macos-14-arm64-us-default is not supported"), so the macOS lanes are
-  # opt-in: set the MACOS_CI repository variable once hosted macOS runners are
-  # available. The design's macOS validation then runs unchanged.
-  locked-macos:
-    if: vars.MACOS_CI == 'true'
-    runs-on: macos-14
-    steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-        with:
-          persist-credentials: false
-      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
-        with:
-          version: 2026.11.9
-          sha256: f3bb0e8cbe0217a0b52444ecc0042364563ddd1de0490313bb7e702ecab41a14
-          install: false
-      - name: Stage the global config the way bootstrap links it
-        run: |
-          mkdir -p "$HOME/.config/mise"
-          cp -a global/. "$HOME/.config/mise/"
-      - name: Install the locked global tools
-        env:
-          MISE_ENV: desktop
-          MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
-        run: mise install --locked
-
   apply-linux:
     runs-on: ubuntu-latest
     steps:
@@ -108,24 +82,3 @@ jobs:
             -w /src fedora:43 \
             sh -euxc 'dnf install -y git >/dev/null
                       sh tests/apply-lane.sh desktop,identity /usr/local/bin/mise'
-
-  # This lane also covers the work environment, the macOS font copies, and the
-  # defaults.
-  apply-macos:
-    if: vars.MACOS_CI == 'true'
-    runs-on: macos-14
-    steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-        with:
-          persist-credentials: false
-      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
-        with:
-          version: 2026.11.9
-          sha256: f3bb0e8cbe0217a0b52444ecc0042364563ddd1de0490313bb7e702ecab41a14
-          install: false
-      - name: Apply into a throwaway HOME
-        env:
-          HOME: ${{ runner.temp }}/home
-        run: |
-          mkdir -p "$HOME"
-          sh tests/apply-lane.sh desktop,work "$(command -v mise)"

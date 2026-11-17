@@ -13,9 +13,8 @@ sha256_of() {
     if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d' ' -f1
 }
 
-# Until this repository's zsh config is deployed (on smoreswork, until the
-# zsh handoff), there is nothing to build; zimfw would otherwise write its
-# own default .zimrc into whatever ZDOTDIR holds.
+# Without the deployed .zimrc there is nothing to build, and zimfw would
+# write its own default .zimrc into whatever ZDOTDIR holds.
 if [ ! -f "$zdotdir/.zimrc" ]; then
     echo "zim-build: $zdotdir/.zimrc is not deployed yet; skipping"
     exit 0

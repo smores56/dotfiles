@@ -16,5 +16,3 @@ for _d in "$HOME/.cargo/bin" "$HOME/.bun/bin" "$HOME/.deno/bin"; do
   [[ -d $_d ]] && path+=("$_d")
 done
 unset _d
-# Keep the dotfiles order on top of whatever was appended.
-path=("$HOME/.local/bin" "${XDG_DATA_HOME:-$HOME/.local/share}/mise/shims" $path)

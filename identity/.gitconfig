@@ -1,32 +1,22 @@
-# Managed file: ~/.gitconfig, linked by mise (identity and work environments).
+# Machine identity lives in ~/.config/git/machine.inc, which each environment
+# renders (mise.identity.toml with includeIf routing, mise.work.toml).
 #
-# Machine identity lives in ~/.config/git/machine.inc, rendered from the vars
-# of whichever environment the machine applies (mise.identity.toml on personal
-# hosts, with includeIf routing; mise.work.toml on the work laptop). Work
-# checkouts override the personal fallback below through work.inc.
-#
-# The include is deliberately the last thing in this file: an include is read
-# where it appears, so a plain section below it would override the identity and
-# template its conditional includes chose.
+# The include stays last: an include is read where it appears, so a section
+# below it would override the identity its conditional includes chose.
 [init]
     defaultBranch = main
 
 [core]
-    excludesFile = ~/.config/git/ignore
     pager = delta
 
 [pull]
     rebase = true
 
 [push]
-    default = simple
     autoSetupRemote = true
 
 [fetch]
     prune = true
-    # A stale remote-tracking branch is safe to drop; a tag may be local-only
-    # and is never a fetch side effect.
-    pruneTags = false
 
 [rebase]
     autosquash = true
@@ -61,30 +51,19 @@
     navigate = true
     line-numbers = true
 
-[pager]
-    diff = delta
-    log = delta
-    reflog = delta
-    show = delta
-
 [column]
     ui = auto
 
 [help]
     autocorrect = prompt
 
-[smores]
-    # Fallback for a checkout that matches no includeIf rule. The personal and
-    # work includes are read after this section, so their templates win.
-    branchTemplate = smores/{slug}
-    branchTemplateUnticketed = smores/{slug}
-    # workFlat and workOwners are per-machine and set in machine.inc.
+[credential "https://github.com"]
+    helper =
+    helper = !PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:$PATH" gh auth git-credential
+
+[credential "https://gist.github.com"]
+    helper =
+    helper = !PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:$PATH" gh auth git-credential
 
 [include]
     path = ~/.config/git/machine.inc
-[credential "https://github.com"]
-	helper = 
-	helper = !PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:$PATH" gh auth git-credential
-[credential "https://gist.github.com"]
-	helper = 
-	helper = !PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:$PATH" gh auth git-credential

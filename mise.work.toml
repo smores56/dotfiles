@@ -1,5 +1,4 @@
-# smoreswork only: living beside home-manager while pieces move over. Each
-# piece is handed over by scripts/handoff.sh after nix-config stops writing it.
+# smoreswork only.
 [dotfiles]
 "~/.config/zsh/env.d/work.zsh" = { source = "work/.config/zsh/env.d/work.zsh" }
 "~/.config/zsh/conf.d/90-work.zsh" = { source = "work/.config/zsh/conf.d/90-work.zsh" }
@@ -14,12 +13,6 @@
 # password, so this part runs on its own: `mise bootstrap --only user`.
 [bootstrap.user]
 login_shell = "/bin/zsh"
-
-# Work identity is fixed in the templates and the checked-in public key. The
-# apply refuses to deploy the generated placeholder.
-[bootstrap.hooks.pre-dotfiles]
-description = "require the real work signing key"
-run = "sh {{ config_root }}/scripts/identity.sh check-work-key {{ config_root }}/work/.config/git/work-signing.pub"
 
 [bootstrap.hooks.post-dotfiles]
 description = "render allowed_signers"

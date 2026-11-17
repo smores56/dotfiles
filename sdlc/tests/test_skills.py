@@ -1,8 +1,7 @@
 """Validation for the agent skills shipped in `skills/`.
 
-The pod overlays every `skills/*/SKILL.md` into the agent's workspace at start,
-so a malformed file silently costs the agent a phase. These tests pin the
-frontmatter contract the tenant skills use and keep the directory set honest.
+Every agent loads `skills/*/SKILL.md` by frontmatter, so a malformed file
+silently costs it a phase.
 """
 
 import os
@@ -18,7 +17,6 @@ REQUIRED_SKILLS = {
     "review",
     "test-driven-development",
     "resolve-pr",
-    "notify",
 }
 
 REQUIRED_KEYS = ("name", "description")

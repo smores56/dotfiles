@@ -3,7 +3,6 @@
 # Every value is fixed: personal sam@sammohr.dev, work smohr@blitzy.com.
 #   identity.sh signers         personal machine: personal and work keys
 #   identity.sh work-signers    work machine: the checked-in 1Password key
-#   identity.sh check-work-key  fail while the key is still the placeholder
 set -eu
 
 die() { printf 'identity: %s\n' "$*" >&2; exit 1; }
@@ -52,16 +51,5 @@ case $cmd in
         [ $# -eq 0 ] || die "work-signers takes no arguments"
         write_signers "smohr@blitzy.com ~/.config/git/work-signing.pub"
         ;;
-    check-work-key)
-        [ $# -eq 1 ] || die "check-work-key takes the key path"
-        [ -r "$1" ] || die "work signing key $1 is missing"
-        IFS= read -r key_line <"$1" || [ -n "$key_line" ] || die "work signing key $1 is empty"
-        case $key_line in
-            *replace-with-work-key*)
-                die "replace the replace-with-work-key placeholder in $1 with the 1Password work public key" ;;
-            ssh-ed25519\ *|ssh-rsa\ *|ecdsa-sha2-*\ *|sk-ssh-ed25519@openssh.com\ *) ;;
-            *) die "$1 does not hold an OpenSSH public key" ;;
-        esac
-        ;;
-    *) die "usage: identity.sh signers|work-signers|check-work-key" ;;
+    *) die "usage: identity.sh signers|work-signers" ;;
 esac

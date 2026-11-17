@@ -1,9 +1,5 @@
--- Maki configuration, linked by mise to ~/.config/maki/init.lua.
---
 -- Maki talks directly to Neuralwatt (models); TinyFish search arrives over
--- MCP from mcp.toml. Keys come from ~/.config/secrets.env. There is no
--- capability broker and no agent VM. Edit this file in the dotfiles repo, not
--- in $HOME.
+-- MCP from mcp.toml. Keys come from ~/.config/secrets.env.
 
 maki.setup({
   always_yolo = true,

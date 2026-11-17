@@ -1,71 +1,149 @@
 ---
 name: design-brainstorm
-description: Explore a wide set of options, then compare them honestly — at least three architecturally distinct alternatives, each with a reason, before converging on one.
+description: Explore a wide set of options, then rigorously compare them. Use for open-ended design, weighing approaches, or refining a vague idea — breadth first, then comparison.
 ---
 
 # Design Brainstorm
 
-A thinking partner during design, not implementation. The user wants a wide,
-well-reasoned set of options and an honest comparison, not the first
-reasonable idea. Resist converging early.
+You are a thinking partner during the design phase, not the implementation
+phase. The user wants a wide, well-reasoned set of options and an honest
+comparison — not the first reasonable idea. Resist converging early.
 
 ## Phase 0 — Consume the research brief
 
-No brief for this problem means run `research` first. Designs grounded in an
-imagined landscape waste the divergence below.
+If no research brief for this problem exists, run `research` first — designs
+grounded in an imagined landscape waste the divergence below. The brief
+supplies what exists (code, prior art, options) and contradicted assumptions.
+Diverge on top of that landscape; do not re-derive it.
 
-## Phase 1 — Diverge
+## Phase 1 — Diverge (do this fully before evaluating anything)
 
-Restate the request as one crisp **"How Might We ..."** statement. If you
-cannot state it compactly, it is a vibe, not a design.
+First, restate the idea as a crisp **"How Might We"** problem statement. This
+forces clarity on what is actually being solved. If you can't state it
+compactly, you have a vibe, not a design.
 
-Ask at most five sharpening questions, one at a time: who it is for, what
-success looks like, the real constraints, what was tried, why now. Read the
-codebase for facts instead of asking. Do not proceed until the target is
-clear.
+Ask a few sharpening questions (no more than five) — one at a time where the harness supports structured prompts — who
+this is for, what success looks like, the real constraints (time, tech,
+resources), what has been tried, why now. Do not proceed until you understand
+the target and what success means. If a question is a fact resolvable by
+reading the codebase, read it instead of asking.
 
-Then produce alternatives. **Minimum three architecturally distinct
-approaches**; six when the space is genuinely open. Distinct means they differ
-in a core decision — data model, control flow, where state lives, sync vs
-async, build vs buy, who operates it — not three variants of one idea. Useful
-lenses: inversion, constraint removal, audience shift, 10x simplification, 10x
-scale, what a domain expert would find obvious.
+Then produce **at least 6 architecturally distinct approaches**. Distinct
+means they differ in a core decision (data model, control flow, where state
+lives, sync vs async, build vs buy, who the audience is) — not six variations
+of one idea. Useful lenses: inversion, constraint removal, audience shift,
+combination, 10x simplification, 10x scale, the expert lens ("what would a
+domain expert find obvious that outsiders wouldn't").
 
-For each: a one-line name, the core idea, the mechanism that makes it work,
-and what it costs (effort, risk, operational load, new dependency).
+For each approach, give:
+- A one-line name and the core idea.
+- The key mechanism (what makes it work).
+- The main tradeoff it accepts.
+- The failure mode (where/how it breaks down).
 
-## Phase 2 — Compare
+Do NOT rank, recommend, or critique during this phase. Just generate. Push
+beyond what the user initially asked for — create options people don't know
+they need yet.
 
-One table, no prose blob. Minimum three rows; every row carries a reason.
+If the harness can spawn parallel read-only subagents, consider fanning
+ generation out: spawn 2–3 in parallel, each asked to produce distinct approaches from a
+different framing (e.g. "optimize for simplicity", "optimize for scale",
+"optimize for the unusual constraint here"). Then merge and de-duplicate.
 
-| Option | Core mechanism | Fit | Cost | Why not |
-|---|---|---|---|---|
-| A | ... | ... | ... | chosen / rejected because ... |
+If running inside a codebase, the research brief from Phase 0 is the map;
+search and read code only to ground specific variations in existing
+architecture, patterns, and constraints.
 
-Rules for the table:
+## Phase 2 — Stress-test
 
-- Judge each option against the framed questions, not against your favorite.
-- Cite evidence from the brief (`file:line`, URL); an option resting on an
-  unverified assumption says so.
-- Name the deal-breaker for every rejected option. "Less clean" is not a
-  reason; "needs a second credential" is.
-- State the recommendation and the one residual risk you accept with it.
+Now attack the pool you just generated:
+- Which approaches share a hidden assumption? Name it. What happens if it's
+  false?
+- Which constraint in the user's problem did the obvious approaches ignore?
+- Add 1–2 non-obvious options that only become visible after this critique.
 
-## Phase 3 — Converge
+Then cluster the ideas that resonated into 2–3 distinct directions and
+stress-test each against:
+- **User value** — who benefits and how much? Painkiller or vitamin?
+- **Feasibility** — technical and resource cost; the hardest part.
+- **Differentiation** — what makes this genuinely different; would someone
+  switch from their current solution?
 
-Recommend one direction and the two decisions it hinges on. Then stop: the
-user picks, or `grill-me` walks the remaining branches. Do not write the
-implementation plan here.
+For each direction, explicitly surface hidden assumptions: what you are
+betting is true but haven't validated, what could kill it, and what you are
+choosing to ignore (and why that's okay for now). This is where most ideation
+fails — don't skip it.
 
-For an SDLC feature, fold the surviving table into the design's "Alternatives
-considered" section — option, why not, evidence — and keep the reasoning, not
-the conversation. Never mark a design approved from this skill; approval is
-the user's step.
+**Be honest, not supportive.** If an idea is weak, say so with specificity. A
+good thinking partner is not a yes-machine. Push back on complexity, question
+real value, and point out when the emperor has no clothes.
 
-## Red flags
+## Phase 3 — Compare, recommend, ship
 
-- One option dressed as three
-- Converging before the landscape is mapped
-- A comparison with no rejected row, or with a cost column of adjectives
-- Silently designing around a constraint nobody stated
-- Treating the recommendation as a decision
+Lay out the surviving approaches against the dimensions that matter for THIS
+problem (the user's stated constraints first, generic qualities second). State
+which you'd pick and why, including what would change your mind. Be explicit
+about what you are uncertain about rather than papering over it.
+
+Produce a concrete artifact — a markdown one-pager that moves work forward.
+When the output lands in an sdlc feature issue, the `sdlc` skill's Design
+write-up structure supersedes this template (Summary → Problem → Goals →
+Proposed design → Alternatives considered → Risks → Validation → Open
+questions); "Not Doing" becomes Non-goals and Alternatives considered.
+
+```markdown
+# [Idea Name]
+
+## Problem Statement
+[One-sentence "How Might We" framing]
+
+## Recommended Direction
+[The chosen direction and why — 2-3 paragraphs max]
+
+## Key Assumptions to Validate
+- [ ] [Assumption 1 — how to test it]
+- [ ] [Assumption 2 — how to test it]
+
+## MVP Scope
+[The minimum version that tests the core assumption. What's in, what's out.]
+
+## Not Doing (and Why)
+- [Thing 1] — [reason]
+- [Thing 2] — [reason]
+
+## Open Questions
+- [Question that needs answering before building]
+```
+
+The **"Not Doing" list** is arguably the most valuable part — focus is about
+saying no to good ideas. Make the trade-offs explicit. Ask the user before
+saving anywhere.
+
+## Notes
+
+- Breadth comes from this workflow, not from cranking reasoning effort. If the
+  reasoning gets cut off mid-deliberation, the output token cap is too low, not
+  the effort level.
+- Stay in design mode. Do not start writing implementation code unless the user
+  asks — surfacing and comparing options is the job here.
+
+## Red Flags
+
+- Recommending before generating at least 6 distinct approaches.
+- No assumptions surfaced before committing to a direction.
+- A plan with no "Not Doing" list.
+- Jumping to the one-pager without running the diverge and stress-test phases.
+- Ignoring the codebase when one exists.
+
+## Verification
+
+After an ideation session:
+
+- [ ] A clear "How Might We" problem statement exists.
+- [ ] The target user and success criteria are defined.
+- [ ] At least 6 architecturally distinct approaches were explored.
+- [ ] Surviving directions were stress-tested (user value / feasibility /
+      differentiation) with hidden assumptions named.
+- [ ] A "Not Doing" list makes trade-offs explicit.
+- [ ] The output is a concrete artifact (one-pager), not just conversation.
+- [ ] The user confirmed the final direction before any implementation work.

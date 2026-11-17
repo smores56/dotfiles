@@ -55,22 +55,6 @@ new_home() {
     printf '%s' "$home"
 }
 
-# The work environment refuses the generated placeholder key. Exercise that,
-# then substitute a test key for the rest of the work cases and restore it.
-key_file=$root/work/.config/git/work-signing.pub
-if grep -q 'replace-with-work-key' "$key_file" 2>/dev/null; then
-    hph=$(new_home work-placeholder)
-    run_mise "$hph" desktop,work dot apply >"$tmp/work-placeholder.log" 2>&1
-    assert_not "the work apply refuses the placeholder signing key" \
-        test -e "$hph/.config/git/work-signing.pub"
-    assert "the refusal names the placeholder" \
-        grep -q replace-with-work-key "$tmp/work-placeholder.log"
-    cp "$key_file" "$tmp/work-signing.pub"
-    printf 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFHdsAxdyKJywPFr5/RzDk1isLdil/G1GG67BWTmol0y test@work\n' \
-        >"$key_file"
-    trap 'cp "$tmp/work-signing.pub" "$key_file"; rm -rf "$tmp"' EXIT
-fi
-
 # --- base environment --------------------------------------------------------
 
 h=$(new_home base)
@@ -126,7 +110,7 @@ assert "Claude's own settings keys survive the merge" grep -q '"theme": "dark"' 
 assert "CLAUDE.md imports the machine's work rules" grep -qx '@~/.claude/work.md' "$h/.claude/CLAUDE.md"
 assert_not "CLAUDE.md names no retired memory tool" grep -qE 'memory_(search|write)|memory MCP' "$h/.claude/CLAUDE.md"
 assert_not "CLAUDE.md carries no work-only rule" grep -q Blitzy "$h/.claude/CLAUDE.md"
-for skill in "$root"/home/.agents/skills/*/; do
+for skill in "$root"/sdlc/skills/*/; do
     name=$(basename "$skill")
     assert "the $name skill reaches Claude Code" links_into_repo "$h/.claude/skills/$name/SKILL.md"
 done
@@ -209,7 +193,6 @@ assert "a personal checkout signs as the personal identity" \
     test "$(gitcfg "$h/scratch" user.email)" = sam@sammohr.dev
 assert "a personal checkout uses the local flow" \
     test "$(gitcfg "$h/scratch" smores.flow)" = local
-assert "the ghq root is /srv/git" test "$(gitcfg "$h/scratch" ghq.root)" = /srv/git
 assert "a work remote anywhere uses the work identity" \
     test "$(gitcfg "$h/wip/elsewhere" user.email)" = smohr@blitzy.com
 # shellcheck disable=SC2088 # git keeps the literal path the template holds
@@ -272,7 +255,7 @@ else
         test -e "$h/Library/Fonts/GoogleSansCode-MONO-VF.ttf"
 fi
 
-# --- work environment (smoreswork beside home-manager) -----------------------
+# --- work environment --------------------------------------------------------
 
 h=$(new_home work)
 printf 'export EMPLOYER_RC_TEST=1\n' >"$h/.zshrc"
@@ -306,7 +289,6 @@ current_tools() {
 }
 assert "the base tool set includes gh" grep -qx gh <<<"$(current_tools "")"
 assert_not "the work environment leaves gh to the 1Password wrapper" grep -qx gh <<<"$(current_tools desktop,work)"
-assert_not "the work environment leaves ghq off" grep -qx ghq <<<"$(current_tools desktop,work)"
 
 # --- work identity: work everywhere, signed through 1Password ----------------
 

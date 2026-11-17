@@ -1,4 +1,4 @@
-# Rendered by mise. Identity and routing are fixed; there are no vars.
+# Rendered by mise.
 [user]
     name = "Sam Mohr"
     email = "sam@sammohr.dev"
@@ -7,8 +7,6 @@
     flow = "local"
     workFlat = "~/Blitzy"
     workOwners = "blitzy-ai blitzy-platform"
-[ghq]
-    root = /srv/git
 
 # Work checkouts, by path and by remote URL.
 [includeIf "gitdir:/srv/git/github.com/blitzy-ai/"]

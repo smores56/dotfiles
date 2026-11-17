@@ -1,4 +1,4 @@
-# Load order matters; see the #717 design. Every module is an external path
+# Load order matters. Every module is an external path
 # cloned by [bootstrap.repos], so zimfw never fetches.
 _p=${XDG_DATA_HOME:-$HOME/.local/share}/zsh-plugins
 zmodule $_p/environment

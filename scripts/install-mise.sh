@@ -31,30 +31,6 @@ curl -fsSL --proto '=https' --tlsv1.2 https://mise.run \
 [ -x "$mise" ] || die "the official installer did not write $mise"
 printf 'install-mise: %s for %s\n' "$("$mise" --version)" "$envs"
 
-# `--config-dir` links ~/.config/mise to global/ and refuses when anything
-# else is in the way: a real directory from the retired install.sh (a
-# config.toml symlink into packages/), or a symlink left behind when the home
-# directory moved. Keep it aside rather than delete it.
-config_dir=${XDG_CONFIG_HOME:-$HOME/.config}/mise
-# `readlink -f` is not portable to macOS, so compare the link against both the
-# literal checkout path and its physical path.
-real_checkout=$(cd "$CHECKOUT" 2>/dev/null && pwd -P) || real_checkout=
-stale=false
-if [ -L "$config_dir" ]; then
-    target=$(readlink "$config_dir")
-    if [ "$target" != "$CHECKOUT/global" ] \
-            && { [ -z "$real_checkout" ] || [ "$target" != "$real_checkout/global" ]; }; then
-        stale=true
-    fi
-elif [ -e "$config_dir" ]; then
-    stale=true
-fi
-if $stale; then
-    aside=$config_dir.pre-bootstrap.$(date +%Y%m%d%H%M%S)
-    mv "$config_dir" "$aside"
-    printf 'install-mise: moved the old %s to %s\n' "$config_dir" "$aside"
-fi
-
 # /srv/git belongs to the user, but its creation needs root once. This is the
 # only interactive sudo in the bootstrap; an existing but foreign-owned root is
 # repaired rather than refused.

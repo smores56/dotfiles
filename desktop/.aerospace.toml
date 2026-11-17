@@ -2,7 +2,6 @@
 config-version = 2
 # The cask registers its own login item.
 start-at-login = true
-after-login-command = []
 after-startup-command = ["layout tiles"]
 
 default-root-container-layout = "tiles"

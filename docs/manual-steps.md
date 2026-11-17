@@ -109,20 +109,8 @@ create `/srv/git` and hand it to you:
 ~/.dotfiles/scripts/install-mise.sh
 ```
 
-`install-mise.sh` runs the official installer for the latest stable mise
-(checksum verified), infers the set (`desktop,identity`
-on this desktop), and runs `mise bootstrap` from the latest `main` with
-`--config-dir global`. Set `DOTFILES_ENVS=desktop,identity` to override the
-inference. It prompts for nothing: identity and routing are hardcoded. It
-installs every tool
-from the lockfiles, clones the pinned zim modules, applies the dotfiles, and
-runs the bootstrap task, which links the Linux zsh binary. The `sdlc` CLI is
-a stdlib script linked from the checkout. It uses the network and no sudo.
-
-The login shell stays bash on Linux; an interactive TTY login hands over to
-`~/.local/bin/zsh` through the managed block in `~/.bash_profile`. The
-installer also links `/srv/git/github.com/smores56/dotfiles` to `~/.dotfiles`;
-every other checkout lives under `/srv/git`, which is `ghq.root`.
+It infers `desktop,identity` here (`DOTFILES_ENVS` overrides it) and runs
+`mise bootstrap`; the [README](../README.md#bootstrap) covers what that applies.
 
 ## 4. Tailscale
 
@@ -209,43 +197,12 @@ unset BW_SESSION
 Never commit the plaintext values; `sops` re-encrypts on save. Work credentials
 stay in 1Password, not here.
 
-## 7. Re-authorize the Mac's public key
+## 7. Log the work laptop's gh in
 
-smoreswork is managed by the `work` environment; before its first bootstrap,
-replace the generated key in `work/.config/git/work-signing.pub`, and after it
-log `gh` in once with
-`op read 'op://Employee/GitHub Personal Access Token/token' | gh auth login --with-token`. A Mac kept
-outside the fleet needs only Tailscale and ordinary OpenSSH. Either way, its existing public key
-must be registered again on GitHub after the old machine's keys are retired.
-
-On the Mac:
+After smoreswork's first bootstrap, log `gh` in once:
 
 ```sh
-cat ~/.ssh/id_ed25519.pub
-```
-
-Copy the printed line to the laptop, then on the laptop:
-
-```sh
-gh ssh-key list
-gh ssh-key delete <id-of-the-retired-machine-key> --yes
-gh ssh-key add /path/to/mac-id_ed25519.pub -t "mac"
-```
-
-If the laptop should also accept inbound SSH from the Mac, add the same key to
-the laptop's authorized keys:
-
-```sh
-install -d -m 700 ~/.ssh
-touch ~/.ssh/authorized_keys
-chmod 600 ~/.ssh/authorized_keys
-cat /path/to/mac-id_ed25519.pub >> ~/.ssh/authorized_keys
-```
-
-Verify from the Mac:
-
-```sh
-ssh smores@<laptop-tailscale-name> true && echo mac-to-laptop-ok
+op read 'op://Employee/GitHub Personal Access Token/token' | gh auth login --with-token
 ```
 
 ## 7a. Reach smortress over its tunnel
@@ -264,7 +221,7 @@ for the session, not asked again per connection.
 ssh smores@ssh.sammohr.dev true && echo tunnel-ssh-ok
 ```
 
-## 8. Shell hand-off
+## 8. Login shell
 
 Linux keeps bash as the login shell and uses the mise zsh for interactive
 shells. No `/etc/shells` change and no `chsh` are needed:
@@ -276,7 +233,7 @@ echo "$SHELL"                       # still bash
 env | grep '^CONDA_' || true        # no CONDA_* variables leak
 ```
 
-Open a new terminal and confirm the interactive shell is zsh. The hand-off
+Open a new terminal and confirm the interactive shell is zsh. The login hook
 skips any shell with a command string, so `bash -ilc 'echo $BASH_VERSION'`
 must stay in bash. If the zsh link is missing, login falls back to bash.
 
@@ -308,21 +265,6 @@ dolphin --version
 
 Brave Origin has had upstream Fedora RPM launch bugs; if `Mod+B` does nothing,
 run it from a terminal and check its stderr before relying on the bind.
-
-The Brave and Dolphin Flatpaks this repository used to declare are gone from
-`mise.desktop.toml`, and mise does not prune. Remove the stale copies once:
-
-```sh
-flatpak uninstall --user com.brave.Browser org.kde.dolphin
-```
-
-`~/.config/mimeapps.list` is copied, not linked, because `xdg-mime` rewrites it
-in place. Remove the old copy once before applying, so mise does not refuse to
-replace it:
-
-```sh
-rm -f ~/.config/mimeapps.list
-```
 
 Noctalia's GUI-managed state outranks `desktop/.config/noctalia/config.toml`,
 so select the palette once even though the config file declares it:

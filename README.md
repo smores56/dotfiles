@@ -31,8 +31,7 @@ inferred set:
 On smortress and smorespro, `install-mise.sh` creates `/srv/git` (one sudo
 prompt) and links `/srv/git/github.com/smores56/dotfiles` to `~/.dotfiles`. The set
 is `identity` on a server, `desktop,identity` on a Linux desktop, and
-`desktop,work` on macOS; `DOTFILES_ENVS` overrides it. No values are prompted:
-the identity and routing are hardcoded. The login shell is a separate step
+`desktop,work` on macOS; `DOTFILES_ENVS` overrides it. The login shell is a separate step
 because `chsh` asks for a password:
 
 ```sh
@@ -51,7 +50,7 @@ Environments are additive; an environment only adds files and hooks.
 | --- | --- |
 | base | zsh, helix, zellij, yazi, lazygit, television, gh, `sdlc`, global mise files |
 | `identity` | git identity templates, `~/.ssh/config`, `allowed_signers` |
-| `desktop` | kitty (Linux) and WezTerm (macOS), fonts, clipboard and trash helpers, Flatpaks or casks, wallpapers, systemd units, the zsh hand-off |
+| `desktop` | kitty (Linux) and WezTerm (macOS), fonts, clipboard and trash helpers, Flatpaks or casks, wallpapers, systemd units, the bash-to-zsh login hook |
 | `work` | work zsh hooks, work git identity and 1Password signing, the github.com SSH entry, Claude work rules, macOS defaults, work casks |
 
 `install-mise.sh` saves the set in `~/.config/mise/miserc.local.toml`, so no
@@ -87,7 +86,7 @@ tool, handles the wallpaper sync.
 | `global/` | global tool config and lockfiles, linked to `~/.config/mise` |
 | `home/`, `identity/`, `desktop/`, `work/` | dotfiles shared by every machine or added by one environment |
 | `scripts/` | installer, bootstrap task, identity and secret materializers |
-| `sdlc/` | the stdlib sdlc CLI, its tests, and the phase-skill source |
+| `sdlc/` | the stdlib sdlc CLI, its tests, and the skills every agent loads |
 | `maki/` | the pinned Maki release metadata |
 | `tests/` | source checks and throwaway-HOME behavioural tests |
 
@@ -112,16 +111,15 @@ and prints JSON: use its `path`. `dev` prefers podman, uses the repository's
 forwards tokens, and keeps each checkout's mise installs on its own volume. The
 SSH agent socket is opt-in with `DEV_SSH_AGENT=1`.
 
-Personal checkouts live under `/srv/git` on smortress and smorespro, which is
-also `ghq.root`; the work Mac keeps work repositories in `~/Blitzy` and only
+Personal checkouts live under `/srv/git` on smortress and smorespro; the work Mac keeps work repositories in `~/Blitzy` and only
 the `dotfiles` clone in `~/.dotfiles`.
 
 Every dotfile target is absolute or starts with `~/`, and application
 directories deploy in `symlink-each` mode. Files that tools rewrite in place
 stay local: zsh-abbr's abbreviation file, zimfw's state and completion dump.
 `~/.bash_profile` on Fedora is a managed block, not a whole-file entry.
-Deployment keeps no history, so recovery is the tagged pre-mise commit plus a
-re-apply; `mise dot unapply` removes what mise created. Without
+Deployment keeps no history: `mise dot unapply` removes what mise created, and
+a re-apply restores it. Without
 `--force-dotfiles`, mise refuses to replace an existing file and bootstrap
 never passes that flag: resolve a conflict by hand.
 
@@ -144,8 +142,7 @@ through `[bootstrap.user] login_shell`.
 ## Identity and secrets
 
 Git identity is fixed: `Sam Mohr <sam@sammohr.dev>` on personal checkouts and
-`Sam Mohr <smohr@blitzy.com>` on work checkouts. There are no `[vars]`: signing
-key paths, work owners (`blitzy-ai blitzy-platform`), the flat work root, and
+`Sam Mohr <smohr@blitzy.com>` on work checkouts. Signing key paths, work owners (`blitzy-ai blitzy-platform`), the flat work root, and
 the SDLC registry (`smores56/sdlc` personal, `smohr-blitzy/sdlc` work) are all
 hardcoded. Tera templates render `~/.config/git/machine.inc` and `work.inc`;
 the base `.gitconfig` carries the personal fallback. `scripts/identity.sh`
@@ -159,8 +156,7 @@ the work token in the macOS Keychain, logged in once from 1Password with
 no personal token is on the laptop, the personal `sdlc` registry is not
 reachable from it, and `$SDLC_REPO` points at `smohr-blitzy/sdlc`. The token
 grants `dotfiles` Contents, `smohr-blitzy/sdlc` Issues, and work-organization
-Contents read plus Issues. Before the first bootstrap, replace the generated
-key in `work/.config/git/work-signing.pub`; the work apply refuses it.
+Contents read plus Issues.
 
 Personal machines keep only these secrets:
 
@@ -218,14 +214,13 @@ The version, target, and sha256 are in `maki/pin.env`; the installer fails
 closed if the download does not match both the pin and the release's published
 `sha256sums.txt`. A Maki update is a pin bump followed by a re-run; never copy a
 release into `~/.local/bin` by hand. Maki talks directly to Neuralwatt and
-reaches TinyFish search through its MCP server: there is no capability broker
-and no agent VM. The other tools that server ships stay blocked by a guard in
+reaches TinyFish search through its MCP server. The other tools that server ships stay blocked by a guard in
 `init.lua`.
 
 ## Checks
 
 ```sh
-tests/check.sh                # syntax, TOML, layout, lints, behaviour
+tests/check.sh                # syntax, TOML, guards, behaviour
 tests/check.sh --shellcheck   # also shellcheck every script
 ```
 
@@ -233,18 +228,7 @@ tests/check.sh --shellcheck   # also shellcheck every script
 checks symlinks, templates, modes, rendered identity, and conflicts.
 `tests/shell-test.sh` starts an interactive zsh and checks the plugins,
 abbreviations, prompt, and that the Maki keys stay out of the parent shell.
-`tests/handoff-test.sh` covers the smoreswork home-manager handoff, and
 `tests/cli.sh` exercises `repos`, `worktrees`, and `dev` against throwaway
 repositories. `tests/secrets-test.sh`, `tests/detect-envs-test.sh`, and
 `tests/wallpapers-test.sh` cover the SOPS cache, machine-set inference, and the
-wallpaper sync. CI runs the same suite and a real Fedora apply lane; the macOS
-lanes are opt-in with the `MACOS_CI` repository variable, because hosted macOS
-runners are not available to this account.
-
-## Rollout
-
-Rollout is staged with a canary. Tag the pre-mise commit first. smoreswork is
-ported in a throwaway HOME, then cut over from the previous manager in one
-sitting; smorespro follows with a dry run then an apply; smortress is last,
-applied over SSH with a second session held open. A half-applied run is resumed
-by re-running bootstrap.
+wallpaper sync. CI runs the same suite and a real Fedora apply lane.

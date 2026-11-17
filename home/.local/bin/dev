@@ -151,8 +151,8 @@ volume_name=dev-mise-$repo_slug-$(printf '%s' "$root" | cksum | cut -d ' ' -f 1)
 append --volume; append "$volume_name:/home/dev/.local/share/mise"
 append --env; append "MISE_TRUSTED_CONFIG_PATHS=$root"
 
-# A gitdir outside the checkout (the clean-bare root, when working inside a
-# branch worktree) must be visible at the same path inside the container, and
+# A gitdir outside the checkout (the main repository's, when working inside a
+# .worktrees/ worktree) must be visible at the same path inside the container, and
 # git writes to it, so it is mounted read-write with the SELinux label.
 common_dir=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)
 if [ -n "$common_dir" ]; then

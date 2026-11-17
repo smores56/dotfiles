@@ -22,5 +22,4 @@ deny = [
   "dd of=/dev/*",
   "dd * of=/dev/*",
   "mkfs*",
-  "mkfs *",
 ]

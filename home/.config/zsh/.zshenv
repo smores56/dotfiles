@@ -16,7 +16,6 @@ export EDITOR=hx
 export VISUAL=$EDITOR
 export PAGER=less
 export LESS=-FRX
-export MANPAGER='less -FRX'
 export BAT_THEME=ansi
 
 # The employer's flat checkout root, when it exists (see `repos` and the work

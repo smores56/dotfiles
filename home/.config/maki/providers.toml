@@ -2,8 +2,7 @@
 # (NEURALWATT_API_KEY, passed by the zsh `maki` launcher), never from this
 # file.
 #
-# Model ids, windows, vision support, and prices mirror the previous host
-# configuration. Maki's always_thinking="max" picks the effort level, so every
+# Maki's always_thinking="max" picks the effort level, so every
 # model declares the full scale; a missing level would leave the request silent
 # and keep the model default.
 

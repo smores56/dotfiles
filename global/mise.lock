@@ -537,29 +537,6 @@ url = "https://github.com/cli/cli/releases/download/v2.104.0/gh_2.104.0_macOS_ar
 url_api = "https://api.github.com/repos/cli/cli/releases/assets/740719079"
 provenance = "github-attestations"
 
-[[tools.ghq]]
-version = "1.12.0"
-backend = "aqua:x-motemen/ghq"
-specifiers = ["1.12.0"]
-
-[tools.ghq."platforms.linux-arm64"]
-checksum = "sha256:3108a4d8a06c968bd669897a1c3d17c6af70afe015c72b982cc8f227b9c4e8e1"
-checksum_source = "mise-versions"
-url = "https://github.com/x-motemen/ghq/releases/download/v1.12.0/ghq_linux_arm64.zip"
-url_api = "https://api.github.com/repos/x-motemen/ghq/releases/assets/706006375"
-
-[tools.ghq."platforms.linux-x64"]
-checksum = "sha256:160e4430014f67eceea4aa899e9dcd8c09e3944d90902ed96fd6cac916f8aad6"
-checksum_source = "mise-versions"
-url = "https://github.com/x-motemen/ghq/releases/download/v1.12.0/ghq_linux_amd64.zip"
-url_api = "https://api.github.com/repos/x-motemen/ghq/releases/assets/706006368"
-
-[tools.ghq."platforms.macos-arm64"]
-checksum = "sha256:c1a3d26d435c35b3fa7ca1188488a7cd81d1ee975a4a00db8ee4dbe32be56dfe"
-checksum_source = "mise-versions"
-url = "https://github.com/x-motemen/ghq/releases/download/v1.12.0/ghq_darwin_arm64.zip"
-url_api = "https://api.github.com/repos/x-motemen/ghq/releases/assets/706006438"
-
 [[tools."github:Automattic/harper"]]
 version = "3.2.0"
 backend = "github:Automattic/harper"

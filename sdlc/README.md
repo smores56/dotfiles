@@ -1,7 +1,6 @@
 # sdlc
 
-Source for the sdlc CLI and its phase skills, vendored into the dotfiles
-repository. The registry (`smores56/sdlc`) is now issue state only: one issue
+Source for the sdlc CLI and the phase skills every agent loads. The registry (`smores56/sdlc`) is now issue state only: one issue
 per feature, Design + Plan in the body, tasks as sub-issues, approval as a
 label plus a design-hash comment.
 
@@ -89,10 +88,6 @@ export SDLC_TRANSPORT=broker BROKER_URL=http://broker:8080   # in the agent env
 ./dotfiles/sdlc/sdlc_issues.py list
 ```
 
-The nanobot entrypoint previously copied `skills/` from the `smores56/sdlc`
-registry; that repository is issue state only, so its clone must point at this
-checkout instead.
-
 Approval stays procedural: agents must not run `sdlc approve` (or pass `--yes`)
 unless the user explicitly says to approve. The broker grants the App write
 access and enforces no approval predicate, so the rule lives with the human and
@@ -101,7 +96,7 @@ the `sdlc` skill, not the server.
 ## Layout
 
 - `sdlc_issues.py` — the CLI
-- `skills/` — nanobot agent skills, overlaid at pod start (`skills/README.md`)
+- `skills/` — the phase skills, linked into `~/.agents/skills` and `~/.claude/skills`
 - `tests/` — stdlib unittest suite (`python -m unittest discover -s tests -v`)
 
 ## Commands

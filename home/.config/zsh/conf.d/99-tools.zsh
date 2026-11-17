@@ -8,4 +8,4 @@
 ZSH_AUTOSUGGEST_STRATEGY=(abbreviations history)
 
 # Long-lived interactive programs are not "long commands" worth a notification.
-(( ${+AUTO_NOTIFY_IGNORE} )) && AUTO_NOTIFY_IGNORE+=(hx lazygit yazi zellij maki tv bat btm claude)
+(( ${+AUTO_NOTIFY_IGNORE} )) && AUTO_NOTIFY_IGNORE+=(hx lazygit yazi zellij maki tv bat claude)

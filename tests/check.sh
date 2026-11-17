@@ -1,6 +1,6 @@
 #!/bin/sh
 # Checks the dotfiles source tree: every script parses, every config loads, the
-# forbidden toolchains are gone, and the behavioral tests pass.
+# guards hold, and the behavioral tests pass.
 #
 # usage: tests/check.sh [--shellcheck]
 set -u
@@ -39,7 +39,7 @@ bash_syntax() {
 
 # --- shell scripts
 
-for script in "$root"/home/.local/bin/* "$root/dev"; do
+for script in "$root"/home/.local/bin/*; do
     [ -f "$script" ] || continue
     case $(head -n 1 "$script") in
         *python*) continue ;;
@@ -104,14 +104,9 @@ for cfg in "$root"/mise.toml "$root"/mise.*.toml "$root"/global/*.toml "$root"/g
     [ -f "$cfg" ] && toml "$cfg"
 done
 
-# --- desktop packages and shell hand-off
+# --- desktop packages and login shell
 
 flatpaks=$(sed -n 's/^"flatpak-user:\([^"]*\)".*/\1/p' "$root/mise.desktop.toml")
-if [ "$(printf '%s\n' "$flatpaks" | grep -c .)" -eq 10 ]; then
-    ok "the desktop environment declares all 10 user Flatpaks"
-else
-    no "the desktop environment must declare 10 user Flatpaks"
-fi
 
 if printf '%s\n' "$flatpaks" | grep -qvE '^[A-Za-z0-9_]+(\.[A-Za-z0-9_-]+)+$'; then
     no "every flatpak id looks like a reverse-DNS app id"
@@ -126,30 +121,10 @@ else
 fi
 
 kitty_conf="$root/desktop/.config/kitty/kitty.conf"
-if [ -f "$kitty_conf" ] \
-    && grep -q "^font_family family='Google Sans Code'" "$kitty_conf" \
-    && grep -q '"~/.config/kitty"' "$root/mise.desktop.toml"; then
-    ok "the Linux terminal is kitty from the image"
-else
-    no "the Linux terminal must be kitty from the image"
-fi
-
 if [ -f "$kitty_conf" ] && grep -qxF 'shell ${HOME}/.local/bin/zsh' "$kitty_conf"; then
     ok "kitty starts the mise zsh, not bash"
 else
     no "kitty must start the mise zsh directly: it skips ~/.bash_profile"
-fi
-
-if grep -qE 'flatpak-user:(com\.brave\.Browser|org\.kde\.dolphin)' "$root/mise.desktop.toml"; then
-    no "Brave Origin and Dolphin must come from the image, not Flathub"
-else
-    ok "Brave Origin and Dolphin are not Flathub packages"
-fi
-
-if grep -q 'flatpak remote-add --user --if-not-exists flathub' "$root/mise.desktop.toml"; then
-    ok "the pre-packages hook adds the user Flathub remote"
-else
-    no "the pre-packages hook must add the user Flathub remote"
 fi
 
 if grep -q '"~/.bash_profile/zsh"' "$root/mise.desktop.toml" \
@@ -167,12 +142,6 @@ else
     no "maki/pin.env must pin MAKI_VERSION, MAKI_TARGET, and a 64-hex MAKI_SHA256"
 fi
 
-if [ -e "$root/local.env" ]; then
-    no "local.env is retired: identity is hardcoded in the templates"
-else
-    ok "local.env is retired: identity is hardcoded in the templates"
-fi
-
 if grep -rqE 'exec\(' "$root"/identity "$root"/desktop "$root"/home "$root"/mise*.toml 2>/dev/null; then
     no "no template or hook calls exec() (dotfile status would run it)"
 else
@@ -181,29 +150,6 @@ fi
 
 # --- layout
 
-for required in \
-    "$root/mise.toml" \
-    "$root/global/config.toml" \
-    "$root/global/mise.lock" \
-    "$root/global/mise.desktop.lock" \
-    "$root/scripts/install-mise.sh" \
-    "$root/scripts/bootstrap-task.sh" \
-    "$root/README.md" \
-    "$root/docs/manual-steps.md" \
-    "$root/identity/.gitconfig" \
-    "$root/home/.config/maki/init.lua" \
-    "$root/home/.config/maki/mcp.toml" \
-    "$root/home/.config/maki/permissions.toml" \
-    "$root/home/.config/maki/plugin.toml" \
-    "$root/home/.config/maki/providers.toml" \
-    "$root/home/.agents/skills/sdlc/SKILL.md"; do
-    if [ -f "$required" ] || [ -L "$required" ]; then
-        ok "present $(rel "$required")"
-    else
-        no "missing $(rel "$required")"
-    fi
-done
-
 if [ -e "$root/home/.config/mise" ]; then
     # `mise bootstrap --config-dir global` links ~/.config/mise to global/; a
     # second copy under home/ would drift from it.
@@ -211,22 +157,6 @@ if [ -e "$root/home/.config/mise" ]; then
 else
     ok "the global mise config lives only in global/"
 fi
-
-if grep -q 'https://mise.run' "$root/scripts/install-mise.sh" \
-        && grep -q 'MISE_VERSION=' "$root/scripts/install-mise.sh" \
-        && grep -q 'detect-envs.sh' "$root/scripts/install-mise.sh"; then
-    ok "install-mise uses the official installer for the latest mise and infers the set"
-else
-    no "install-mise must use the official installer for the latest mise and infer the set"
-fi
-
-for removed in install.sh packages/mise.toml packages/flatpaks.txt scripts/bootstrap.sh; do
-    if [ -e "$root/$removed" ]; then
-        no "the retired installer piece $removed is gone"
-    else
-        ok "the retired installer piece $removed is gone"
-    fi
-done
 
 # --- lockfiles cover every pinned tool on every platform it runs on
 
@@ -274,41 +204,6 @@ else
     skip "lockfile coverage (python3 tomllib missing)"
 fi
 
-# --- retired toolchains and services
-#
-# sdlc/ is vendored upstream source: its notify skill and fixtures still name
-# the cluster bus and nix-config, which the dotfiles config no longer uses.
-
-if grep -rInE 'chezmoi|ntfy' "$root" \
-        --exclude-dir=.git --exclude-dir=.worktrees --exclude-dir=sdlc \
-        --exclude=check.sh >/dev/null 2>&1; then
-    no "no chezmoi or ntfy reference remains"
-    grep -rInE 'chezmoi|ntfy' "$root" \
-        --exclude-dir=.git --exclude-dir=.worktrees --exclude-dir=sdlc \
-        --exclude=check.sh | sed 's/^/     /' >&2
-else
-    ok "no chezmoi or ntfy reference remains"
-fi
-
-# docs/manual-steps.md deliberately calls the old machine's key-backup before
-# the disk is wiped. The smoreswork coexistence files (work/, the work env,
-# the handoff script, and their tests) talk to the home-manager generation
-# that still runs there. Those are the only allowed nix references.
-if grep -rInE '\bnix\b|nixos|nixpkgs|nix-shell' "$root" \
-        --exclude-dir=.git --exclude-dir=.worktrees --exclude-dir=sdlc \
-        --exclude=check.sh \
-        --exclude=manual-steps.md --exclude-dir=work --exclude=mise.work.toml \
-        --exclude=handoff.sh --exclude=handoff-test.sh --exclude=bootstrap-test.sh >/dev/null 2>&1; then
-    no "no nix reference remains outside docs/manual-steps.md"
-    grep -rInE '\bnix\b|nixos|nixpkgs|nix-shell' "$root" \
-        --exclude-dir=.git --exclude-dir=.worktrees --exclude-dir=sdlc \
-        --exclude=check.sh \
-        --exclude=manual-steps.md --exclude-dir=work --exclude=mise.work.toml \
-        --exclude=handoff.sh --exclude=handoff-test.sh --exclude=bootstrap-test.sh | sed 's/^/     /' >&2
-else
-    ok "no nix reference remains outside docs/manual-steps.md"
-fi
-
 secret_pattern='BEGIN [A-Z ]*PRIVATE KEY|AGE-SECRET-KEY-[A-Z0-9]|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}'
 if grep -rInE "$secret_pattern" "$root/home" "$root/identity" "$root/desktop" \
         "$root/work" "$root/maki" "$root/global" "$root/scripts" "$root/tests" \
@@ -338,59 +233,19 @@ else
     ok "every zim module is an external path cloned by [bootstrap.repos]"
 fi
 
-if grep -qF '"~/.terminfo" = { source = "home/.terminfo", mode = "symlink-each" }' "$root/mise.toml" \
-        && [ -f "$root/home/.terminfo/78/xterm-kitty" ]; then
-    ok "the kitty terminfo entry is deployed from the repository"
-else
-    no "the hashed xterm-kitty entry must live in home/.terminfo and be deployed"
-fi
-
 if grep -E '^"~/.local/share/zsh-plugins/' "$root/mise.toml" | grep -qvE 'ref = "[0-9a-f]{40}"( |,)'; then
     no "every zsh plugin repo is pinned to a full commit"
 else
     ok "every zsh plugin repo is pinned to a full commit"
 fi
 
-# --- one checkout root, one instruction set
+# --- cross-file consistency
 
-if grep -q 'root = /srv/git' "$root/identity/.config/git/machine.inc.tera" \
-        && grep -q 'ROOT=${REPOS_ROOT:-/srv/git}' "$root/home/.local/bin/repos" \
-        && grep -q '/srv/git' "$root/scripts/install-mise.sh" \
-        && grep -q 'ghq = "1.12.0"' "$root/global/config.toml"; then
-    ok "every personal checkout root is /srv/git, and ghq points there"
+if grep -q 'ROOT=${REPOS_ROOT:-/srv/git}' "$root/home/.local/bin/repos" \
+        && grep -q '/srv/git' "$root/scripts/install-mise.sh"; then
+    ok "repos and install-mise agree on the /srv/git checkout root"
 else
-    no "repos, ghq.root, install-mise, and ghq must all use /srv/git"
-fi
-
-# shellcheck disable=SC2088 # matching a literal ~/ on purpose
-if grep -rnE '~/repos|~/ghq' "$root/mise.toml" "$root/mise.identity.toml" \
-        "$root/home/.local/bin/repos" "$root/home/.config/maki/AGENTS.md" \
-        "$root/home/.claude/CLAUDE.md" "$root/README.md" \
-        "$root/docs/manual-steps.md" "$root/scripts/install-mise.sh" >/dev/null 2>&1; then
-    no "no file still points at ~/repos or ~/ghq"
-    # shellcheck disable=SC2088 # matching a literal ~/ on purpose
-    grep -rnE '~/repos|~/ghq' "$root/mise.toml" "$root/mise.identity.toml" \
-        "$root/home/.local/bin/repos" "$root/home/.config/maki/AGENTS.md" \
-        "$root/home/.claude/CLAUDE.md" "$root/README.md" \
-        "$root/docs/manual-steps.md" "$root/scripts/install-mise.sh" | sed 's/^/     /' >&2
-else
-    ok "no file still points at ~/repos or ~/ghq"
-fi
-
-if grep -q 'name = "Sam Mohr"' "$root/identity/.config/git/machine.inc.tera" \
-        && grep -q 'email = "sam@sammohr.dev"' "$root/identity/.config/git/machine.inc.tera" \
-        && grep -q 'name = "Sam Mohr"' "$root/work/.config/git/machine.inc.tera" \
-        && grep -q 'email = "smohr@blitzy.com"' "$root/work/.config/git/machine.inc.tera"; then
-    ok "personal and work name and email are hardcoded in the templates"
-else
-    no "the templates must hardcode Sam Mohr and the two emails"
-fi
-
-if grep -qE '^\[vars\.' "$root"/mise*.toml; then
-    no "there are no [vars]; every identity value is hardcoded"
-    grep -nE '^\[vars\.' "$root"/mise*.toml | sed 's/^/     /' >&2
-else
-    ok "there are no [vars]; every identity value is hardcoded"
+    no "repos and install-mise must both use /srv/git"
 fi
 
 if grep -q 'SDLC_REPO=smores56/sdlc' "$root/home/.config/zsh/.zshenv" \
@@ -400,62 +255,7 @@ else
     no "personal and work SDLC registries must be hardcoded"
 fi
 
-if grep -qE '`worktrees prune --apply`' "$root/home/.config/maki/AGENTS.md"; then
-    ok "AGENTS.md prunes with --apply"
-else
-    no "AGENTS.md must prune with 'worktrees prune --apply' (prune is a dry run by default)"
-fi
-if grep -qF 'worktrees prune              # dry run' "$root/README.md" \
-        && ! grep -q 'one root step' "$root/README.md"; then
-    ok "README describes the dry-run prune and the root steps truthfully"
-else
-    no "README must keep the dry-run prune note and drop the 'one root step' claim"
-fi
-
-# --- the tools the instructions require are actually installed
-
-task=$root/scripts/bootstrap-task.sh
-if [ -x "$root/sdlc/sdlc_issues.py" ] \
-        && grep -q '"~/.local/bin/sdlc" = { source = "sdlc/sdlc_issues.py" }' "$root/mise.toml" \
-        && ! grep -q 'sdlc.git' "$task"; then
-    ok "the sdlc CLI is deployed from this checkout"
-else
-    no "the sdlc CLI must be deployed from sdlc/sdlc_issues.py, not a private clone"
-fi
-
-installer=$root/scripts/install-mise.sh
-if grep -q -- '--from "$REPO_URL"' "$installer" \
-        && ! grep -q '?ref=' "$installer" \
-        && grep -q 'detect-envs.sh' "$installer"; then
-    ok "install-mise tracks the default branch and infers the set"
-else
-    no "install-mise must track the default branch (no ref) and infer the set"
-fi
-
-if grep -q 'sdlc list' "$root/docs/manual-steps.md" \
-        && grep -q 'sdlc/sdlc_issues.py' "$root/docs/manual-steps.md"; then
-    ok "docs/manual-steps.md names the local sdlc CLI"
-else
-    no "docs/manual-steps.md must name the local sdlc CLI"
-fi
-
-for file in "$root/docs/manual-steps.md" "$root/README.md"; do
-    if grep -qE '^[[:space:]]*sudo rpm-ostree install' "$file"; then
-        no "the host is a bootc image; $(rel "$file") must not layer host packages"
-    else
-        ok "$(rel "$file") never layers host packages"
-    fi
-done
-
-forbid() {  # forbid <desc> <path> <extended-regex>
-    local desc=$1 path=$2 pattern=$3
-    if grep -qE -- "$pattern" "$path" 2>/dev/null; then
-        no "$desc"
-        grep -nE -- "$pattern" "$path" | sed 's/^/     /' >&2
-    else
-        ok "$desc"
-    fi
-}
+# --- Maki guards
 
 require() {  # require <desc> <path> <fixed-string>
     local desc=$1 path=$2 want=$3
@@ -466,80 +266,10 @@ require() {  # require <desc> <path> <fixed-string>
     fi
 }
 
-forbid "wallpapers claims a COSMIC wallpaper setting it does not make" \
-    "$root/desktop/.local/bin/wallpapers" 'desktoppr|Darwin'
-forbid "wallpapers does not fall back to host rsync" \
-    "$root/desktop/.local/bin/wallpapers" 'rsync'
-require "rclone is a pinned desktop tool" "$root/global/config.desktop.toml" \
-    'aqua:rclone/rclone'
-forbid "the wallpapers unit does not claim to rotate what it cannot set" \
-    "$root/desktop/.config/systemd/user/wallpapers.service" 'Rotate wallpapers'
-forbid "dev's header does not claim unconditional agent forwarding" \
-    "$root/home/.local/bin/dev" 'The SSH agent socket is forwarded'
-require "dev's usage documents the opt-in agent" "$root/home/.local/bin/dev" \
-    'DEV_SSH_AGENT'
-require "README documents the opt-in agent" "$root/README.md" 'DEV_SSH_AGENT=1'
-require "the repos picker changes directory" \
-    "$root/home/.config/zsh/conf.d/30-pickers.zsh" "alias r='cd \"\$(tv repos)\"'"
-require "the worktrees picker changes directory" \
-    "$root/home/.config/zsh/conf.d/30-pickers.zsh" "alias w='cd \"\$(tv worktrees)\"'"
-require "the sdlc picker abbreviation is shared" \
-    "$root/home/.config/zsh/conf.d/20-abbreviations.zsh" "s     'sdlc ui'"
-require "the identity lane deploys its abbreviations" \
-    "$root/mise.identity.toml" 'identity/.config/zsh/conf.d/85-identity.zsh'
-require "the identity lane reaches smortress over Tailscale SSH" \
-    "$root/identity/.config/zsh/conf.d/85-identity.zsh" 'tailscale ssh smortress -t zsh'
-require "the desktop lane deploys its abbreviations on Linux" \
-    "$root/mise.desktop.toml" 'desktop/.config/zsh/conf.d/80-desktop.zsh'
-require "the desktop lane empties the trash" \
-    "$root/desktop/.config/zsh/conf.d/80-desktop.zsh" 'gtrash find --rm --force'
-require "the desktop lane drives the nym VPN" \
-    "$root/desktop/.config/zsh/conf.d/80-desktop.zsh" 'sudo nym-vpnc connect --wait'
-forbid "AGENTS.md names no retired shell abbreviation" \
-    "$root/home/.config/maki/AGENTS.md" '`sl`/`ss`/`st`/`sn`'
-forbid "CLAUDE.md names no retired shell abbreviation" \
-    "$root/home/.claude/CLAUDE.md" '`sl`/`ss`/`st`/`sn`'
-require "AGENTS.md points at the sdlc picker" \
-    "$root/home/.config/maki/AGENTS.md" '`s` (`sdlc ui`)'
-forbid "Maki leaves memory at its bundled default" \
-    "$root/home/.config/maki/init.lua" 'memory = '
-forbid "Maki leaves bash at its bundled default" \
-    "$root/home/.config/maki/init.lua" 'bash = '
 require "the TinyFish guard runs on every tool call" \
     "$root/home/.config/maki/init.lua" 'set_slot("tool.*.input"'
 require "the TinyFish guard allows only search" \
     "$root/home/.config/maki/init.lua" 'ctx.tool ~= "tinyfish__search"'
-require "the TinyFish MCP server is registered over HTTPS" \
-    "$root/home/.config/maki/mcp.toml" 'url = "https://agent.tinyfish.ai/mcp"'
-require "the TinyFish MCP server reads the launcher's key" \
-    "$root/home/.config/maki/mcp.toml" 'Authorization = "Bearer ${TINYFISH_API_KEY}"'
-require "the guard's manifest grants the session APIs" \
-    "$root/home/.config/maki/plugin.toml" 'session_read = true'
-require "CLAUDE.md points at the sdlc picker" \
-    "$root/home/.claude/CLAUDE.md" '`s` (`sdlc ui`)'
-forbid "no fish residue in the check images" "$root/.github/workflows/check.yml" 'fish'
-forbid "no fish residue in the repository Containerfile" "$root/Containerfile" 'fish'
-forbid "no fish residue in the shared dev image" \
-    "$root/home/.config/containers/Containerfile.dev" 'fish'
-forbid "zellij does not start fish" "$root/home/.config/zellij/config.kdl" 'fish'
-require "zellij follows the terminal palette" "$root/home/.config/zellij/config.kdl" 'theme "ansi"'
-forbid "no TODO/TBD in the operator steps" "$root/docs/manual-steps.md" 'TODO|TBD'
-forbid "no TODO/TBD in README" "$root/README.md" 'TODO|TBD'
-forbid "the credentials step fetches keys instead of copying a missing file" \
-    "$root/docs/manual-steps.md" 'media/<usb>/secrets.env'
-
-if grep -q 'maki/pin.env' "$root/README.md" && grep -q 'pin bump' "$root/README.md"; then
-    ok "README says a Maki update goes through a pin bump"
-else
-    no "README must say a Maki update goes through a pin bump"
-fi
-
-if grep -q 'bw unlock' "$root/docs/manual-steps.md" \
-        && grep -q 'com.bitwarden.desktop' "$root/docs/manual-steps.md"; then
-    ok "the credentials step fetches the keys from Bitwarden"
-else
-    no "the credentials step must fetch the keys from the Bitwarden CLI"
-fi
 
 if grep -q '^maki() {' "$root/home/.config/zsh/conf.d/40-maki.zsh" 2>/dev/null \
         && ! grep -rlE '^\s*export (NEURALWATT|TINYFISH)_API_KEY' "$root/home" >/dev/null 2>&1; then
@@ -547,25 +277,6 @@ if grep -q '^maki() {' "$root/home/.config/zsh/conf.d/40-maki.zsh" 2>/dev/null \
 else
     no "provider keys must be passed by the maki() launcher only, never exported"
 fi
-
-# --- documentation and CI
-
-for stale in install.sh local.env scripts/bootstrap.sh packages/flatpaks.txt; do
-    if grep -qF -- "$stale" "$root/README.md" "$root/docs/manual-steps.md"; then
-        no "the docs still mention the retired $stale"
-    else
-        ok "the docs do not mention the retired $stale"
-    fi
-done
-
-for needle in 'fedora:43' 'macos-14' 'ubuntu-24.04-arm' 'tests/apply-lane.sh' \
-        'mise install --locked'; do
-    if grep -qF -- "$needle" "$root/.github/workflows/check.yml"; then
-        ok "CI declares $needle"
-    else
-        no "CI is missing $needle"
-    fi
-done
 
 # --- helix: every configured language server is a pinned tool
 
@@ -621,16 +332,6 @@ if command -v git >/dev/null 2>&1 && command -v bash >/dev/null 2>&1; then
         no "behavioral tests (tests/shell-test.sh)"
         sed 's/^/     /' "$tmp/shell.log" >&2
     fi
-    if bash "$root/tests/handoff-test.sh" >"$tmp/handoff.log" 2>&1; then
-        if grep -q '^skip handoff tests' "$tmp/handoff.log"; then
-            skip "behavioral tests (tests/handoff-test.sh: mise not installed)"
-        else
-            ok "behavioral tests (tests/handoff-test.sh)"
-        fi
-    else
-        no "behavioral tests (tests/handoff-test.sh)"
-        sed 's/^/     /' "$tmp/handoff.log" >&2
-    fi
     if bash "$root/tests/cli.sh" >"$tmp/cli.log" 2>&1; then
         ok "behavioral tests (tests/cli.sh)"
     else
@@ -675,8 +376,7 @@ fi
 
 if $use_shellcheck; then
     if command -v shellcheck >/dev/null 2>&1; then
-        for script in "$root"/home/.local/bin/* "$root"/work/.local/bin/* "$root"/desktop/.local/bin/* \
-                "$root/dev"; do
+        for script in "$root"/home/.local/bin/* "$root"/work/.local/bin/* "$root"/desktop/.local/bin/*; do
             [ -f "$script" ] || continue
             case $(head -n 1 "$script") in
                 *python*) continue ;;

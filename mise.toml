@@ -50,7 +50,7 @@ min_version = "2026.11.9"
 # The stdlib sdlc CLI; $SDLC_REPO selects the personal or work registry.
 "~/.local/bin/sdlc" = { source = "sdlc/sdlc_issues.py" }
 "~/.config/maki" = { source = "home/.config/maki", mode = "symlink-each" }
-"~/.agents/skills" = { source = "home/.agents/skills", mode = "symlink-each" }
+"~/.agents/skills" = { source = "sdlc/skills", mode = "symlink-each" }
 # Claude Code: one CLAUDE.md for every machine (it imports ~/.claude/work.md,
 # which only the work environment deploys), the shared skills, and only the
 # settings keys this repository owns; Claude Code writes the rest itself.
@@ -58,13 +58,8 @@ min_version = "2026.11.9"
 # A placeholder, so the import always resolves; the work environment replaces it.
 "~/.claude/work.md" = { source = "home/.claude/work.md" }
 "~/.claude/agents/Explore.md" = { source = "home/.claude/agents/Explore.md" }
-"~/.claude/skills" = { source = "home/.agents/skills", mode = "symlink-each" }
+"~/.claude/skills" = { source = "sdlc/skills", mode = "symlink-each" }
 "~/.claude/settings.json/shared" = { source = "home/.claude-merge/settings.json", merge = true }
-
-# Runs on every `mise bootstrap`, before dotfiles, so it must be safe to repeat.
-[bootstrap.hooks.pre-dotfiles]
-description = "retire the uv sdlc shim"
-run = "sh {{ config_root }}/scripts/retire-uv-sdlc.sh"
 
 [tasks.bootstrap]
 description = "Install the pieces mise does not manage declaratively"

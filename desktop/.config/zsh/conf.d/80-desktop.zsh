@@ -1,6 +1,5 @@
 # smorespro only: mise deploys this file under a Linux variant. `ct` is gtrash's
-# "delete all" form without its confirmation prompt, the shape trash-empty -f
-# had; gtrash itself is a desktop tool because macOS has no trash CLI.
+# "delete all" form without its confirmation prompt; gtrash itself is a desktop tool because macOS has no trash CLI.
 # nym-vpnc is a system package from the image, not a mise tool, so its
 # abbreviations appear only once the tool is installed.
 (( $+functions[abbr] )) || return 0

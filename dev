@@ -1,5 +1,0 @@
-#!/bin/sh
-# Thin adapter over the installed `dev` wrapper; this repository's Containerfile
-# is the canonical development contract (#660).
-set -eu
-exec "${DEV:-$HOME/.local/bin/dev}" "$@"

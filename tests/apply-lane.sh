@@ -82,8 +82,6 @@ present "$HOME/.config/git/machine.inc"
 case $env_set in
     *identity*)
         present "$HOME/.config/git/work.inc"
-        [ "$(git config --global --includes --get ghq.root)" = /srv/git ] \
-            || fail "ghq.root is not /srv/git"
         ;;
     *work*)
         grep -q 'IdentityAgent' "$HOME/.ssh/config" \

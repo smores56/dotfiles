@@ -1,9 +1,7 @@
 # Git and SSH identity for personal machines. smoreswork does not apply this
 # environment; mise.work.toml renders its own work identity and SSH config.
-# Every identity value is fixed in the templates; there are no vars.
 
 [dotfiles]
-# The work laptop does not apply this environment.
 "~/.gitconfig" = { source = "identity/.gitconfig" }
 "~/.ssh/config" = { source = "identity/.ssh/config" }
 "~/.config/zsh/conf.d/85-identity.zsh" = { source = "identity/.config/zsh/conf.d/85-identity.zsh" }
