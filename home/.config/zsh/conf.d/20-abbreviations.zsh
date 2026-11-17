@@ -15,7 +15,7 @@
     gp    'gh pr create'
     a     'maki'
     s     'sdlc ui'
-    dot   'mise -C ~/.dotfiles dot apply'
+    dot   'git -C ~/.dotfiles pull --ff-only --no-rebase --autostash && mise -C ~/.dotfiles dot apply --yes'
     boot  'mise -C ~/.dotfiles bootstrap'
     cr    'repos'
     cw    'worktrees'
