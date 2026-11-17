@@ -55,8 +55,6 @@ tighten_ssh_dir() {
 link_conda_zsh
 sh "$(dirname "$0")/zim-build.sh" || die "zim build failed; the shell has no plugins until it succeeds"
 tighten_ssh_dir
-sh "$(dirname "$0")/agent-secrets.sh" \
-    || log "provider keys not refreshed; maki keeps the existing ~/.config/secrets.env"
-sh "$(dirname "$0")/github-auth.sh" \
-    || log "GitHub auth not refreshed; run gh auth login if gh commands fail"
+sh "$(dirname "$0")/secrets.sh" \
+    || log "secrets not refreshed; maki and gh keep their existing credentials"
 install_sdlc

@@ -1,0 +1,19 @@
+#ENC[AES256_GCM,data:BJx79aWYbSqAl3tzKpsVq/8HUB8N27e0Wyts6py042ZuhWYe3igFrrvpk+3LOfrj0kbGuYJ5LB/OayalNnRT4oS6LK+Z0da1YCiWaXIJqgdnPb4=,iv:gPZRZWIcj3c3MHYJjmGxytWhrKVmNefj7b6/4EwwIgk=,tag:4k01+bQs8Jh+r9Q+r70XWw==,type:comment]
+NEURALWATT_API_KEY: ""
+TINYFISH_API_KEY: ""
+GITHUB_PERSONAL_PAT: ""
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBVaHBCTWVxckxUanVPY0Jq
+            djlsMGMrMzFlZmNtd1J2S3pkTHU1MUpnSjE0CllISTQ1Vk0zWGV2TC9uM0NrODc0
+            ZnhRSi9DZmlpMHVyNGFJMTdFQjlScWcKLS0tIGhJeFNEK2JyTEdpUUhDZy9lMVlh
+            UElnTkFXaE5rL0d6dVBKRmgzL2U5Q1EKR2bQy0rBfOVFsJ2ODKHxvE6GCZVUvQQH
+            uqRKwWjmivr+QDTO5WHYybO2auKHYlIWlhFLtT6O/V/2ZyA4lvOJ0w==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1skuwunreduvw8gtkzyf9atsyjnku388ly8c252h3qger84fg5d7q4kf6xs
+    lastmodified: "2026-11-17T03:50:54Z"
+    mac: ENC[AES256_GCM,data:K3/+E+S/Ayh55Yr40fYPRitzzdrn5CklnaSf9iUfjorDK6Iqp4jCJkZZxCkQUSFYEJlsrIROwKTHRdyzXLEWnf54r6zdLB5hMUSKrQFwoRRBnGC6hyW4hB0CKGP8dSec+t+0UL1nl+98pO15k4QHZgVnSdYkl9AhOt89yyag2JA=,iv:xkKXfwHZLS3N4+e9mp2XbYRwG8TPypuNahawDWE3Zpc=,tag:r95Wt25u7S0c4Ps196wXlw==,type:str]
+    unencrypted_suffix: _unencrypted
+    version: 3.13.3

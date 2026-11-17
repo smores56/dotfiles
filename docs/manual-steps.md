@@ -157,15 +157,18 @@ copy a release into `~/.local/bin` by hand.
 the private upstream at the commit pinned there as `SDLC_REV`. That install
 uses the SSH credential restored in step 3. Bump the constant, re-run the
 bootstrap, and commit the new pin. `sdlc list` must reach the `smores56/sdlc`
-registry; it calls `gh`, which uses the auth installed by `secrets/github.yaml`
-or a one-time `gh auth login`.
+registry; it calls `gh`, which uses the PAT from `sops.yaml` or a one-time
+`gh auth login`.
 
-## 6. Provider keys
+## 6. Agent keys and personal token
 
-The local agent's provider keys live encrypted in `secrets/agent.yaml`. The bootstrap
-task decrypts them into `~/.config/secrets.env` (mode 600) when the admin age
-identity is present and the ciphertext changed; the zsh `maki` launcher reads
-only that cache. Nothing else inherits the values.
+The local agent's provider keys and an optional personal GitHub token live
+encrypted in `sops.yaml`. The bootstrap task decrypts that file once into
+`~/.config/secrets.env` (mode 600) when the admin age identity is present and
+the ciphertext changed; the zsh `maki` launcher reads only that cache. A
+`GITHUB_PERSONAL_PAT` in the same file is passed to
+`gh auth login --with-token`, so `gh` and the `sdlc` CLI need no interactive
+login. Nothing else inherits the values.
 
 Verify without printing a key:
 
@@ -173,45 +176,40 @@ Verify without printing a key:
 test -s ~/.config/secrets.env && echo keys-present
 test "$(stat -c %a ~/.config/secrets.env)" = 600 && echo secrets-mode-ok
 zsh -ic 'type -q maki && echo maki-launcher-ok'
+gh auth status
 ```
 
-A personal GitHub token is optional. Put a fine-grained token with Issues
-read/write on `smores56/sdlc` and Metadata read into `secrets/github.yaml` as
-`github-personal-pat`; the bootstrap task then runs
-`gh auth login --with-token`. Without that file, run `gh auth login` once.
+The committed `sops.yaml` is an encrypted template with empty values. Fill it
+once from Bitwarden, using the passphrase-wrapped admin identity:
 
-If the ciphertext is missing or needs rotation, fetch the two keys from
-Bitwarden and re-encrypt them to the admin identity. The desktop Flatpak ships
-the `bw` CLI; this machine has no separate one.
+```sh
+cd ~/repos/github.com/smores56/dotfiles
+sops sops.yaml
+```
+
+Set `NEURALWATT_API_KEY` and `TINYFISH_API_KEY` from the named Bitwarden login
+items. Optionally set `GITHUB_PERSONAL_PAT` to a fine-grained token with Issues
+read/write on `smores56/sdlc` and Metadata read; add Contents read for private
+repositories `gh` should clone or read. Save, commit the new ciphertext, and
+run the bootstrap task again. A token is optional: without it, run
+`gh auth login` once per personal machine.
+
+The desktop Flatpak ships the `bw` CLI if you prefer to read the values from
+Bitwarden in a terminal:
 
 ```sh
 bw() { flatpak run --command=bw com.bitwarden.desktop "$@"; }
 bw login
 BW_SESSION=$(bw unlock --raw) || { echo 'unlock failed' >&2; exit 1; }
 export BW_SESSION
-work=$(mktemp)
-umask 077
-{
-    for pair in NEURALWATT_API_KEY:<neuralwatt-item> TINYFISH_API_KEY:<tinyfish-item>; do
-        name=${pair%%:*}
-        item=${pair#*:}
-        value=$(bw get password "$item") || exit 1
-        [ -n "$value" ] || { echo "empty Bitwarden item: $item" >&2; exit 1; }
-        printf '%s=%s\n' "$name" "$value"
-    done
-} > "$work"
-recipient=$(age --decrypt "$HOME/.config/sops/keys.age" | age-keygen -y)
-cd ~/repos/github.com/smores56/dotfiles
-mkdir -p secrets
-sops --encrypt --age "$recipient" --input-type dotenv --output-type yaml \
-    --output secrets/agent.yaml "$work"
-rm -f "$work"
+bw get password <neuralwatt-item>
+bw get password <tinyfish-item>
 unset BW_SESSION
 ```
 
 `<neuralwatt-item>` and `<tinyfish-item>` are the Bitwarden login item names.
-A failed or empty lookup aborts instead of writing a partial secret. Commit the
-new ciphertext; the next bootstrap refreshes the cache.
+Never commit the plaintext values; `sops` re-encrypts on save. Work credentials
+stay in 1Password, not here.
 
 ## 7. Re-authorize the Mac's public key
 
