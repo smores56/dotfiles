@@ -101,19 +101,38 @@ for cfg in "$root"/mise.toml "$root"/mise.*.toml "$root"/global/*.toml "$root"/g
     [ -f "$cfg" ] && toml "$cfg"
 done
 
-# --- package lists and pins
+# --- desktop packages and shell hand-off
 
-if [ -s "$root/packages/flatpaks.txt" ]; then
-    ok "packages/flatpaks.txt is not empty"
+flatpaks=$(sed -n 's/^"flatpak-user:\([^"]*\)".*/\1/p' "$root/mise.desktop.toml")
+if [ "$(printf '%s\n' "$flatpaks" | grep -c .)" -eq 13 ]; then
+    ok "the desktop environment declares all 13 user Flatpaks"
 else
-    no "packages/flatpaks.txt is empty"
+    no "the desktop environment must declare 13 user Flatpaks (the 12 apps plus WezTerm)"
 fi
 
-if grep -vE '^\s*(#|$)' "$root/packages/flatpaks.txt" \
-        | grep -qvE '^[A-Za-z0-9_]+(\.[A-Za-z0-9_-]+)+$'; then
+if printf '%s\n' "$flatpaks" | grep -qvE '^[A-Za-z0-9_]+(\.[A-Za-z0-9_-]+)+$'; then
     no "every flatpak id looks like a reverse-DNS app id"
 else
     ok "every flatpak id looks like a reverse-DNS app id"
+fi
+
+if grep -q '"flatpak-user:org.wezfurlong.wezterm"' "$root/mise.desktop.toml"; then
+    ok "WezTerm comes from Flathub on Linux"
+else
+    no "WezTerm must be a user Flatpak on Linux"
+fi
+
+if grep -q 'flatpak remote-add --user --if-not-exists flathub' "$root/mise.desktop.toml"; then
+    ok "the pre-packages hook adds the user Flathub remote"
+else
+    no "the pre-packages hook must add the user Flathub remote"
+fi
+
+if grep -q '"~/.bash_profile/zsh"' "$root/mise.desktop.toml" \
+        && grep -q 'BASH_EXECUTION_STRING' "$root/mise.desktop.toml"; then
+    ok "the bash_profile block hands interactive logins to zsh only"
+else
+    no "the bash_profile block must exec zsh only without BASH_EXECUTION_STRING"
 fi
 
 if grep -qE '^MAKI_VERSION=v[0-9]+\.[0-9]+\.[0-9]+$' "$root/maki/pin.env" \
@@ -166,7 +185,7 @@ else
     ok "the global mise config lives only in global/"
 fi
 
-for removed in install.sh packages/mise.toml scripts/bootstrap.sh; do
+for removed in install.sh packages/mise.toml packages/flatpaks.txt scripts/bootstrap.sh; do
     if [ -e "$root/$removed" ]; then
         no "the retired installer piece $removed is gone"
     else
@@ -362,9 +381,9 @@ require() {  # require <desc> <path> <fixed-string>
 }
 
 forbid "wallpapers claims a COSMIC wallpaper setting it does not make" \
-    "$root/home/.local/bin/wallpapers" 'desktoppr|Darwin'
+    "$root/desktop/.local/bin/wallpapers" 'desktoppr|Darwin'
 forbid "the wallpapers unit does not claim to rotate what it cannot set" \
-    "$root/home/.config/systemd/user/wallpapers.service" 'Rotate wallpapers'
+    "$root/desktop/.config/systemd/user/wallpapers.service" 'Rotate wallpapers'
 forbid "dev's header does not claim unconditional agent forwarding" \
     "$root/home/.local/bin/dev" 'The SSH agent socket is forwarded'
 require "dev's usage documents the opt-in agent" "$root/home/.local/bin/dev" \

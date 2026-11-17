@@ -6,14 +6,59 @@
 "~/.local/bin/tty" = { source = "desktop/.local/bin/tty", variants = [{ os = "linux" }] }
 "~/.config/systemd/user" = { source = "desktop/.config/systemd/user", mode = "symlink-each", variants = [{ os = "linux" }] }
 "~/.config/wezterm" = { source = "desktop/.config/wezterm", mode = "symlink-each" }
-# Copies, not links: macOS does not reliably register a symlinked font.
 # Google Sans Code v7.001 from the upstream release (googlefonts/googlesans-code,
 # GoogleSansCode-v7.001.zip sha256 eebba2a438882396e8530cad6d6cb80182b0afb6e9e0ad07b7340359a53ba2e9),
 # with its MONO axis; renamed because mise reads "[MONO,wght]" as a glob.
+# macOS gets copies, because it does not reliably register a symlinked font;
+# Linux links into the XDG font directory and the font cache is refreshed below.
 "~/Library/Fonts/GoogleSansCode-MONO-VF.ttf" = { source = "desktop/fonts/GoogleSansCode-MONO-VF.ttf", mode = "copy", variants = [{ os = "macos" }] }
 "~/Library/Fonts/GoogleSansCode-Italic-MONO-VF.ttf" = { source = "desktop/fonts/GoogleSansCode-Italic-MONO-VF.ttf", mode = "copy", variants = [{ os = "macos" }] }
+"~/.local/share/fonts/GoogleSansCode-MONO-VF.ttf" = { source = "desktop/fonts/GoogleSansCode-MONO-VF.ttf", variants = [{ os = "linux" }] }
+"~/.local/share/fonts/GoogleSansCode-Italic-MONO-VF.ttf" = { source = "desktop/fonts/GoogleSansCode-Italic-MONO-VF.ttf", variants = [{ os = "linux" }] }
+
+# Fedora ships bash as the login shell and no zsh; the mise zsh is linked to
+# ~/.local/bin/zsh by the bootstrap task. Hand over only an interactive TTY
+# login: BASH_EXECUTION_STRING stays set for `bash -ilc`, which editors use to
+# resolve their environment, so that bash keeps running. macOS has no such
+# link and its login shell is already /bin/zsh, so the block is inert there.
+"~/.bash_profile/zsh" = { block = '''
+if [ -x "$HOME/.local/bin/zsh" ] && [ -z "${BASH_EXECUTION_STRING-}" ] \
+        && [ -t 0 ] && [ -t 1 ]; then
+    exec "$HOME/.local/bin/zsh" -l
+fi
+''' }
 
 [bootstrap.packages]
+# Linux desktops get their GUI apps as user Flatpaks from Flathub; mise does
+# not configure remotes, so the pre-packages hook adds the user remote first.
+"flatpak-user:md.obsidian.Obsidian" = { version = "latest", os = ["linux"] }
+"flatpak-user:com.brave.Browser" = { version = "latest", os = ["linux"] }
+"flatpak-user:org.videolan.VLC" = { version = "latest", os = ["linux"] }
+"flatpak-user:org.gimp.GIMP" = { version = "latest", os = ["linux"] }
+"flatpak-user:org.gnome.Evince" = { version = "latest", os = ["linux"] }
+"flatpak-user:com.transmissionbt.Transmission" = { version = "latest", os = ["linux"] }
+"flatpak-user:com.discordapp.Discord" = { version = "latest", os = ["linux"] }
+"flatpak-user:org.kde.krita" = { version = "latest", os = ["linux"] }
+"flatpak-user:com.valvesoftware.Steam" = { version = "latest", os = ["linux"] }
+"flatpak-user:com.bitwarden.desktop" = { version = "latest", os = ["linux"] }
+"flatpak-user:com.tutanota.Tutanota" = { version = "latest", os = ["linux"] }
+"flatpak-user:org.kde.dolphin" = { version = "latest", os = ["linux"] }
+# The terminal. Its default home access lets it spawn host shells through the
+# portal, so it is a launcher rather than a sandbox.
+"flatpak-user:org.wezfurlong.wezterm" = { version = "latest", os = ["linux"] }
 # ~/Applications: mise refuses to install through a group-writable
 # /Applications (root:admin 0775 on the work laptop), and it needs no sudo.
 "brew-cask:wezterm" = { version = "latest", os = ["macos"], appdir = "~/Applications" }
+
+[bootstrap.hooks.pre-packages]
+description = "add the user Flathub remote"
+run = '''if [ "$(uname -s)" = Linux ] && command -v flatpak >/dev/null 2>&1; then
+    flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+fi'''
+
+[bootstrap.hooks.post-dotfiles]
+description = "refresh the font cache"
+run = '''if [ "$(uname -s)" = Linux ] && [ -d "$HOME/.local/share/fonts" ] \
+        && command -v fc-cache >/dev/null 2>&1; then
+    fc-cache -f >/dev/null 2>&1 || true
+fi'''

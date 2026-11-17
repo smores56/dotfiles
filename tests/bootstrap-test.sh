@@ -271,12 +271,24 @@ if [ "$os" = Darwin ]; then
     assert_not "desktop skips the Linux wallpaper sync on macOS" test -e "$h/.local/bin/wallpapers"
     assert_not "desktop skips the Linux TTY shim on macOS" test -e "$h/.local/bin/tty"
     assert_not "desktop skips systemd units on macOS" test -e "$h/.config/systemd"
+    assert_not "desktop skips the Linux font links on macOS" \
+        test -e "$h/.local/share/fonts/GoogleSansCode-MONO-VF.ttf"
 else
     assert "desktop links the wallpaper sync on Linux" links_into_repo "$h/.local/bin/wallpapers"
     assert "desktop links the TTY shim on Linux" links_into_repo "$h/.local/bin/tty"
     assert "desktop links the wallpaper timer on Linux" \
         links_into_repo "$h/.config/systemd/user/wallpapers.timer"
+    assert "desktop links Google Sans Code on Linux" \
+        links_into_repo "$h/.local/share/fonts/GoogleSansCode-MONO-VF.ttf"
+    assert "desktop links Google Sans Code Italic on Linux" \
+        links_into_repo "$h/.local/share/fonts/GoogleSansCode-Italic-MONO-VF.ttf"
+    assert "desktop appends the zsh hand-off to ~/.bash_profile" \
+        grep -q 'exec "$HOME/.local/bin/zsh" -l' "$h/.bash_profile"
+    assert "the hand-off leaves bash -ilc alone" \
+        grep -q 'BASH_EXECUTION_STRING' "$h/.bash_profile"
     assert_not "desktop skips AeroSpace on Linux" test -e "$h/.aerospace.toml"
+    assert_not "desktop skips the macOS font copies on Linux" \
+        test -e "$h/Library/Fonts/GoogleSansCode-MONO-VF.ttf"
 fi
 
 # --- work environment (smoreswork beside home-manager) -----------------------
