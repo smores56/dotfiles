@@ -248,13 +248,17 @@ else
 fi
 
 # --- retired toolchains and services
+#
+# sdlc/ is vendored upstream source: its notify skill and fixtures still name
+# the cluster bus and nix-config, which the dotfiles config no longer uses.
 
 if grep -rInE 'chezmoi|ntfy' "$root" \
-        --exclude-dir=.git --exclude-dir=.worktrees --exclude=check.sh >/dev/null 2>&1; then
+        --exclude-dir=.git --exclude-dir=.worktrees --exclude-dir=sdlc \
+        --exclude=check.sh >/dev/null 2>&1; then
     no "no chezmoi or ntfy reference remains"
     grep -rInE 'chezmoi|ntfy' "$root" \
-        --exclude-dir=.git --exclude-dir=.worktrees --exclude=check.sh \
-        | sed 's/^/     /' >&2
+        --exclude-dir=.git --exclude-dir=.worktrees --exclude-dir=sdlc \
+        --exclude=check.sh | sed 's/^/     /' >&2
 else
     ok "no chezmoi or ntfy reference remains"
 fi
@@ -264,12 +268,14 @@ fi
 # the handoff script, and their tests) talk to the home-manager generation
 # that still runs there. Those are the only allowed nix references.
 if grep -rInE '\bnix\b|nixos|nixpkgs|nix-shell' "$root" \
-        --exclude-dir=.git --exclude-dir=.worktrees --exclude=check.sh \
+        --exclude-dir=.git --exclude-dir=.worktrees --exclude-dir=sdlc \
+        --exclude=check.sh \
         --exclude=manual-steps.md --exclude-dir=work --exclude=mise.work.toml \
         --exclude=handoff.sh --exclude=handoff-test.sh --exclude=bootstrap-test.sh >/dev/null 2>&1; then
     no "no nix reference remains outside docs/manual-steps.md"
     grep -rInE '\bnix\b|nixos|nixpkgs|nix-shell' "$root" \
-        --exclude-dir=.git --exclude-dir=.worktrees --exclude=check.sh \
+        --exclude-dir=.git --exclude-dir=.worktrees --exclude-dir=sdlc \
+        --exclude=check.sh \
         --exclude=manual-steps.md --exclude-dir=work --exclude=mise.work.toml \
         --exclude=handoff.sh --exclude=handoff-test.sh --exclude=bootstrap-test.sh | sed 's/^/     /' >&2
 else
@@ -337,12 +343,12 @@ fi
 # --- the tools the instructions require are actually installed
 
 task=$root/scripts/bootstrap-task.sh
-if grep -qE '^SDLC_REV=[0-9a-f]{40}$' "$task" \
-        && grep -q '^SDLC_UPSTREAM=git+ssh://git@github.com/smores56/sdlc$' "$task" \
-        && grep -q 'uv tool install --quiet --force "\$pin"' "$task"; then
-    ok "the bootstrap task installs the sdlc CLI at a pinned commit"
+if [ -x "$root/sdlc/sdlc_issues.py" ] \
+        && grep -q '"~/.local/bin/sdlc" = { source = "sdlc/sdlc_issues.py" }' "$root/mise.identity.toml" \
+        && ! grep -q 'sdlc.git' "$task"; then
+    ok "the sdlc CLI is deployed from this checkout"
 else
-    no "the bootstrap task must install sdlc with 'uv tool install' at a pinned commit"
+    no "the sdlc CLI must be deployed from sdlc/sdlc_issues.py, not a private clone"
 fi
 
 installer=$root/scripts/install-mise.sh
@@ -354,11 +360,11 @@ else
     no "install-mise must track the default branch (no ref) and infer the set"
 fi
 
-if grep -q 'uv tool install' "$root/docs/manual-steps.md" \
-        && grep -q 'SDLC_REV' "$root/docs/manual-steps.md"; then
-    ok "docs/manual-steps.md names the sdlc install and its pin"
+if grep -q 'sdlc list' "$root/docs/manual-steps.md" \
+        && grep -q 'sdlc/sdlc_issues.py' "$root/docs/manual-steps.md"; then
+    ok "docs/manual-steps.md names the local sdlc CLI"
 else
-    no "docs/manual-steps.md must name the sdlc install and its pin"
+    no "docs/manual-steps.md must name the local sdlc CLI"
 fi
 
 for file in "$root/docs/manual-steps.md" "$root/README.md"; do
@@ -545,6 +551,18 @@ if command -v git >/dev/null 2>&1 && command -v bash >/dev/null 2>&1; then
     fi
 else
     skip "behavioral tests (git or bash not installed)"
+fi
+
+if command -v python3 >/dev/null 2>&1; then
+    if PYTHONPATH="$root/sdlc" python3 -m unittest discover -s "$root/sdlc/tests" \
+            >"$tmp/sdlc.log" 2>&1; then
+        ok "sdlc unit tests"
+    else
+        no "sdlc unit tests"
+        sed 's/^/     /' "$tmp/sdlc.log" >&2
+    fi
+else
+    skip "sdlc unit tests (python3 not installed)"
 fi
 
 # --- optional shellcheck

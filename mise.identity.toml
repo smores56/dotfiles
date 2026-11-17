@@ -33,6 +33,9 @@ prompt = "Public key that signs work commits (empty: the personal key)"
 default = ""
 
 [dotfiles]
+# The personal sdlc CLI is a stdlib script in this checkout, so no private
+# repository is cloned. The work laptop does not apply this environment.
+"~/.local/bin/sdlc" = { source = "sdlc/sdlc_issues.py" }
 "~/.gitconfig" = { source = "identity/.gitconfig" }
 "~/.ssh/config" = { source = "identity/.ssh/config" }
 "~/.config/git/machine.inc" = { source = "identity/.config/git/machine.inc.tera", mode = "template" }

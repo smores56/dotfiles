@@ -110,8 +110,8 @@ on this desktop), and runs `mise bootstrap` from the latest `main` with
 inference. The first run prompts for the git identity vars,
 which are saved in `$MISE_STATE_DIR/vars.toml` (mode 0700), installs every tool
 from the lockfiles, clones the pinned zim modules, applies the dotfiles, and
-runs the bootstrap task, which links the Linux zsh binary and installs the
-pinned `sdlc` CLI. It uses the network and no sudo.
+runs the bootstrap task, which links the Linux zsh binary. The `sdlc` CLI is
+a stdlib script linked from the checkout. It uses the network and no sudo.
 
 The login shell stays bash on Linux; an interactive TTY login hands over to
 `~/.local/bin/zsh` through the managed block in `~/.bash_profile`.
@@ -153,12 +153,11 @@ the release's published `sha256sums.txt`. A mismatch aborts and installs
 nothing. An update is a pin bump in `maki/pin.env` followed by a re-run; never
 copy a release into `~/.local/bin` by hand.
 
-`sdlc` is installed by `scripts/bootstrap-task.sh` with `uv tool install` from
-the private upstream at the commit pinned there as `SDLC_REV`. That install
-uses the SSH credential restored in step 3. Bump the constant, re-run the
-bootstrap, and commit the new pin. `sdlc list` must reach the `smores56/sdlc`
-registry; it calls `gh`, which uses the PAT from `sops.yaml` or a one-time
-`gh auth login`.
+`sdlc` is `sdlc/sdlc_issues.py` in this checkout, linked to `~/.local/bin/sdlc`
+by the identity environment. There is no private clone or install step: update
+the source in the repository and re-apply the dotfiles. `sdlc list` must reach
+the `smores56/sdlc` registry; it calls `gh`, which uses the PAT from
+`sops.yaml` or a one-time `gh auth login`.
 
 ## 6. Agent keys and personal token
 
@@ -272,7 +271,7 @@ tests/check.sh                     # source tree checks
 mise ls                            # pinned tools are installed
 flatpak list --user                # GUI applications are present
 maki --version                     # pinned Maki release
-sdlc list                          # pinned sdlc CLI reaches the registry
+sdlc list                          # local sdlc CLI reaches the registry
 git config --show-origin user.email # resolves through machine.inc
 worktrees list                     # runs inside a checkout
 ```

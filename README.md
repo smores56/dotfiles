@@ -18,6 +18,7 @@ manager.
 | `global/` | global tool config and lockfiles, linked to `~/.config/mise` |
 | `home/` | dotfiles shared by every machine |
 | `identity/`, `desktop/`, `work/` | sources each environment adds |
+| `sdlc/` | the stdlib sdlc CLI, its tests, and the phase-skill source |
 | `scripts/` | installer, bootstrap task, identity checks, handoff |
 | `tests/` | source checks and throwaway-HOME behavioural tests |
 | `maki/` | Maki configuration, skills, and session helpers |
@@ -158,12 +159,14 @@ and logs `gh` in with the PAT if one is present. smoreswork has no age identity,
 so it leaves both alone; the ciphertext in the public repository is harmless
 there.
 
-Bootstrap itself needs no GitHub auth: the repository, the zim modules, and
-the tool downloads are public. `sdlc` installs from a private repository over
-SSH, not `gh`; smoreswork skips that and never runs `gh auth` because its `gh`
-wrapper reads the token from 1Password. On personal machines, `gh` and the
-`sdlc` CLI use gh's own auth: add `GITHUB_PERSONAL_PAT` to `sops.yaml` and the
-bootstrap task logs in non-interactively, or run `gh auth login` once.
+Bootstrap itself needs no GitHub auth: the repository, the zim modules, the
+tool downloads, and the `sdlc` CLI source are all in the checkout. `sdlc` is a
+stdlib script linked to `~/.local/bin/sdlc` by the identity environment, so no
+private repository is cloned. smoreswork does not apply that environment and
+never runs `gh auth` because its `gh` wrapper reads the token from 1Password.
+On personal machines, `gh` and the `sdlc` CLI use gh's own auth: add
+`GITHUB_PERSONAL_PAT` to `sops.yaml` and the bootstrap task logs in
+non-interactively, or run `gh auth login` once.
 
 Only personal, cross-machine secrets belong in `sops.yaml`, encrypted to the
 admin identity by `.sops.yaml`. Work credentials stay in 1Password. Homelab

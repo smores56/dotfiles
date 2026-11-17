@@ -23,29 +23,6 @@ link_conda_zsh() {
     log "linked ~/.local/bin/zsh -> $prefix/bin/zsh"
 }
 
-# The sdlc CLI from the private upstream, pinned by commit so a moved tag cannot
-# change what is installed. Skipped when another manager already provides it
-# (home-manager on smoreswork), so the two never shadow each other.
-SDLC_UPSTREAM=git+ssh://git@github.com/smores56/sdlc
-SDLC_REV=6f6dde8caf7c7049fc5bb1009261410fa8f0eb44
-install_sdlc() {
-    if [ -n "${DOTFILES_SKIP_SDLC-}" ]; then
-        log "sdlc is not installed on this machine (DOTFILES_SKIP_SDLC)"
-        return 0
-    fi
-    existing=$(command -v sdlc 2>/dev/null || true)
-    case $existing in
-        ''|"$HOME/.local/bin/sdlc") ;;
-        *) log "sdlc comes from $existing; not installing"; return 0 ;;
-    esac
-    pin="$SDLC_UPSTREAM@$SDLC_REV"
-    if uv tool install --quiet --force "$pin"; then
-        log "sdlc at $SDLC_REV"
-    else
-        log "could not install sdlc (the upstream is private: needs a GitHub SSH credential)"
-    fi
-}
-
 # ssh refuses a group- or world-writable ~/.ssh; mise creates parents 0755.
 tighten_ssh_dir() {
     [ -d "$HOME/.ssh" ] && chmod 700 "$HOME/.ssh"
@@ -57,4 +34,3 @@ sh "$(dirname "$0")/zim-build.sh" || die "zim build failed; the shell has no plu
 tighten_ssh_dir
 sh "$(dirname "$0")/secrets.sh" \
     || log "secrets not refreshed; maki and gh keep their existing credentials"
-install_sdlc

@@ -24,10 +24,6 @@ mise=$HOME/.local/bin/mise
 PATH=$HOME/.local/bin:$PATH
 export PATH
 
-# This CLI lives in a private repository, so a runner with no credential cannot
-# install it; the bootstrap task logs the failure and carries on without it.
-DOTFILES_SKIP_SDLC=1
-export DOTFILES_SKIP_SDLC
 MISE_YES=1
 MISE_TRUSTED_CONFIG_PATHS=$root
 export MISE_YES MISE_TRUSTED_CONFIG_PATHS
@@ -80,6 +76,7 @@ link "$HOME/.config/zsh/.zshrc"
 link "$HOME/.config/helix/config.toml"
 link "$HOME/.config/wezterm/wezterm.lua"
 link "$HOME/.claude/CLAUDE.md"
+link "$HOME/.local/bin/sdlc"
 link "$HOME/.agents/skills/sdlc/SKILL.md"
 present "$HOME/.config/git/machine.inc"
 [ "$(git config --global --includes --get user.email)" = "$email" ] \
