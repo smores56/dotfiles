@@ -25,7 +25,9 @@
     wp    'worktrees prune'
     wl    'worktrees list'
   )
-  local name
+  # zsh-abbr forks `rm` per add to release a queue lock that session adds
+  # never take; its file-loading flag skips that (~3ms per abbreviation).
+  local name ABBR_LOADING_USER_ABBREVIATIONS=1
   for name in ${(k)abbrs}; do
     abbr add --session --quiet --force -- "$name=${abbrs[$name]}" >/dev/null 2>&1
   done

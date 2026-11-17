@@ -107,6 +107,14 @@ expect "history keeps 50000 entries" 50000 "$(zi 'print -r -- $SAVEHIST')"
 expect "zim state stays out of ZDOTDIR" no \
     "$(zi 'ls -A $ZDOTDIR | grep -qE "zcompdump|^\\.zim$|init\\.zsh|\\.zwc$" && print yes || print no')"
 expect "interactive startup writes nothing to stderr" "" "$(cat "$tmp/zi.err")"
+expect "abbreviation dot keeps its && and ~ literal" \
+    'git -C ~/.dotfiles pull --ff-only --no-rebase --autostash && mise -C ~/.dotfiles dot apply --yes' \
+    "$(zi 'abbr expand dot')"
+# A renamed conf.d file leaves its old link behind until `mise dot apply --prune`.
+ln -s "$tmp/renamed-away.zsh" "$h/.config/zsh/conf.d/50-renamed-away.zsh"
+zi : >/dev/null
+expect "a dangling conf.d link is skipped silently" "" "$(cat "$tmp/zi.err")"
+rm "$h/.config/zsh/conf.d/50-renamed-away.zsh"
 
 expect "maki receives the provider keys" "child:nw-test:tf-test" "$(zi 'maki' 2>&1)"
 expect "maki parses the file without complaints" "" "$(zi 'maki >/dev/null' 2>&1)"
