@@ -13,6 +13,7 @@ input {
 
     touchpad {
         tap
+        // natural-scroll stays at niri's default (off), as the old setup had it.
         scroll-factor 0.5
     }
 
@@ -91,28 +92,28 @@ window-rule {
 
 binds {
     // Shell chords: Noctalia panels and session actions.
-    Mod+Space { spawn "noctalia" "msg" "panel-toggle" "launcher"; }
-    Mod+Comma { spawn "noctalia" "msg" "settings-toggle"; }
-    Mod+Alt+C { spawn "noctalia" "msg" "panel-toggle" "control-center"; }
-    Mod+Shift+V { spawn "noctalia" "msg" "panel-toggle" "clipboard"; }
-    Mod+Escape { spawn "noctalia" "msg" "panel-toggle" "session"; }
-    Mod+L { spawn "noctalia" "msg" "session" "lock"; }
-    Mod+Alt+S { spawn-sh "pkill orca || exec orca"; }
+    Mod+Space hotkey-overlay-title="Launcher: Noctalia" { spawn "noctalia" "msg" "panel-toggle" "launcher"; }
+    Mod+Comma hotkey-overlay-title="Settings: Noctalia" { spawn "noctalia" "msg" "settings-toggle"; }
+    Mod+Alt+C hotkey-overlay-title="Control Center: Noctalia" { spawn "noctalia" "msg" "panel-toggle" "control-center"; }
+    Mod+Shift+V hotkey-overlay-title="Clipboard History: Noctalia" { spawn "noctalia" "msg" "panel-toggle" "clipboard"; }
+    Mod+Escape hotkey-overlay-title="Session Menu: Noctalia" { spawn "noctalia" "msg" "panel-toggle" "session"; }
+    Mod+L hotkey-overlay-title="Lock the Screen: Noctalia" { spawn "noctalia" "msg" "session" "lock"; }
+    Mod+Alt+S hotkey-overlay-title=null { spawn-sh "pkill orca || exec orca"; }
 
     // Applications.
-    Mod+T { spawn "kitty"; }
-    Mod+B { spawn "brave-origin"; }
-    Mod+D { spawn "dolphin"; }
+    Mod+T hotkey-overlay-title="Open a Terminal: kitty" { spawn "kitty"; }
+    Mod+B hotkey-overlay-title="Open the Browser: Brave Origin" { spawn "brave-origin"; }
+    Mod+D hotkey-overlay-title="Open the Files: Dolphin" { spawn "dolphin"; }
 
     // niri itself.
     Mod+Shift+Slash { show-hotkey-overlay; }
-    Mod+O { toggle-overview; }
+    Mod+O repeat=false { toggle-overview; }
     Mod+Shift+E { quit; }
     Ctrl+Alt+Delete { quit; }
     Mod+Shift+P { power-off-monitors; }
     Mod+Shift+Space { switch-layout "prev"; }
     Mod+Shift+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
-    Mod+Q { close-window; }
+    Mod+Q repeat=false { close-window; }
 
     // Focus and movement, crossing monitor edges at the outer frame.
     Mod+Left { focus-column-or-monitor-left; }
@@ -129,6 +130,8 @@ binds {
     Mod+Page_Down { focus-workspace-down; }
     Mod+Ctrl+Page_Up { move-column-to-workspace-up; }
     Mod+Ctrl+Page_Down { move-column-to-workspace-down; }
+    Mod+Shift+Page_Up { move-workspace-up; }
+    Mod+Shift+Page_Down { move-workspace-down; }
 
     // Columns and windows.
     Mod+Home { focus-column-first; }
@@ -137,6 +140,7 @@ binds {
     Mod+Ctrl+End { move-column-to-last; }
     Mod+BracketLeft { consume-or-expel-window-left; }
     Mod+BracketRight { consume-or-expel-window-right; }
+    Mod+Alt+Comma { consume-window-into-column; }
     Mod+Period { expel-window-from-column; }
     Mod+R { switch-preset-column-width; }
     Mod+Shift+R { switch-preset-column-width-back; }
@@ -153,6 +157,7 @@ binds {
     Mod+Shift+Minus { set-window-height "-10%"; }
     Mod+Shift+Equal { set-window-height "+10%"; }
     Mod+V { toggle-window-floating; }
+    Mod+Alt+V { switch-focus-between-floating-and-tiling; }
     Mod+W { set-column-display "tabbed"; }
     Mod+E { set-column-display "normal"; }
 
@@ -163,9 +168,9 @@ binds {
 
     // Wheel.
     Mod+WheelScrollDown cooldown-ms=150 { focus-workspace-down; }
-    Mod+WheelScrollUp { focus-workspace-up; }
-    Mod+Ctrl+WheelScrollDown { move-column-to-workspace-down; }
-    Mod+Ctrl+WheelScrollUp { move-column-to-workspace-up; }
+    Mod+WheelScrollUp cooldown-ms=150 { focus-workspace-up; }
+    Mod+Ctrl+WheelScrollDown cooldown-ms=150 { move-column-to-workspace-down; }
+    Mod+Ctrl+WheelScrollUp cooldown-ms=150 { move-column-to-workspace-up; }
     Mod+WheelScrollRight { focus-column-right; }
     Mod+WheelScrollLeft { focus-column-left; }
     Mod+Ctrl+WheelScrollRight { move-column-right; }

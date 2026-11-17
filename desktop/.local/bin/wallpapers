@@ -117,7 +117,8 @@ classify_cache() {
             *.JPG | *.JPEG | *.PNG | *.WEBP | *.JXL) ;;
             *) continue ;;
         esac
-        dims=$(identify -ping -format '%w %h' "$file" 2>/dev/null) || continue
+        # [0] pins the first frame: animated webp emits one dimension pair per frame.
+        dims=$(identify -ping -format '%w %h' "$file[0]" 2>/dev/null) || continue
         width=${dims% *}
         height=${dims#* }
         if bucket=$(bucket_of "${width:-}" "${height:-}"); then
@@ -201,17 +202,25 @@ apply() {
     work=$(mktemp -d)
     trap 'rm -rf "$work"' EXIT
     classify_cache "$dest" "$work" || return 1
+    # Outside a session (greetd, SSH) there is nothing to set: skip without
+    # failing, so the oneshot never parks in a restart loop before login.
     if ! outputs=$(niri msg --json outputs); then
-        log "niri msg failed (is the session up?)"
-        return 1
+        log "niri msg failed (no session?); skipping"
+        return 0
     fi
-    printf '%s' "$outputs" | jq -r '
+    # logical is post-transform, so a rotated display is bucketed by the shape a
+    # wallpaper actually fills; fall back to the mode for older niri IPC.
+    if ! printf '%s' "$outputs" | jq -r '
         to_entries[] | select(.value.current_mode != null) |
-        "\(.key)\t\(.value.modes[.value.current_mode].width)\t\(.value.modes[.value.current_mode].height)"
-    ' >"$work/displays"
+        (.value.logical // .value.modes[.value.current_mode]) as $m |
+        "\(.key)\t\($m.width)\t\($m.height)"
+    ' >"$work/displays"; then
+        log "could not parse niri outputs; skipping"
+        return 0
+    fi
     if [ ! -s "$work/displays" ]; then
-        log "no active outputs"
-        return 1
+        log "no active outputs; skipping"
+        return 0
     fi
     applied_count=0
     while IFS="$(printf '\t')" read -r connector width height; do
@@ -245,8 +254,9 @@ apply() {
         applied_count=$((applied_count + 1))
     done <"$work/displays"
     if [ "$applied_count" -eq 0 ]; then
+        # Retrying immediately cannot help: the next timer tick picks again.
         log "no display could be set"
-        return 1
+        return 0
     fi
 }
 
@@ -257,7 +267,11 @@ case ${1:-sync} in
         # the failure still reaches the unit status.
         status=0
         sync_cache || status=$?
-        apply || status=$?
+        apply_status=0
+        apply || apply_status=$?
+        if [ "$status" -eq 0 ]; then
+            status=$apply_status
+        fi
         exit "$status"
         ;;
     apply)

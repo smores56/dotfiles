@@ -1,3 +1,11 @@
-# Dolphin is the graphical file manager; yazi stays the terminal one.
+# Dolphin is the graphical file manager, kitty the terminal, Brave Origin the
+# browser. Deployed as a copy, not a symlink: xdg-mime and Dolphin rewrite this
+# file in place, and a symlink would dirty the checkout.
 [Default Applications]
 inode/directory=org.kde.dolphin.desktop
+text/html=brave-origin.desktop
+x-scheme-handler/http=brave-origin.desktop
+x-scheme-handler/https=brave-origin.desktop
+x-scheme-handler/about=brave-origin.desktop
+application/x-terminal-emulator=kitty.desktop
+x-scheme-handler/terminal=kitty.desktop

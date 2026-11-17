@@ -276,3 +276,49 @@ sdlc list                          # local sdlc CLI reaches the registry
 git config --show-origin user.email # resolves through machine.inc
 worktrees list                     # runs inside a checkout
 ```
+
+## 10. Desktop specifics
+
+The terminal, browser and file manager are system packages from the image:
+`kitty`, `brave-origin` and `dolphin`. The image also supplies `ImageMagick`
+and `jq` for wallpaper rotation. Confirm they start:
+
+```sh
+kitty --version
+brave-origin --version             # Brave Origin is the only non-Fedora package
+dolphin --version
+```
+
+Brave Origin has had upstream Fedora RPM launch bugs; if `Mod+B` does nothing,
+run it from a terminal and check its stderr before relying on the bind.
+
+The Brave and Dolphin Flatpaks this repository used to declare are gone from
+`mise.desktop.toml`, and mise does not prune. Remove the stale copies once:
+
+```sh
+flatpak uninstall --user com.brave.Browser org.kde.dolphin
+```
+
+`~/.config/mimeapps.list` is copied, not linked, because `xdg-mime` rewrites it
+in place. Remove the old copy once before applying, so mise does not refuse to
+replace it:
+
+```sh
+rm -f ~/.config/mimeapps.list
+```
+
+Noctalia's GUI-managed state outranks `desktop/.config/noctalia/config.toml`,
+so select the palette once even though the config file declares it:
+
+```sh
+noctalia msg color-scheme-set community "Rose Pine Moon"
+```
+
+Wallpaper rotation sets one image per display through Noctalia:
+
+```sh
+systemctl --user start wallpapers  # sync the cache and set every output
+journalctl --user -u wallpapers -n 20
+```
+
+A run with no session (greetd, SSH) logs a skip instead of failing the unit.

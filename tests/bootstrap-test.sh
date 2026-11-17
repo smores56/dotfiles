@@ -253,7 +253,7 @@ if [ "$os" = Darwin ]; then
 else
     assert "desktop links the wallpaper sync on Linux" links_into_repo "$h/.local/bin/wallpapers"
     assert "desktop links the kitty config on Linux" links_into_repo "$h/.config/kitty/kitty.conf"
-    assert "desktop links the mimeapps list on Linux" links_into_repo "$h/.config/mimeapps.list"
+    assert "desktop copies the mimeapps list on Linux" test -f "$h/.config/mimeapps.list"
     assert "desktop links the wallpaper timer on Linux" \
         links_into_repo "$h/.config/systemd/user/wallpapers.timer"
     assert "desktop links Google Sans Code on Linux" \

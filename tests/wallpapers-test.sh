@@ -37,17 +37,18 @@ cat >"$tmp/bin/identify" <<'EOF'
 #!/bin/sh
 for last; do :; done
 case ${last##*/} in
-    a.jpg) printf '1920 1080' ;;
-    b.png) printf '3440 1440' ;;
-    wide.jpg) printf '3840 1600' ;;
+    a.jpg|'a.jpg[0]') printf '1920 1080' ;;
+    b.png|'b.png[0]') printf '3440 1440' ;;
+    wide.jpg|'wide.jpg[0]') printf '3840 1600' ;;
     *) exit 1 ;;
 esac
 EOF
 
 cat >"$tmp/bin/niri" <<'EOF'
 #!/bin/sh
+[ "${FAKE_NIRI_FAIL:-}" = 1 ] && exit 1
 [ "$*" = "msg --json outputs" ] || exit 1
-printf '%s' '{"eDP-1":{"current_mode":0,"modes":[{"width":1920,"height":1080}]},"DP-1":{"current_mode":0,"modes":[{"width":3440,"height":1440}]}}'
+printf '%s' '{"eDP-1":{"current_mode":0,"logical":{"width":1920,"height":1080},"modes":[{"width":1920,"height":1080}]},"DP-1":{"current_mode":0,"logical":{"width":3440,"height":1440},"modes":[{"width":3440,"height":1440}]}}'
 EOF
 
 cat >"$tmp/bin/noctalia" <<'EOF'
@@ -67,6 +68,7 @@ chmod +x "$tmp/bin/rclone" "$tmp/bin/identify" "$tmp/bin/niri" "$tmp/bin/noctali
 run() {
     env -i HOME="$home" PATH="$tmp/bin:/usr/bin:/bin" XDG_CACHE_HOME="$home/.cache" \
         RCLONE_LOG="$tmp/log" FAKE_LSF_FAIL="${FAKE_LSF_FAIL:-}" \
+        FAKE_NIRI_FAIL="${FAKE_NIRI_FAIL:-}" \
         NOCTALIA_STATE="$tmp/state" \
         WALLPAPERS_RCLONE="$tmp/bin/rclone" \
         WALLPAPERS_KEY="$home/.ssh/key" \
@@ -90,7 +92,7 @@ else
     sed 's/^/     /' "$tmp/log" >&2
 fi
 
-if command -v jq >/dev/null 2>&1; then
+if PATH="$tmp/bin:/usr/bin:/bin" command -v jq >/dev/null 2>&1; then
     got_edp=$(cat "$tmp/state/set-eDP-1" 2>/dev/null)
     got_dp=$(cat "$tmp/state/set-DP-1" 2>/dev/null)
     case $got_edp in
@@ -106,6 +108,12 @@ if command -v jq >/dev/null 2>&1; then
         || no "the two displays do not share one pick"
 else
     printf 'skip apply assertions: jq is not installed\n'
+fi
+
+if FAKE_NIRI_FAIL=1 run apply >/dev/null 2>&1; then
+    ok "a run outside a session skips without failing"
+else
+    no "a run outside a session skips without failing"
 fi
 
 printf keep >"$home/.cache/wallpapers/Wallpapers/old.jpg"
