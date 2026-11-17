@@ -185,11 +185,11 @@ else
     ok "the global mise config lives only in global/"
 fi
 
-if grep -q 'releases/download/$MISE_VERSION/$asset' "$root/scripts/install-mise.sh" \
-        && ! grep -q 'tar -x' "$root/scripts/install-mise.sh"; then
-    ok "install-mise downloads the raw mise binary, with no tar step"
+if grep -q 'https://mise.run' "$root/scripts/install-mise.sh" \
+        && grep -q 'MISE_VERSION=$MISE_VERSION' "$root/scripts/install-mise.sh"; then
+    ok "install-mise uses the official installer at the pinned version"
 else
-    no "install-mise must download the raw mise binary, not an archive"
+    no "install-mise must use the official installer with MISE_VERSION pinned"
 fi
 
 for removed in install.sh packages/mise.toml packages/flatpaks.txt scripts/bootstrap.sh; do
@@ -346,11 +346,11 @@ fi
 
 installer=$root/scripts/install-mise.sh
 if grep -qE '^MISE_VERSION=v[0-9]+\.[0-9]+\.[0-9]+$' "$installer" \
-        && [ "$(grep -cE '^MISE_SHA_[A-Z0-9_]+=[0-9a-f]{64}$' "$installer")" -eq 3 ] \
+        && grep -q 'https://mise.run' "$installer" \
         && grep -q 'grep -Eqx .\[0-9a-f\]{40}' "$installer"; then
-    ok "install-mise.sh pins mise by checksum on three platforms and a commit ref"
+    ok "install-mise.sh uses the official installer at a pinned version and commit ref"
 else
-    no "install-mise.sh must pin MISE_VERSION, three MISE_SHA_* values, and require a 40-hex ref"
+    no "install-mise.sh must pin MISE_VERSION, use the official installer, and require a 40-hex ref"
 fi
 
 if grep -q 'uv tool install' "$root/docs/manual-steps.md" \
@@ -361,10 +361,10 @@ else
 fi
 
 for file in "$root/docs/manual-steps.md" "$root/README.md"; do
-    if grep -q 'rpm-ostree install tailscale rsync' "$file"; then
-        ok "the host layer installs rsync in $(rel "$file")"
+    if grep -q 'rpm-ostree install tailscale' "$file" && ! grep -q 'rsync' "$file"; then
+        ok "the host layer is Tailscale only in $(rel "$file")"
     else
-        no "the host layer must install rsync in $(rel "$file")"
+        no "the host layer must be Tailscale only, with no rsync, in $(rel "$file")"
     fi
 done
 
@@ -389,6 +389,10 @@ require() {  # require <desc> <path> <fixed-string>
 
 forbid "wallpapers claims a COSMIC wallpaper setting it does not make" \
     "$root/desktop/.local/bin/wallpapers" 'desktoppr|Darwin'
+forbid "wallpapers does not fall back to host rsync" \
+    "$root/desktop/.local/bin/wallpapers" 'rsync'
+require "rclone is a pinned desktop tool" "$root/global/config.desktop.toml" \
+    'aqua:rclone/rclone'
 forbid "the wallpapers unit does not claim to rotate what it cannot set" \
     "$root/desktop/.config/systemd/user/wallpapers.service" 'Rotate wallpapers'
 forbid "dev's header does not claim unconditional agent forwarding" \
@@ -519,6 +523,18 @@ if command -v git >/dev/null 2>&1 && command -v bash >/dev/null 2>&1; then
     else
         no "behavioral tests (tests/cli.sh)"
         sed 's/^/     /' "$tmp/cli.log" >&2
+    fi
+    if bash "$root/tests/wallpapers-test.sh" >"$tmp/wallpapers.log" 2>&1; then
+        ok "behavioral tests (tests/wallpapers-test.sh)"
+    else
+        no "behavioral tests (tests/wallpapers-test.sh)"
+        sed 's/^/     /' "$tmp/wallpapers.log" >&2
+    fi
+    if bash "$root/tests/provider-keys-test.sh" >"$tmp/provider-keys.log" 2>&1; then
+        ok "behavioral tests (tests/provider-keys-test.sh)"
+    else
+        no "behavioral tests (tests/provider-keys-test.sh)"
+        sed 's/^/     /' "$tmp/provider-keys.log" >&2
     fi
 else
     skip "behavioral tests (git or bash not installed)"

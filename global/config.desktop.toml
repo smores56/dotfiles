@@ -4,3 +4,5 @@
 "github:Slackadays/Clipboard" = "0.10.0"
 # `ct` empties the trash with gtrash on Linux; macOS uses ~/.Trash directly.
 "aqua:umlx5h/gtrash" = { version = "0.0.6", os = ["linux"] }
+# The wallpaper sync uses rclone's SFTP backend; a mise tool replaces host rsync.
+"aqua:rclone/rclone" = { version = "1.76.0", os = ["linux"] }

@@ -75,16 +75,19 @@ The bootstrap assumes only what the base system provides:
 
 | Platform | Before the first bootstrap |
 | --- | --- |
-| every machine | POSIX shell and coreutils, `curl`, `git`, and CA certificates |
+| every machine | POSIX shell and coreutils, `curl`, `git`, `tar`, `gzip`, and CA certificates |
 | Fedora Atomic / CoreOS | nothing more; the stock image ships `git`, `curl`, and, on desktops, `flatpak` |
-| macOS | Command Line Tools (they provide `git`) and Homebrew for the casks and `brew:gh` |
+| macOS | Command Line Tools (they provide `git`) and Homebrew for the casks and `brew:gh`; run `scripts/install-homebrew.sh` once, interactively |
 | smoreswork | also the 1Password app for its SSH agent and `op-ssh-sign`; the bootstrap installs the `op` CLI |
 
-`install-mise.sh` downloads the raw mise binary, so no `tar` or `gzip` is
-needed. `zim-build.sh` uses the same `curl` once for the pinned `zimfw.zsh`.
+`install-mise.sh` runs the official installer at the pinned mise version; it
+verifies the release checksum itself and needs `tar` plus `gzip` (or `zstd`),
+which the base images ship. `zim-build.sh` uses `curl` once for the pinned
+`zimfw.zsh`.
+
 `fc-cache`, `notify-send`, and `timeout` are optional: the pieces that use them
-degrade without the binary. The only root layer is Tailscale plus rsync, and
-rsync exists only for the wallpaper sync.
+degrade without the binary. The only root layer is Tailscale; rclone, a mise tool,
+handles the wallpaper sync.
 
 `podman` is the runtime `dev` uses; it ships with Fedora Atomic, and nothing in
 the bootstrap needs it.
@@ -133,12 +136,19 @@ and git reaches github.com over SSH through the 1Password agent. The `gh` CLI
 gets its API token from a 1Password shell plugin; no personal token is on the
 laptop, and the private `sdlc` registry is not reachable from it.
 
-Nothing secret is tracked. Two files live outside the repository:
+Provider keys are tracked only as SOPS ciphertext; the plaintext cache and the
+age identity stay outside the repository:
 
 | Path | Format | Used by |
 | --- | --- | --- |
-| `~/.config/secrets.env` | mode 600, `NAME=value` lines (`NEURALWATT_API_KEY`, `TINYFISH_API_KEY`) | the zsh `maki` launcher exports them into the Maki process only |
+| `secrets/maki.sops.yaml` | SOPS-encrypted dotenv with `NEURALWATT_API_KEY` and `TINYFISH_API_KEY` | `scripts/provider-keys.sh` at bootstrap |
+| `~/.config/secrets.env` | derived cache, mode 600, `NAME=value` lines | the zsh `maki` launcher exports the two keys into the Maki process only |
 | `~/.config/sops/keys.age` | age-encrypted, passphrase-wrapped identity | `~/.local/bin/sops-age-key`, invoked by sops through `SOPS_AGE_KEY_CMD` |
+
+On a personal machine the bootstrap task decrypts the ciphertext when the age
+identity exists and the ciphertext changed, and writes the mode-600 cache.
+smoreswork has no age identity, so it leaves the cache alone; the ciphertext in
+the public repository is harmless there.
 
 ## Tools and packages
 
@@ -155,9 +165,8 @@ mise lock --global --platform linux-x64,linux-arm64,macos-arm64
 
 Desktop apps are user Flatpaks from Flathub on Linux and Homebrew casks into
 `~/Applications` on macOS, both declared in `mise.desktop.toml`. Flatpaks
-cannot be pinned and install at `latest`. The only host layer is the existing
-Tailscale and rsync package (`rpm-ostree install tailscale rsync`); nothing
-needs a new layer.
+cannot be pinned and install at `latest`. The only host layer is Tailscale (`rpm-ostree install tailscale`); nothing
+else needs a new layer.
 
 Project-only tools belong to the repositories that use them, not to the host.
 

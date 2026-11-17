@@ -40,8 +40,8 @@ Nothing else secret is copied from this machine:
 - The provider API keys (`NEURALWATT_API_KEY`, `TINYFISH_API_KEY`) are fetched
   from Bitwarden in step 6. There is no `~/.config/secrets.env` on this machine
   to copy: the keys have been read out of sops.
-- `~/.config/sops/` is only needed if a sops-consuming repository stays in use
-  (the homelab ones). Back it up only for those, and only while they remain:
+- The sops age identity is required for the Maki provider keys as well as any
+  remaining sops-consuming repository, so always back it up:
 
   ```sh
   install -d /media/<usb>/sops-backup
@@ -79,6 +79,14 @@ cp -a /media/<usb>/ssh-backup/. ~/.ssh/
 chmod 600 ~/.ssh/id_ed25519
 ```
 
+Before bootstrapping, restore the sops identity so the task can decrypt the
+provider keys:
+
+```sh
+install -d -m 700 ~/.config/sops
+install -m 600 /media/<usb>/sops-backup/keys.age ~/.config/sops/keys.age
+```
+
 Then clone the repository:
 
 ```sh
@@ -106,13 +114,13 @@ pinned `sdlc` CLI. It uses the network and no sudo.
 The login shell stays bash on Linux; an interactive TTY login hands over to
 `~/.local/bin/zsh` through the managed block in `~/.bash_profile`.
 
-## 4. Tailscale and rsync (the only host layer)
+## 4. Tailscale (the only host layer)
 
-rsync lives in the same layer: no user-level installer provides it and the
-wallpaper sync needs it.
+The wallpaper sync uses rclone, a mise tool, so this layer needs only
+Tailscale.
 
 ```sh
-sudo rpm-ostree install tailscale rsync
+sudo rpm-ostree install tailscale
 sudo systemctl reboot
 ```
 
@@ -148,18 +156,31 @@ the private upstream at the commit pinned there as `SDLC_REV`. Bump that constan
 bootstrap, and commit the new pin. `sdlc list` must reach the `smores56/sdlc`
 registry, which needs the GitHub credential from step 3.
 
-## 6. Secrets
+## 6. Provider keys
 
-`~/.config/secrets.env` is never copied from anywhere: fetch the two provider
-keys from Bitwarden. The desktop Flatpak ships the `bw` CLI, and this machine
-has no separate one.
+The two Maki keys live encrypted in `secrets/maki.sops.yaml`. The bootstrap
+task decrypts them into `~/.config/secrets.env` (mode 600) when the admin age
+identity is present and the ciphertext changed; the zsh `maki` launcher reads
+only that cache. Nothing else inherits the values.
+
+Verify without printing a key:
+
+```sh
+test -s ~/.config/secrets.env && echo keys-present
+test "$(stat -c %a ~/.config/secrets.env)" = 600 && echo secrets-mode-ok
+zsh -ic 'type -q maki && echo maki-launcher-ok'
+```
+
+If the ciphertext is missing or needs rotation, fetch the two keys from
+Bitwarden and re-encrypt them to the admin identity. The desktop Flatpak ships
+the `bw` CLI; this machine has no separate one.
 
 ```sh
 bw() { flatpak run --command=bw com.bitwarden.desktop "$@"; }
 bw login
 BW_SESSION=$(bw unlock --raw) || { echo 'unlock failed' >&2; exit 1; }
 export BW_SESSION
-install -d -m 700 ~/.config
+work=$(mktemp)
 umask 077
 {
     for pair in NEURALWATT_API_KEY:<neuralwatt-item> TINYFISH_API_KEY:<tinyfish-item>; do
@@ -169,30 +190,19 @@ umask 077
         [ -n "$value" ] || { echo "empty Bitwarden item: $item" >&2; exit 1; }
         printf '%s=%s\n' "$name" "$value"
     done
-} > ~/.config/secrets.env
-chmod 600 ~/.config/secrets.env
+} > "$work"
+recipient=$(age --decrypt "$HOME/.config/sops/keys.age" | age-keygen -y)
+cd ~/repos/github.com/smores56/dotfiles
+mkdir -p secrets
+sops --encrypt --age "$recipient" --input-type dotenv --output-type yaml \
+    --output secrets/maki.sops.yaml "$work"
+rm -f "$work"
 unset BW_SESSION
 ```
 
-Both keys are read from named Bitwarden login items, and a failed or empty
-lookup aborts instead of leaving an empty value in the file.
-
 `<neuralwatt-item>` and `<tinyfish-item>` are the Bitwarden login item names.
-The file is `NAME=value` lines; the zsh `maki` launcher exports the two keys
-into the Maki process only, so nothing else run from the shell inherits them.
-Confirm the file is mode 600 and the launcher exists, without printing a value:
-
-```sh
-test "$(stat -c %a ~/.config/secrets.env)" = 600 && echo secrets-mode-ok
-zsh -ic 'type -q maki && echo maki-launcher-ok'
-```
-
-If a sops-consuming repository is still in use, restore its identity too:
-
-```sh
-install -d -m 700 ~/.config/sops
-install -m 600 /media/<usb>/sops-backup/keys.age ~/.config/sops/keys.age
-```
+A failed or empty lookup aborts instead of writing a partial secret. Commit the
+new ciphertext; the next bootstrap refreshes the cache.
 
 ## 7. Re-authorize the Mac's public key
 

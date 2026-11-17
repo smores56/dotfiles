@@ -7,44 +7,64 @@
 # The source is the #660 path on the private host; override it with
 # WALLPAPERS_SOURCE for a migration or a test.
 #
-# Needs: rsync and ssh (the host layer installs rsync).
+# The sync uses rclone's SFTP backend, so no host sync package is needed: rclone is a
+# mise tool, and the smortress key and known_hosts come from the identity env.
+# WALLPAPERS_SOURCE is host:path; WALLPAPERS_USER, WALLPAPERS_KEY, and
+# WALLPAPERS_KNOWN_HOSTS override the defaults below.
 set -eu
 
 source=${WALLPAPERS_SOURCE:-smortress:/srv/wallpapers/}
 cache=${XDG_CACHE_HOME:-$HOME/.cache}/wallpapers
 dest=$cache/Wallpapers
+user=${WALLPAPERS_USER:-core}
+key=${WALLPAPERS_KEY:-$HOME/.ssh/id_smortress-access}
+known_hosts=${WALLPAPERS_KNOWN_HOSTS:-$HOME/.config/ssh/known_hosts}
 
 log() { printf 'wallpapers: %s\n' "$*" >&2; }
 
-# Bound every remote call. Without timeout(1) the connect/IO bounds in
-# rsync/ssh still apply, so the wrapper simply runs the command then.
-with_timeout() {
-    seconds=$1
-    shift
-    if command -v timeout >/dev/null 2>&1; then
-        timeout "$seconds" "$@"
-    else
-        "$@"
+rclone_bin=${WALLPAPERS_RCLONE:-}
+if [ -z "$rclone_bin" ]; then
+    for candidate in "$(command -v rclone 2>/dev/null || true)" \
+            "$HOME/.local/bin/rclone" "$HOME/.local/share/mise/shims/rclone"; do
+        if [ -n "$candidate" ] && [ -x "$candidate" ]; then
+            rclone_bin=$candidate
+            break
+        fi
+    done
+fi
+[ -n "$rclone_bin" ] || { log 'rclone is required; run mise bootstrap'; exit 1; }
+
+remote_url() {
+    host=${source%%:*}
+    path=${source#*:}
+    if [ "$host" = "$source" ] || [ -z "$path" ]; then
+        log "WALLPAPERS_SOURCE must be host:path, not $source"
+        exit 2
     fi
+    [ -f "$known_hosts" ] \
+        || { log "no known_hosts at $known_hosts; cannot verify $host"; exit 1; }
+    opts="host=$host,user=$user,known_hosts_file=$known_hosts"
+    if [ -f "$key" ]; then
+        opts="$opts,key_file=$key"
+    fi
+    printf ':sftp,%s:%s' "$opts" "$path"
 }
 
 sync_cache() {
-    command -v rsync >/dev/null 2>&1 \
-        || { log 'rsync is required; install the host layer (see docs/manual-steps.md)'; exit 1; }
+    remote=$(remote_url)
     mkdir -p "$cache" "$dest"
-    ssh_opts='ssh -o StrictHostKeyChecking=yes -o ConnectTimeout=20 -o ForwardAgent=no'
-    # -n -v is the portable probe for the remote listing.
-    if ! raw=$(with_timeout 240 rsync -rnv -e "$ssh_opts" "$source" 2>/dev/null); then
+    # Probe before syncing, so an unreachable host never empties the cache.
+    if ! listing=$("$rclone_bin" lsf "$remote" --files-only --max-depth 1 \
+            --contimeout 20s --timeout 240s --retries 2 2>/dev/null); then
         log "cannot list $source; keeping the cached set"
         exit 1
     fi
-    listing=$(printf '%s\n' "$raw" | grep -vE '^(sending incremental file list|sent |total size|$)' || true)
     if [ -z "$listing" ]; then
         log "source listing is empty; keeping the cached set"
         exit 1
     fi
-    with_timeout 780 rsync -rt --del \
-        -e "$ssh_opts" --timeout=120 "$source" "$dest/"
+    "$rclone_bin" sync "$remote" "$dest" \
+        --contimeout 20s --timeout 780s --retries 2 --stats 0
 }
 
 pick_one() {
