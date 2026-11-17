@@ -7,8 +7,8 @@ set -uo pipefail
 root=$(cd -- "$(dirname -- "$0")/.." && pwd)
 mise_bin=${MISE_BIN:-$(command -v mise || true)}
 zsh_bin=$(command -v zsh || true)
-if [ -z "$mise_bin" ] || [ -z "$zsh_bin" ]; then
-    printf 'skip shell tests (mise or zsh not installed)\n'
+if [ -z "$mise_bin" ] || [ -z "$zsh_bin" ] || ! command -v python3 >/dev/null 2>&1; then
+    printf 'skip shell tests (mise, zsh, or python3 not installed)\n'
     exit 0
 fi
 
@@ -73,7 +73,8 @@ printf '# provider keys\r\n\r\n  # indented comment\r\nexport NEURALWATT_API_KEY
 chmod 600 "$h/.config/secrets.env"
 
 zi() {  # zi <script>: run inside an interactive zsh in the test HOME
-    env -i HOME="$h" PATH="$base_path" TERM=xterm-256color "$zsh_bin" -i -c "$1" 2>"$tmp/zi.err"
+    env -i HOME="$h" PATH="$base_path" TERM=xterm-256color \
+        python3 "$root/tests/pty-run.py" "$zsh_bin" -i -c "$1" 2>"$tmp/zi.err"
 }
 
 for fn in abbr prompt_pure_setup _zsh_autosuggest_start -ftb-complete \

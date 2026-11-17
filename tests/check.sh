@@ -51,17 +51,19 @@ done
 
 # --- python helper
 
-if command -v python3 >/dev/null 2>&1; then
-    if python3 -c 'import sys; compile(open(sys.argv[1]).read(), sys.argv[1], "exec")' \
-            "$root/maki/bin/maki-session-search" 2>"$tmp/err"; then
-        ok "syntax maki/bin/maki-session-search (python3)"
+for py in "$root/maki/bin/maki-session-search" "$root/tests/pty-run.py"; do
+    if command -v python3 >/dev/null 2>&1; then
+        if python3 -c 'import sys; compile(open(sys.argv[1]).read(), sys.argv[1], "exec")' \
+                "$py" 2>"$tmp/err"; then
+            ok "syntax $(rel "$py") (python3)"
+        else
+            no "syntax $(rel "$py") (python3)"
+            sed 's/^/     /' "$tmp/err" >&2
+        fi
     else
-        no "syntax maki/bin/maki-session-search (python3)"
-        sed 's/^/     /' "$tmp/err" >&2
+        skip "syntax $(rel "$py") (python3 not installed)"
     fi
-else
-    skip "syntax maki/bin/maki-session-search (python3 not installed)"
-fi
+done
 
 # --- zsh
 
