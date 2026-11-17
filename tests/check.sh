@@ -332,11 +332,11 @@ else
     ok "every zim module is an external path cloned by [bootstrap.repos]"
 fi
 
-if grep -q 'install_kitty_terminfo' "$root/scripts/bootstrap-task.sh" \
-        && grep -q '\.terminfo/78' "$root/scripts/bootstrap-task.sh"; then
-    ok "bootstrap installs kitty's terminfo in the layout the conda zsh reads"
+if grep -qF '"~/.terminfo" = { source = "home/.terminfo", mode = "symlink-each" }' "$root/mise.toml" \
+        && [ -f "$root/home/.terminfo/78/xterm-kitty" ]; then
+    ok "the kitty terminfo entry is deployed from the repository"
 else
-    no "bootstrap must install kitty's terminfo in the hashed layout under ~/.terminfo"
+    no "the hashed xterm-kitty entry must live in home/.terminfo and be deployed"
 fi
 
 if grep -E '^"~/.local/share/zsh-plugins/' "$root/mise.toml" | grep -qvE 'ref = "[0-9a-f]{40}"( |,)'; then

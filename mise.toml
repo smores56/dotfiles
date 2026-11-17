@@ -40,6 +40,12 @@ min_version = "2026.11.9"
 "~/.config/television" = { source = "home/.config/television", mode = "symlink-each" }
 "~/.config/yazi" = { source = "home/.config/yazi", mode = "symlink-each" }
 "~/.config/zellij" = { source = "home/.config/zellij", mode = "symlink-each" }
+# kitty's Fedora package ships xterm-kitty only in the letter layout, and the
+# conda zsh's ncurses resolves only the hashed layout in a TERMINFO directory
+# (zellij exports one), so an entry here is the only thing that gives zsh its
+# capabilities: without it zle has no setaf, smso, or smkx. Servers have no
+# kitty package at all, so the compiled entry has to come from this repository.
+"~/.terminfo" = { source = "home/.terminfo", mode = "symlink-each" }
 "~/.local/bin" = { source = "home/.local/bin", mode = "symlink-each" }
 # The stdlib sdlc CLI; $SDLC_REPO selects the personal or work registry.
 "~/.local/bin/sdlc" = { source = "sdlc/sdlc_issues.py" }
