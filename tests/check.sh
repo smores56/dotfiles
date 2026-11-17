@@ -131,6 +131,12 @@ else
     no "the Linux terminal must be kitty from the image"
 fi
 
+if [ -f "$kitty_conf" ] && grep -qxF 'shell ${HOME}/.local/bin/zsh' "$kitty_conf"; then
+    ok "kitty starts the mise zsh, not bash"
+else
+    no "kitty must start the mise zsh directly: it skips ~/.bash_profile"
+fi
+
 if grep -qE 'flatpak-user:(com\.brave\.Browser|org\.kde\.dolphin)' "$root/mise.desktop.toml"; then
     no "Brave Origin and Dolphin must come from the image, not Flathub"
 else
