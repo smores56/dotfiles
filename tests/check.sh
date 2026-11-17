@@ -185,6 +185,13 @@ else
     ok "the global mise config lives only in global/"
 fi
 
+if grep -q 'releases/download/$MISE_VERSION/$asset' "$root/scripts/install-mise.sh" \
+        && ! grep -q 'tar -x' "$root/scripts/install-mise.sh"; then
+    ok "install-mise downloads the raw mise binary, with no tar step"
+else
+    no "install-mise must download the raw mise binary, not an archive"
+fi
+
 for removed in install.sh packages/mise.toml packages/flatpaks.txt scripts/bootstrap.sh; do
     if [ -e "$root/$removed" ]; then
         no "the retired installer piece $removed is gone"

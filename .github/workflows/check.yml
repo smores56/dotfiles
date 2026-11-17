@@ -100,7 +100,7 @@ jobs:
             -v "$PWD:/src:ro" \
             -v "$(command -v mise):/usr/local/bin/mise:ro" \
             -w /src fedora:43 \
-            sh -euxc 'dnf install -y git tar gzip >/dev/null
+            sh -euxc 'dnf install -y git >/dev/null
                       sh tests/apply-lane.sh desktop,identity /usr/local/bin/mise'
 
   # This lane also covers the work environment, the macOS font copies, and the

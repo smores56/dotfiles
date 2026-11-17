@@ -69,6 +69,26 @@ mise -C ~/repos/github.com/smores56/dotfiles bootstrap --only user
 A dotfile-only apply is `mise -C <checkout> dot apply`; preview it with
 `mise -C <checkout> dot diff` or `mise -C <checkout> dot apply --dry-run`.
 
+## Host prerequisites
+
+The bootstrap assumes only what the base system provides:
+
+| Platform | Before the first bootstrap |
+| --- | --- |
+| every machine | POSIX shell and coreutils, `curl`, `git`, and CA certificates |
+| Fedora Atomic / CoreOS | nothing more; the stock image ships `git`, `curl`, and, on desktops, `flatpak` |
+| macOS | Command Line Tools (they provide `git`) and Homebrew for the casks and `brew:gh` |
+| smoreswork | also the 1Password app for its SSH agent and `op-ssh-sign`; the bootstrap installs the `op` CLI |
+
+`install-mise.sh` downloads the raw mise binary, so no `tar` or `gzip` is
+needed. `zim-build.sh` uses the same `curl` once for the pinned `zimfw.zsh`.
+`fc-cache`, `notify-send`, and `timeout` are optional: the pieces that use them
+degrade without the binary. The only root layer is Tailscale plus rsync, and
+rsync exists only for the wallpaper sync.
+
+`podman` is the runtime `dev` uses; it ships with Fedora Atomic, and nothing in
+the bootstrap needs it.
+
 ## Dotfiles and recovery
 
 Every target is an absolute path or starts with `~/`, and each application

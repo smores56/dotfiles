@@ -1,7 +1,8 @@
 #!/bin/sh
-# install-mise.sh: set up a machine that has no mise yet. Installs the pinned
-# mise release into ~/.local/bin after checking its published sha256, then
-# hands over to `mise bootstrap` from this repository at a pinned commit.
+# install-mise.sh: set up a machine that has no mise yet. Downloads the pinned
+# mise binary into ~/.local/bin after checking its sha256, then hands over to
+# `mise bootstrap` from this repository at a pinned commit. It needs only
+# curl, git, and the base system shell and utilities; there is no tar step.
 #
 # usage: install-mise.sh <40-hex commit> <env set> [extra bootstrap args...]
 #   env sets: identity (smortress), desktop,identity (smorespro), desktop,work (smoreswork)
@@ -44,13 +45,12 @@ else
     work=$(mktemp -d) || die "cannot create a temporary directory"
     trap 'rm -rf "$work"' EXIT
     trap 'exit 1' HUP INT TERM
-    asset=mise-$MISE_VERSION-$platform.tar.gz
-    curl -fsSL --proto '=https' --tlsv1.2 -o "$work/$asset" \
+    asset=mise-$MISE_VERSION-$platform
+    curl -fsSL --proto '=https' --tlsv1.2 -o "$work/mise" \
         "https://github.com/jdx/mise/releases/download/$MISE_VERSION/$asset" || die "could not download $asset"
-    [ "$(sha256 "$work/$asset")" = "$sha" ] || die "$asset does not match the pinned sha256 $sha"
-    tar -xzf "$work/$asset" -C "$work"
+    [ "$(sha256 "$work/mise")" = "$sha" ] || die "$asset does not match the pinned sha256 $sha"
     mkdir -p "$HOME/.local/bin"
-    install -m 0755 "$work/mise/bin/mise" "$mise"
+    install -m 0755 "$work/mise" "$mise"
     # exec below replaces this shell before an EXIT trap could fire.
     rm -rf "$work"
     printf 'install-mise: installed mise %s\n' "$MISE_VERSION"

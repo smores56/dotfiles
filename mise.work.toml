@@ -49,6 +49,9 @@ run = "sh {{ config_root }}/scripts/identity.sh check-work {{ vars.git_name | qu
 # is installed by hand: brew install --cask nikitabobko/tap/aerospace
 [bootstrap.packages]
 "brew:gh" = "latest"
+# The op CLI reads the work token and signs through the app's SSH agent; the
+# 1Password app itself is provided by the employer, not installed here.
+"brew-cask:1password-cli" = "latest"
 "brew-cask:brave-browser" = { version = "latest", appdir = "~/Applications" }
 "brew-cask:docker-desktop" = { version = "latest", appdir = "~/Applications" }
 "brew-cask:caffeine" = { version = "latest", appdir = "~/Applications" }
