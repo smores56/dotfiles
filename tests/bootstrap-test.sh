@@ -193,28 +193,23 @@ assert "a personal checkout uses the local flow" \
     test "$(gitcfg "$h/scratch" smores.flow)" = local
 assert "a work remote anywhere uses the work identity" \
     test "$(gitcfg "$h/wip/elsewhere" user.email)" = smohr@blitzy.com
-# shellcheck disable=SC2088 # git keeps the literal path the template holds
-assert "a work remote uses the work signing key" \
-    test "$(gitcfg "$h/wip/elsewhere" user.signingkey)" = '~/.ssh/id_work.pub'
 assert "a work checkout uses the pr flow" test "$(gitcfg "$h/wip/elsewhere" smores.flow)" = pr
 assert "the flat work root is work" test "$(gitcfg "$h/Blitzy/flat" user.email)" = smohr@blitzy.com
 assert "an unmatched checkout falls back to the personal identity" \
     test "$(gitcfg "$h/scratch" user.email)" = sam@sammohr.dev
-assert "allowed_signers lists the personal key" \
-    grep -qx 'sam@sammohr.dev namespaces="git" ssh-ed25519 AAAApersonal me@home' "$h/.config/ssh/allowed_signers"
-assert "allowed_signers lists the work key" \
-    grep -qx 'smohr@blitzy.com namespaces="git" ssh-ed25519 AAAAwork me@work' "$h/.config/ssh/allowed_signers"
+for repo in "$h/scratch" "$h/wip/elsewhere"; do
+    assert "$(basename "$repo") commits are not signed" test -z "$(gitcfg "$repo" commit.gpgsign)"
+done
 assert "the XDG ssh directory exists for known_hosts" test -d "$h/.config/ssh"
 
 h5=$(new_home identity-nokeys)
 mkdir -p "$h5/.ssh"
 if run_mise "$h5" identity dot apply >"$tmp/identity-nokeys.log" 2>&1; then
-    ok "a missing key is skipped, not fatal"
+    ok "identity applies without any SSH keys"
 else
-    no "a missing key is skipped, not fatal"
+    no "identity applies without any SSH keys"
     sed 's/^/     /' "$tmp/identity-nokeys.log" >&2
 fi
-assert "the skipped key is reported" grep -q 'not a readable key file' "$tmp/identity-nokeys.log"
 assert "work.inc uses the fixed work email" \
     grep -q 'email = "smohr@blitzy.com"' "$h5/.config/git/work.inc"
 
@@ -286,12 +281,12 @@ current_tools() {
     (cd / && env -i HOME="$h" PATH=/usr/bin:/bin MISE_ENV="$1" "$mise_bin" ls --current 2>/dev/null | awk '{print $1}')
 }
 assert "the base tool set includes gh" grep -qx gh <<<"$(current_tools "")"
-assert_not "the work environment leaves gh to the 1Password wrapper" grep -qx gh <<<"$(current_tools desktop,work)"
+assert_not "the work environment takes gh from Homebrew" grep -qx gh <<<"$(current_tools desktop,work)"
 
-# --- work identity: work everywhere, signed through 1Password ----------------
+# --- work identity: work everywhere ------------------------------------------
 
 h=$(new_home work-identity)
-key=$(head -n 1 "$root/work/.config/git/work-signing.pub")
+key=$(head -n 1 "$root/work/.ssh/id_work.pub")
 if run_mise "$h" desktop,work dot apply >"$tmp/work-identity.log" 2>&1; then
     ok "work identity apply exits 0"
 else
@@ -306,12 +301,7 @@ for repo in "$h/Blitzy/svc" "$h/scratch"; do
     assert "$(basename "$repo") commits as the work identity" test "$(gitcfg "$repo" user.email)" = smohr@blitzy.com
 done
 assert "the work name is hardcoded" test "$(gitcfg "$h/scratch" user.name)" = "Sam Mohr"
-assert "commits are signed" test "$(gitcfg "$h/scratch" commit.gpgsign)" = true
-assert "signing goes through 1Password" \
-    test "$(gitcfg "$h/scratch" gpg.ssh.program)" = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
-# shellcheck disable=SC2088 # git keeps the literal path the template holds
-assert "the signing key is the checked-in public key" \
-    test "$(gitcfg "$h/scratch" user.signingkey)" = '~/.config/git/work-signing.pub'
+assert "work commits are not signed" test -z "$(gitcfg "$h/scratch" commit.gpgsign)"
 assert "the work flow is pr" test "$(gitcfg "$h/scratch" smores.flow)" = pr
 assert "work branches use the ticket template" test "$(gitcfg "$h/scratch" smores.branchTemplate)" = '{ticket}-{slug}'
 assert "https GitHub remotes go over SSH" \
@@ -319,15 +309,13 @@ assert "https GitHub remotes go over SSH" \
 assert "github.com uses the 1Password SSH agent" \
     grep -q 'IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"' "$h/.ssh/config"
 assert "the work SSH config offers only the work key" grep -q 'IdentitiesOnly yes' "$h/.ssh/config"
-assert "the work public key is deployed" grep -qx "$key" "$h/.config/git/work-signing.pub"
+assert "the work public key is deployed" grep -qx "$key" "$h/.ssh/id_work.pub"
+assert "the work XDG ssh directory exists for known_hosts" test -d "$h/.config/ssh"
 assert "ssh resolves the 1Password agent for github.com" \
     bash -c "env -i HOME='$h' PATH=/usr/bin:/bin ssh -F '$h/.ssh/config' -G github.com | grep -qi 'identityagent .*2BUA8C4S2C.com.1password/t/agent.sock'"
 mkdir -p "$h/pub"; git init -q "$h/pub"; git -C "$h/pub" remote add origin https://github.com/someone/public.git
 assert "public GitHub remotes stay on https" \
     test "$(env -i HOME="$h" PATH=/usr/bin:/bin git -C "$h/pub" ls-remote --get-url origin)" = https://github.com/someone/public.git
-
-assert "allowed_signers lists the work key" \
-    grep -qx "smohr@blitzy.com namespaces=\"git\" $key" "$h/.config/ssh/allowed_signers"
 
 # mise reports an entry whose source is missing as a warning and exits 0.
 if grep -h 'matched no files' "$tmp"/*.log >"$tmp/nomatch" 2>/dev/null; then

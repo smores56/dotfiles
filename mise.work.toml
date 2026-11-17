@@ -6,17 +6,13 @@
 "~/.gitconfig" = { source = "identity/.gitconfig" }
 "~/.ssh/config" = { source = "work/.ssh/config" }
 "~/.config/git/machine.inc" = { source = "work/.config/git/machine.inc.tera", mode = "template" }
-"~/.config/git/work-signing.pub" = { source = "work/.config/git/work-signing.pub" }
+"~/.ssh/id_work.pub" = { source = "work/.ssh/id_work.pub" }
 "~/.cargo/config.toml" = { source = "work/.cargo/config.toml" }
 
 # macOS ships zsh 5.9 in /etc/shells already, so no sudo; chsh asks for the
 # password, so this part runs on its own: `mise bootstrap --only user`.
 [bootstrap.user]
 login_shell = "/bin/zsh"
-
-[bootstrap.hooks.post-dotfiles]
-description = "render allowed_signers"
-run = "sh {{ config_root }}/scripts/identity.sh work-signers"
 
 # Apps for a fresh laptop. ~/Applications: mise refuses a group-writable
 # /Applications. Copies already installed elsewhere stay where they are.

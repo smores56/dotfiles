@@ -1,11 +1,8 @@
-# Rendered by mise. Every checkout on this laptop is work: one identity,
-# signed by the checked-in 1Password public key, no personal routing.
+# Rendered by mise. Every checkout on this laptop is work: one identity, no
+# personal routing.
 [user]
     name = "Sam Mohr"
     email = "smohr@blitzy.com"
-    signingkey = "~/.config/git/work-signing.pub"
-[gpg "ssh"]
-    program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
 [smores]
     flow = "pr"
     branchTemplate = "{ticket}-{slug}"

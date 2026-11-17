@@ -2,7 +2,6 @@
 [user]
     name = "Sam Mohr"
     email = "sam@sammohr.dev"
-    signingkey = "~/.ssh/id_ed25519.pub"
 [smores]
     flow = "local"
     workFlat = "~/Blitzy"

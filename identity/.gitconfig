@@ -32,18 +32,6 @@
     algorithm = histogram
     colorMoved = default
 
-[commit]
-    gpgsign = true
-
-[tag]
-    gpgsign = true
-
-[gpg]
-    format = ssh
-
-[gpg "ssh"]
-    allowedSignersFile = ~/.config/ssh/allowed_signers
-
 [interactive]
     diffFilter = delta --color-only
 

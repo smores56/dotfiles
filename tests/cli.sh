@@ -37,8 +37,6 @@ mkdir -p "$HOME" "$XDG_CONFIG_HOME" "$tmp/bin"
 git config --global init.defaultBranch main
 git config --global user.name test
 git config --global user.email test@example.com
-git config --global commit.gpgsign false
-git config --global tag.gpgsign false
 
 # Fixture repository with one commit on main.
 make_repo() {
