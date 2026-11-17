@@ -95,6 +95,12 @@ esac
 case $(uname -s) in
     Linux)
         [ -x "$HOME/.local/bin/zsh" ] || fail "the Linux zsh link is missing"
+        link "$HOME/.terminfo/78/xterm-kitty"
+        # The conda zsh must read the entry through ~/.terminfo even when a
+        # TERMINFO directory (zellij exports one) cannot resolve it.
+        TERMINFO=/usr/lib64/kitty/terminfo TERM=xterm-kitty "$HOME/.local/bin/zsh" -f -c \
+            'zmodload zsh/terminfo && (( $+terminfo[setaf] )) && (( $+terminfo[smkx] ))' \
+            || fail "zsh cannot read the kitty terminfo entry"
         grep -q 'mise:zsh' "$HOME/.bash_profile" \
             || fail "the bash_profile hand-off block is missing"
         link "$HOME/.local/share/fonts/GoogleSansCode-MONO-VF.ttf"
