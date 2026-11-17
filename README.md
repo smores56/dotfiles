@@ -32,7 +32,10 @@ Environments are additive, so no exclusion list is ever duplicated:
 | `work` | the work zsh hooks, work git identity and 1Password signing, the github.com SSH entry, the Claude work rules, macOS defaults, the work casks |
 
 Machine sets: smortress `identity`; smorespro `desktop,identity`; smoreswork
-`desktop,work`. Each machine saves its set once with `--save-env`, which writes
+`desktop,work`. `install-mise.sh` infers the set once: macOS is the work laptop,
+a Linux machine with Flatpak, a graphical default target, or a display is a
+desktop, and any other Linux is a server. Set `DOTFILES_ENVS` to override that
+inference, for example on a personal Mac. `--save-env` records the set in
 `miserc.local.toml` under `~/.config/mise`, so no shell file exports
 `MISE_ENV`.
 
@@ -48,19 +51,21 @@ On an existing machine with mise installed:
 mise -C ~/repos/github.com/smores56/dotfiles bootstrap
 ```
 
-On a machine without mise, `scripts/install-mise.sh` installs the pinned
-release after checking its published sha256 and execs the bootstrap:
+On a machine without mise, `scripts/install-mise.sh` runs the official
+installer for the latest stable mise (checksum verified), infers the machine set, and bootstraps this repository's latest
+main:
 
 ```sh
 cd ~/repos/github.com/smores56/dotfiles
-scripts/install-mise.sh "$(git rev-parse HEAD)" desktop,identity
+scripts/install-mise.sh
 ```
 
 The bootstrap applies `[bootstrap]`, `[dotfiles]`, and the tasks from the
-checkout. `--from` pins the clone to a commit, not a branch; a rollout bump
-passes a new commit with `--update`. Identity answers are prompted once and
-saved in `$MISE_STATE_DIR/vars.toml`, never in this repository. The login shell
-is a separate step because `chsh` prompts for a password:
+checkout. It tracks `main`; `--update` moves an existing checkout to the
+current commit, and a tag remains the rollback path. `DOTFILES_ENVS` overrides
+the inferred set. Identity answers are prompted once and saved in
+`$MISE_STATE_DIR/vars.toml`, never in this repository. The login shell is a
+separate step because `chsh` prompts for a password:
 
 ```sh
 mise -C ~/repos/github.com/smores56/dotfiles bootstrap --only user
@@ -80,7 +85,7 @@ The bootstrap assumes only what the base system provides:
 | macOS | Command Line Tools (they provide `git`) and Homebrew for the casks and `brew:gh`; run `scripts/install-homebrew.sh` once, interactively |
 | smoreswork | also the 1Password app for its SSH agent and `op-ssh-sign`; the bootstrap installs the `op` CLI |
 
-`install-mise.sh` runs the official installer at the pinned mise version; it
+`install-mise.sh` runs the official installer for the latest stable mise; it
 verifies the release checksum itself and needs `tar` plus `gzip` (or `zstd`),
 which the base images ship. `zim-build.sh` uses `curl` once for the pinned
 `zimfw.zsh`.
@@ -136,12 +141,12 @@ and git reaches github.com over SSH through the 1Password agent. The `gh` CLI
 gets its API token from a 1Password shell plugin; no personal token is on the
 laptop, and the private `sdlc` registry is not reachable from it.
 
-Provider keys are tracked only as SOPS ciphertext; the plaintext cache and the
-age identity stay outside the repository:
+The agent's provider keys are tracked only as SOPS ciphertext; the plaintext
+cache and the age identity stay outside the repository:
 
 | Path | Format | Used by |
 | --- | --- | --- |
-| `secrets/maki.sops.yaml` | SOPS-encrypted dotenv with `NEURALWATT_API_KEY` and `TINYFISH_API_KEY` | `scripts/provider-keys.sh` at bootstrap |
+| `secrets/agent.yaml` | SOPS-encrypted dotenv with the local agent's `NEURALWATT_API_KEY` and `TINYFISH_API_KEY` | `scripts/agent-secrets.sh` at bootstrap |
 | `~/.config/secrets.env` | derived cache, mode 600, `NAME=value` lines | the zsh `maki` launcher exports the two keys into the Maki process only |
 | `~/.config/sops/keys.age` | age-encrypted, passphrase-wrapped identity | `~/.local/bin/sops-age-key`, invoked by sops through `SOPS_AGE_KEY_CMD` |
 

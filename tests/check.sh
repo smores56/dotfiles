@@ -186,10 +186,11 @@ else
 fi
 
 if grep -q 'https://mise.run' "$root/scripts/install-mise.sh" \
-        && grep -q 'MISE_VERSION=$MISE_VERSION' "$root/scripts/install-mise.sh"; then
-    ok "install-mise uses the official installer at the pinned version"
+        && grep -q 'MISE_VERSION=' "$root/scripts/install-mise.sh" \
+        && grep -q 'detect-envs.sh' "$root/scripts/install-mise.sh"; then
+    ok "install-mise uses the official installer for the latest mise and infers the set"
 else
-    no "install-mise must use the official installer with MISE_VERSION pinned"
+    no "install-mise must use the official installer for the latest mise and infer the set"
 fi
 
 for removed in install.sh packages/mise.toml packages/flatpaks.txt scripts/bootstrap.sh; do
@@ -345,12 +346,12 @@ else
 fi
 
 installer=$root/scripts/install-mise.sh
-if grep -qE '^MISE_VERSION=v[0-9]+\.[0-9]+\.[0-9]+$' "$installer" \
-        && grep -q 'https://mise.run' "$installer" \
-        && grep -q 'grep -Eqx .\[0-9a-f\]{40}' "$installer"; then
-    ok "install-mise.sh uses the official installer at a pinned version and commit ref"
+if grep -q -- '--from "$REPO_URL"' "$installer" \
+        && ! grep -q '?ref=' "$installer" \
+        && grep -q 'detect-envs.sh' "$installer"; then
+    ok "install-mise tracks the default branch and infers the set"
 else
-    no "install-mise.sh must pin MISE_VERSION, use the official installer, and require a 40-hex ref"
+    no "install-mise must track the default branch (no ref) and infer the set"
 fi
 
 if grep -q 'uv tool install' "$root/docs/manual-steps.md" \
@@ -530,11 +531,17 @@ if command -v git >/dev/null 2>&1 && command -v bash >/dev/null 2>&1; then
         no "behavioral tests (tests/wallpapers-test.sh)"
         sed 's/^/     /' "$tmp/wallpapers.log" >&2
     fi
-    if bash "$root/tests/provider-keys-test.sh" >"$tmp/provider-keys.log" 2>&1; then
-        ok "behavioral tests (tests/provider-keys-test.sh)"
+    if bash "$root/tests/agent-secrets-test.sh" >"$tmp/agent-secrets.log" 2>&1; then
+        ok "behavioral tests (tests/agent-secrets-test.sh)"
     else
-        no "behavioral tests (tests/provider-keys-test.sh)"
-        sed 's/^/     /' "$tmp/provider-keys.log" >&2
+        no "behavioral tests (tests/agent-secrets-test.sh)"
+        sed 's/^/     /' "$tmp/agent-secrets.log" >&2
+    fi
+    if bash "$root/tests/detect-envs-test.sh" >"$tmp/detect-envs.log" 2>&1; then
+        ok "behavioral tests (tests/detect-envs-test.sh)"
+    else
+        no "behavioral tests (tests/detect-envs-test.sh)"
+        sed 's/^/     /' "$tmp/detect-envs.log" >&2
     fi
 else
     skip "behavioral tests (git or bash not installed)"

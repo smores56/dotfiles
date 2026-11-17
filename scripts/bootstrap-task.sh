@@ -55,6 +55,6 @@ tighten_ssh_dir() {
 link_conda_zsh
 sh "$(dirname "$0")/zim-build.sh" || die "zim build failed; the shell has no plugins until it succeeds"
 tighten_ssh_dir
-sh "$(dirname "$0")/provider-keys.sh" \
+sh "$(dirname "$0")/agent-secrets.sh" \
     || log "provider keys not refreshed; maki keeps the existing ~/.config/secrets.env"
 install_sdlc

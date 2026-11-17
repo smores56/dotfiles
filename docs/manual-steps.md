@@ -96,16 +96,18 @@ git clone git@github.com:smores56/dotfiles.git \
 cd ~/repos/github.com/smores56/dotfiles
 ```
 
-Install the pinned mise release and apply this machine's set:
+Install the latest mise and apply this machine's set:
 
 ```sh
 cd ~/repos/github.com/smores56/dotfiles
-scripts/install-mise.sh "$(git rev-parse HEAD)" desktop,identity
+scripts/install-mise.sh
 ```
 
-`install-mise.sh` checks the downloaded release against its published sha256,
-then runs `mise bootstrap` pinned to that commit with `--config-dir global` and
-the `desktop,identity` set. The first run prompts for the git identity vars,
+`install-mise.sh` runs the official installer for the latest stable mise
+(checksum verified), infers the set (`desktop,identity`
+on this desktop), and runs `mise bootstrap` from the latest `main` with
+`--config-dir global`. Set `DOTFILES_ENVS=desktop,identity` to override the
+inference. The first run prompts for the git identity vars,
 which are saved in `$MISE_STATE_DIR/vars.toml` (mode 0700), installs every tool
 from the lockfiles, clones the pinned zim modules, applies the dotfiles, and
 runs the bootstrap task, which links the Linux zsh binary and installs the
@@ -158,7 +160,7 @@ registry, which needs the GitHub credential from step 3.
 
 ## 6. Provider keys
 
-The two Maki keys live encrypted in `secrets/maki.sops.yaml`. The bootstrap
+The local agent's provider keys live encrypted in `secrets/agent.yaml`. The bootstrap
 task decrypts them into `~/.config/secrets.env` (mode 600) when the admin age
 identity is present and the ciphertext changed; the zsh `maki` launcher reads
 only that cache. Nothing else inherits the values.
@@ -195,7 +197,7 @@ recipient=$(age --decrypt "$HOME/.config/sops/keys.age" | age-keygen -y)
 cd ~/repos/github.com/smores56/dotfiles
 mkdir -p secrets
 sops --encrypt --age "$recipient" --input-type dotenv --output-type yaml \
-    --output secrets/maki.sops.yaml "$work"
+    --output secrets/agent.yaml "$work"
 rm -f "$work"
 unset BW_SESSION
 ```
