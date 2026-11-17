@@ -20,9 +20,14 @@ printf '#!/bin/sh\nprintf "%%s\\n" "${FAKE_OS:-Linux}"\n' >"$bin/uname"
 printf '#!/bin/sh\nprintf "%%s\\n" "${FAKE_TARGET:-multi-user.target}"\n' >"$bin/systemctl"
 chmod +x "$bin/uname" "$bin/systemctl"
 
+# PATH holds only the fakes: with the host's /usr/bin on it, a machine that
+# happens to have flatpak installed would decide the headless case.
+# `sh` is invoked by path: PATH holds only the fakes, so a host with flatpak
+# installed cannot decide the headless case.
+sh_bin=$(command -v sh)
 run() {
-    env -i PATH="$bin:/usr/bin:/bin" FAKE_OS="$1" FAKE_TARGET="$2" \
-        DOTFILES_ENVS="${3:-}" sh "$root/scripts/detect-envs.sh"
+    env -i PATH="$bin" FAKE_OS="$1" FAKE_TARGET="$2" \
+        DOTFILES_ENVS="${3:-}" "$sh_bin" "$root/scripts/detect-envs.sh"
 }
 
 rm -f "$bin/flatpak"
@@ -34,6 +39,9 @@ printf '#!/bin/sh\n' >"$bin/flatpak"
 chmod +x "$bin/flatpak"
 expect "Flatpak marks a Linux desktop" desktop,identity "$(run Linux multi-user.target)"
 
+expect "a display marks a Linux desktop" desktop,identity \
+    "$(env -i PATH="$bin" FAKE_OS=Linux FAKE_TARGET=multi-user.target DISPLAY=:0 \
+        "$sh_bin" "$root/scripts/detect-envs.sh")"
 expect "macOS is the work laptop" desktop,work "$(run Darwin multi-user.target)"
 expect "DOTFILES_ENVS overrides the inference" desktop,work \
     "$(run Linux multi-user.target desktop,work)"
