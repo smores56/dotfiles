@@ -165,8 +165,6 @@ assert_not "a real file in the way is not replaced by a link" test -L "$h/.confi
 
 h=$(new_home identity)
 mkdir -p "$h/.ssh"
-printf 'ssh-ed25519 AAAApersonal me@home\n' >"$h/.ssh/id_ed25519.pub"
-printf 'ssh-ed25519 AAAAwork me@work\n' >"$h/.ssh/id_work.pub"
 if run_mise "$h" identity dot apply >"$tmp/identity.log" 2>&1; then
     ok "identity apply exits 0"
 else
@@ -259,8 +257,6 @@ assert "work links the interactive work hook" links_into_repo "$h/.config/zsh/co
 assert "work links the Claude work rules" grep -q 'This is a work host' "$h/.claude/work.md"
 assert "work leaves the employer's ~/.zshrc a plain file" test ! -L "$h/.zshrc"
 if [ -n "$zsh_bin" ]; then
-    assert "non-interactive zsh points SSH at the 1Password agent" \
-        bash -c "env -i HOME='$h' PATH=/usr/bin:/bin '$zsh_bin' -c 'print -r -- \$SSH_AUTH_SOCK' | grep -q 2BUA8C4S2C.com.1password"
     assert "non-interactive zsh builds with Apple clang" \
         test "$(env -i HOME="$h" PATH=/usr/bin:/bin "$zsh_bin" -c 'print -r -- $CC')" = /usr/bin/clang
     assert "non-interactive zsh keeps ~/.local/bin first after the hook" \
@@ -273,7 +269,7 @@ if [ -n "$zsh_bin" ]; then
         test "$(env -i HOME="$h" PATH=/usr/bin:/bin TERM=dumb "$zsh_bin" -ic 'print -r -- ${EMPLOYER_RC_TEST-}' 2>/dev/null)" = 1
 fi
 
-# On smoreswork the mise gh is replaced by the 1Password wrapper.
+# On smoreswork gh comes from Homebrew, not mise.
 h=$(new_home work-tools)
 mkdir -p "$h/.config"
 ln -s "$root/global" "$h/.config/mise"
@@ -286,7 +282,6 @@ assert_not "the work environment takes gh from Homebrew" grep -qx gh <<<"$(curre
 # --- work identity: work everywhere ------------------------------------------
 
 h=$(new_home work-identity)
-key=$(head -n 1 "$root/work/.ssh/id_work.pub")
 if run_mise "$h" desktop,work dot apply >"$tmp/work-identity.log" 2>&1; then
     ok "work identity apply exits 0"
 else
@@ -304,18 +299,11 @@ assert "the work name is hardcoded" test "$(gitcfg "$h/scratch" user.name)" = "S
 assert "work commits are not signed" test -z "$(gitcfg "$h/scratch" commit.gpgsign)"
 assert "the work flow is pr" test "$(gitcfg "$h/scratch" smores.flow)" = pr
 assert "work branches use the ticket template" test "$(gitcfg "$h/scratch" smores.branchTemplate)" = '{ticket}-{slug}'
-assert "https GitHub remotes go over SSH" \
-    test "$(env -i HOME="$h" PATH=/usr/bin:/bin git -C "$h/Blitzy/svc" ls-remote --get-url origin)" = git@github.com:blitzy-ai/svc.git
-assert "github.com uses the 1Password SSH agent" \
-    grep -q 'IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"' "$h/.ssh/config"
-assert "the work SSH config offers only the work key" grep -q 'IdentitiesOnly yes' "$h/.ssh/config"
-assert "the work public key is deployed" grep -qx "$key" "$h/.ssh/id_work.pub"
+assert "work GitHub remotes stay on https" \
+    test "$(env -i HOME="$h" PATH=/usr/bin:/bin git -C "$h/Blitzy/svc" ls-remote --get-url origin)" = https://github.com/blitzy-ai/svc.git
+assert "the work SSH config has no github.com entry" \
+    bash -c "! env -i HOME='$h' PATH=/usr/bin:/bin ssh -F '$h/.ssh/config' -G github.com | grep -qi '^identityagent '"
 assert "the work XDG ssh directory exists for known_hosts" test -d "$h/.config/ssh"
-assert "ssh resolves the 1Password agent for github.com" \
-    bash -c "env -i HOME='$h' PATH=/usr/bin:/bin ssh -F '$h/.ssh/config' -G github.com | grep -qi 'identityagent .*2BUA8C4S2C.com.1password/t/agent.sock'"
-mkdir -p "$h/pub"; git init -q "$h/pub"; git -C "$h/pub" remote add origin https://github.com/someone/public.git
-assert "public GitHub remotes stay on https" \
-    test "$(env -i HOME="$h" PATH=/usr/bin:/bin git -C "$h/pub" ls-remote --get-url origin)" = https://github.com/someone/public.git
 
 # mise reports an entry whose source is missing as a warning and exits 0.
 if grep -h 'matched no files' "$tmp"/*.log >"$tmp/nomatch" 2>/dev/null; then

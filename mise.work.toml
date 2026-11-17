@@ -6,7 +6,6 @@
 "~/.gitconfig" = { source = "identity/.gitconfig" }
 "~/.ssh/config" = { source = "work/.ssh/config" }
 "~/.config/git/machine.inc" = { source = "work/.config/git/machine.inc.tera", mode = "template" }
-"~/.ssh/id_work.pub" = { source = "work/.ssh/id_work.pub" }
 "~/.cargo/config.toml" = { source = "work/.cargo/config.toml" }
 
 # macOS ships zsh 5.9 in /etc/shells already, so no sudo; chsh asks for the

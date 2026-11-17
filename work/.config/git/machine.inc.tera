@@ -9,9 +9,3 @@
     branchTemplateUnticketed = "{type}/{slug}"
     workFlat = "~/Blitzy"
     workOwners = "blitzy-ai blitzy-platform"
-# Work repositories go over SSH through the 1Password agent; public GitHub
-# (Homebrew taps, git dependencies) stays on https and needs no approval.
-[url "git@github.com:blitzy-ai/"]
-    insteadOf = https://github.com/blitzy-ai/
-[url "git@github.com:blitzy-platform/"]
-    insteadOf = https://github.com/blitzy-platform/
