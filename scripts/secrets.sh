@@ -22,8 +22,21 @@ sha256_of() {
 }
 
 want=$(sha256_of "$cipher")
-have=$(cat "$state" 2>/dev/null || true)
-[ "$want" = "$have" ] && [ -s "$secrets" ] && exit 0
+state_line=$(cat "$state" 2>/dev/null || true)
+case $state_line in
+    *' '*) have=${state_line%% *} gh_marker=${state_line#* } ;;
+    *) have=$state_line gh_marker= ;;
+esac
+if [ "$want" = "$have" ] && [ -s "$secrets" ]; then
+    case $gh_marker in
+        none) exit 0 ;;
+        gh)
+            if command -v gh >/dev/null 2>&1 \
+                    && gh auth status --hostname github.com >/dev/null 2>&1; then
+                exit 0
+            fi ;;
+    esac
+fi
 
 if [ -x "$HOME/.local/bin/sops-age-key" ]; then
     SOPS_AGE_KEY_CMD=$HOME/.local/bin/sops-age-key
@@ -63,21 +76,24 @@ tmp_env=$secrets.tmp.$$
 mv "$tmp_env" "$secrets"
 chmod 600 "$secrets"
 
+gh_marker=none
 if [ -n "$pat" ]; then
     if command -v gh >/dev/null 2>&1; then
         # The token goes over stdin, never argv or the environment. gh writes
         # only its own hosts.yml, not the tracked config.yml.
         if printf '%s\n' "$pat" | gh auth login --with-token --hostname github.com; then
+            gh_marker=gh
             log "gh authenticated for github.com"
         else
             log "gh auth login failed; run it by hand if gh commands fail"
             exit 1
         fi
     else
-        log "gh is not installed; skipping the personal PAT"
+        gh_marker=gh
+        log "gh is not installed; the next bootstrap will retry the personal PAT"
     fi
 fi
 
 mkdir -p "$(dirname "$state")"
-printf '%s\n' "$want" >"$state"
+printf '%s %s\n' "$want" "$gh_marker" >"$state"
 log "wrote $secrets"

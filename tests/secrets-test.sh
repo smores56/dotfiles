@@ -31,6 +31,7 @@ printf '%s\n' "$*" >>"$SECRETS_LOG"
 case $1 in
     auth)
         case $2 in
+            status) [ -f "$GH_LOGIN" ] ;;
             login) cat >"$GH_LOGIN" ;;
         esac ;;
 esac
@@ -73,9 +74,18 @@ else
     no "an unchanged file skips the second decrypt"
 fi
 
+rm "$tmp/login"
+run
+if [ "$(grep -c '^sops$' "$tmp/log")" -eq 2 ] \
+        && [ "$(grep -c 'auth login' "$tmp/log")" -eq 2 ]; then
+    ok "a revoked gh login is restored without a changed file"
+else
+    no "a revoked gh login is restored without a changed file"
+fi
+
 printf 'changed\n' >"$tmp/secrets.yaml"
 run
-if [ "$(grep -c '^sops$' "$tmp/log")" -eq 2 ]; then
+if [ "$(grep -c '^sops$' "$tmp/log")" -eq 3 ]; then
     ok "a changed file decrypts again"
 else
     no "a changed file decrypts again"
