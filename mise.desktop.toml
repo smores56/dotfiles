@@ -5,8 +5,7 @@
 "~/.local/bin/wallpapers" = { source = "desktop/.local/bin/wallpapers", variants = [{ os = "linux" }] }
 "~/.local/bin/smortress-sftp" = { source = "desktop/.local/bin/smortress-sftp", variants = [{ os = "linux" }] }
 "~/.config/systemd/user" = { source = "desktop/.config/systemd/user", mode = "symlink-each", variants = [{ os = "linux" }] }
-"~/.config/wezterm" = { source = "desktop/.config/wezterm", mode = "symlink-each", variants = [{ os = "macos" }] }
-"~/.config/kitty" = { source = "desktop/.config/kitty", mode = "symlink-each", variants = [{ os = "linux" }] }
+"~/.config/kitty" = { source = "desktop/.config/kitty", mode = "symlink-each" }
 # gtrash and nym-vpnc abbreviations; neither tool exists on the work Mac.
 "~/.config/zsh/conf.d/80-desktop.zsh" = { source = "desktop/.config/zsh/conf.d/80-desktop.zsh", variants = [{ os = "linux" }] }
 "~/.config/mimeapps.list" = { source = "desktop/.config/mimeapps.list", mode = "copy", variants = [{ os = "linux" }] }
@@ -50,11 +49,10 @@ fi
 "flatpak-user:com.valvesoftware.Steam" = { version = "latest", os = ["linux"] }
 "flatpak-user:com.bitwarden.desktop" = { version = "latest", os = ["linux"] }
 "flatpak-user:com.tutanota.Tutanota" = { version = "latest", os = ["linux"] }
-# Linux runs kitty from the image; WezTerm stays the macOS terminal, installed
-# as a cask and configured from the shared desktop/.config/wezterm entry.
+# Linux runs kitty from the image; macOS installs it as a cask.
 # ~/Applications: mise refuses to install through a group-writable
 # /Applications (root:admin 0775 on the work laptop), and it needs no sudo.
-"brew-cask:wezterm" = { version = "latest", os = ["macos"], appdir = "~/Applications" }
+"brew-cask:kitty" = { version = "latest", os = ["macos"], appdir = "~/Applications" }
 
 [bootstrap.hooks.pre-packages]
 description = "add the user Flathub remote"

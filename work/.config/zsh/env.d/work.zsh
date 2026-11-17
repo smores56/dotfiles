@@ -1,6 +1,6 @@
 # smoreswork's environment for every zsh (agents, launchd jobs, and editors
 # run `zsh -c`): what the employer's toolchains expect, nothing else.
-export TERMINAL=wezterm
+export TERMINAL=kitty
 # The work GitHub account owns its SDLC registry.
 export SDLC_REPO=smohr-blitzy/sdlc
 export COLORTERM=truecolor
