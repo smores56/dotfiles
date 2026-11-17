@@ -29,7 +29,35 @@ tighten_ssh_dir() {
     return 0
 }
 
+# kitty's Fedora package ships xterm-kitty only in the letter layout, and the
+# ncurses inside the conda zsh resolves only the hashed layout under a
+# TERMINFO directory (zellij exports TERMINFO=/usr/lib64/kitty/terminfo).
+# Without an entry zsh sees no capabilities at all: setaf, smso, rmso, and
+# smkx come back empty, so autosuggestions lose their color and completion
+# loses menu highlighting. ncurses reads the hashed layout from ~/.terminfo
+# whether or not TERMINFO is set, and the file is tiny, so copy it there.
+install_kitty_terminfo() {
+    [ "$(uname -s)" = Linux ] || return 0
+    src=
+    for candidate in /usr/lib64/kitty/terminfo/x/xterm-kitty \
+            /usr/share/terminfo/x/xterm-kitty; do
+        if [ -f "$candidate" ]; then
+            src=$candidate
+            break
+        fi
+    done
+    [ -n "$src" ] || return 0
+    dst=$HOME/.terminfo/78/xterm-kitty
+    if [ -f "$dst" ] && cmp -s "$src" "$dst"; then
+        return 0
+    fi
+    mkdir -p "${dst%/*}"
+    cp "$src" "$dst"
+    log "installed ${dst#"$HOME"/} so zsh can read the kitty terminal entry"
+}
+
 link_conda_zsh
+install_kitty_terminfo
 sh "$(dirname "$0")/zim-build.sh" || die "zim build failed; the shell has no plugins until it succeeds"
 tighten_ssh_dir
 sh "$(dirname "$0")/secrets.sh" \
