@@ -5,7 +5,7 @@ One mise project for three machines:
 | Machine | System |
 | --- | --- |
 | `smortress` | Fedora CoreOS server |
-| `smorespro` | Fedora COSMIC Atomic desktop |
+| `smorespro` | Fedora bootc desktop (niri + Noctalia) |
 | `smoreswork` | macOS work laptop |
 
 mise owns the tools, dotfiles, desktop packages, bootstrap task, and login
@@ -73,10 +73,11 @@ verifies the release checksum and needs `tar` plus `gzip` (or `zstd`).
 `notify-send` are optional: the pieces that use them degrade without the
 binary.
 
-`podman` is the runtime `dev` uses; it ships with Fedora Atomic, and nothing in
-the bootstrap needs it. The only root layer is Tailscale
-(`rpm-ostree install tailscale`); rclone, a mise tool, handles the wallpaper
-sync.
+`podman` is the runtime `dev` uses; it ships with the bootc image, and nothing
+in the bootstrap needs it. The host has no rpm-ostree layer: every host package
+on smorespro, Tailscale included, comes from
+[smorespro-image](https://github.com/smores56/smorespro-image). rclone, a mise
+tool, handles the wallpaper sync.
 
 ## Layout
 

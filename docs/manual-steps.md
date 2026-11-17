@@ -48,9 +48,9 @@ Nothing else secret is copied from this machine:
   cp -a ~/.config/sops/. /media/<usb>/sops-backup/
   ```
 
-## 2. Install Fedora COSMIC Atomic
+## 2. Install Fedora atomic, then the smorespro image
 
-Write the official Fedora COSMIC Atomic ISO to a USB stick, boot it, and run
+Write an official Fedora atomic desktop ISO to a USB stick, boot it, and run
 the stock installer:
 
 ```sh
@@ -67,6 +67,11 @@ In the installer:
 4. Reboot into the installed system and unlock the disk.
 
 Do not add third-party repositories or layer packages during the install.
+
+Then switch the host to the image this repository runs, following
+[smorespro-image/docs/switch.md](https://github.com/smores56/smorespro-image/blob/main/docs/switch.md).
+That switch is what brings niri, Noctalia, and the host packages; nothing is
+ever added with `rpm-ostree install`.
 
 ## 3. First login: base tools and the checkout
 
@@ -116,20 +121,12 @@ The login shell stays bash on Linux; an interactive TTY login hands over to
 installer also links `/srv/git/github.com/smores56/dotfiles` to `~/.dotfiles`;
 every other checkout lives under `/srv/git`, which is `ghq.root`.
 
-## 4. Tailscale (the only host layer)
+## 4. Tailscale
 
-The wallpaper sync uses rclone, a mise tool, so this layer needs only
-Tailscale.
-
-```sh
-sudo rpm-ostree install tailscale
-sudo systemctl reboot
-```
-
-After the reboot:
+Tailscale ships in the image and `tailscaled` is enabled, so there is no host
+layer to add and no reboot:
 
 ```sh
-sudo systemctl enable --now tailscaled
 sudo tailscale up
 ```
 
