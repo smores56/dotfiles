@@ -7,8 +7,10 @@ log() { printf 'bootstrap: %s\n' "$*"; }
 die() { printf 'bootstrap: %s\n' "$*" >&2; exit 1; }
 
 # The task shell inherits the caller's PATH, which on a fresh machine does not
-# yet include ~/.local/bin, where install-mise.sh put mise.
-PATH=$HOME/.local/bin:$PATH
+# yet include ~/.local/bin, where install-mise.sh put mise, or mise's shims,
+# where the tools live when the caller did not activate mise (secrets.sh needs
+# gh, for one).
+PATH=$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH
 export PATH
 
 # The real zsh binary from the conda tool, never mise's launcher: the launcher

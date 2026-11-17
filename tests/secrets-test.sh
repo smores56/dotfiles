@@ -83,6 +83,20 @@ else
     no "a revoked gh login is restored without a changed file"
 fi
 
+# bootstrap-task.sh runs without mise's shims when the caller has not activated
+# mise. gh is then absent, and the cached keys must be left exactly as they are.
+mkdir -p "$tmp/nogh"
+cp "$tmp/bin/sops" "$tmp/nogh/sops"
+if env -i HOME="$home" PATH="$tmp/nogh:/usr/bin:/bin" \
+        SECRETS_LOG="$tmp/log" GH_LOGIN="$tmp/login" \
+        DOTFILES_SECRETS="$tmp/secrets.yaml" \
+        sh "$root/scripts/secrets.sh" \
+        && [ "$(grep -c '^sops$' "$tmp/log")" -eq 2 ]; then
+    ok "a missing gh keeps the cached secrets without decrypting"
+else
+    no "a missing gh keeps the cached secrets without decrypting"
+fi
+
 printf 'changed\n' >"$tmp/secrets.yaml"
 run
 if [ "$(grep -c '^sops$' "$tmp/log")" -eq 3 ]; then

@@ -33,8 +33,12 @@ if [ "$want" = "$have" ] && [ -s "$secrets" ]; then
     case $gh_marker in
         none) exit 0 ;;
         gh)
-            if command -v gh >/dev/null 2>&1 \
-                    && gh auth status --hostname github.com >/dev/null 2>&1; then
+            # gh is a mise tool. Without it on PATH the PAT cannot be applied,
+            # so decrypting again would only ask for the passphrase.
+            if ! command -v gh >/dev/null 2>&1; then
+                exit 0
+            fi
+            if gh auth status --hostname github.com >/dev/null 2>&1; then
                 exit 0
             fi ;;
     esac
