@@ -1,6 +1,7 @@
 NEURALWATT_API_KEY: ENC[AES256_GCM,data:1mDApcMZO9Bgh6AF5K+RAVFQ/0845lHaxR192HMQ2eJwFs+wXLeMU/9I5wUTkRzEcvX4m+nvbVtzonS6zNI1B982rw==,iv:7Mfr2uWnDtOEbR+II0ZqnZTLgBNMxvIdXPx8FMo74uw=,tag:uZgRP8FA80g/lQkrt8CTOg==,type:str]
 TINYFISH_API_KEY: ENC[AES256_GCM,data:7ks/PUaoAywSjYzCxaA/z/Lozlxd7KnxbKV+aThf3atnJA8HUuOu1xoXKvM=,iv:wfLnFxitzBA/ZNhDz+45a3qupPoRqoMsjzSQ8cve2jY=,tag:EmYD2CQGcJuFZV/PY+JYJA==,type:str]
 GITHUB_PERSONAL_PAT: ENC[AES256_GCM,data:hUj5WqToSgLUsob8XLqfDwW7PVCqaCKBIA8xQ93fgetFEMdjRjomgoC4zUudXFd4gyy4X3nDmCWmtrx2Hshmpfp0FZ+FzZpwO4ck4/PXPT+UDRTSAyOCkjoi4l5b,iv:Yhcixqq0DaelJFjiW8XewHlOOayaKF/ronybYWeO0QU=,tag:5KYJtCDtoFb/CyrQ+mbddA==,type:str]
+GITHUB_WORK_PAT: ENC[AES256_GCM,data:UrSKOs1FuitYaUQFxxt08IJEbxOcp+TdV1qq6hDW+ksOhh02QaJgoA==,iv:bjTdZzSDfICQitxhu4feRGi69Sx5f7QdJRIHKhWnvnw=,tag:0o5YbyqxCgdojwDw7pmjKA==,type:str]
 sops:
     age:
         - enc: |
@@ -12,7 +13,7 @@ sops:
             uqRKwWjmivr+QDTO5WHYybO2auKHYlIWlhFLtT6O/V/2ZyA4lvOJ0w==
             -----END AGE ENCRYPTED FILE-----
           recipient: age1skuwunreduvw8gtkzyf9atsyjnku388ly8c252h3qger84fg5d7q4kf6xs
-    lastmodified: "2026-11-17T16:38:58Z"
-    mac: ENC[AES256_GCM,data:ShXhOIUfUI0RDb+b0Lv+LFIRKBeq/Sbssmsd+0fVkefyHSNxEhKICbZWrK/UfO4gDAaiL5z668JpZZXa2lorjOhy0r32M6pxmbnTsj+UMDf/tq6Vv5FUzZ2GaCOG5MMA54arKCWqd3MI3IE02IGtcvYO7okHifdRc9h9ZmOyD0I=,iv:D4QD+XyxGgS6I282A6DdvyqYG8BbX0npHJawo6T3LNg=,tag:2t95vMspME5ha64aH4Z/QQ==,type:str]
+    lastmodified: "2026-11-17T21:15:49Z"
+    mac: ENC[AES256_GCM,data:dMRaWnw1Q9xs0j1JggA1kY4vhvM1fducRuoHsKa4h9ckhrDZmWTDzuxCtz/XzoOgnj/rOGRMz78O/8YRshU3Ivyr1flOkOQCtfqbOtiRx67Q7MPN2deERjGzqfgCAVGIO7kj+ROVTRquvJLSnOLHOg7GMBGh+W2tq2Rnm+SLH/k=,iv:QvsIaWIRsOQVhKFwkQk4+v9TcEwZOpmJe9G0XgNsgrE=,tag:NkmsjzLhpBlf9ebv7+SpxQ==,type:str]
     unencrypted_suffix: _unencrypted
     version: 3.13.3

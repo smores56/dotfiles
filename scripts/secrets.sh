@@ -1,8 +1,7 @@
 #!/bin/sh
 # Materialize the single SOPS secrets file: the agent provider keys go to
-# ~/.config/secrets.env, and an optional personal PAT becomes gh's auth. One
-# decrypt covers both, so bootstrap prompts for the age passphrase once.
-# smoreswork has no admin age identity; it leaves both alone.
+# ~/.config/secrets.env, and the optional PATs become gh's auth. One decrypt
+# covers all of them, so bootstrap prompts for the age passphrase once.
 set -eu
 
 root=$(cd -- "$(dirname -- "$0")/.." && pwd)
@@ -66,6 +65,12 @@ value_of() {
 neuralwatt=$(value_of NEURALWATT_API_KEY)
 tinyfish=$(value_of TINYFISH_API_KEY)
 pat=$(value_of GITHUB_PERSONAL_PAT)
+# The work PAT reaches gh only where the work environment is applied, and logs
+# in last so it is the active account there.
+case ",${MISE_ENV-}," in
+    *,work,*) work_pat=$(value_of GITHUB_WORK_PAT) ;;
+    *) work_pat= ;;
+esac
 
 if [ -z "$neuralwatt" ] || [ -z "$tinyfish" ]; then
     log "$cipher needs NEURALWATT_API_KEY and TINYFISH_API_KEY; leaving $secrets alone"
@@ -82,21 +87,25 @@ tmp_env=$secrets.tmp.$$
 mv "$tmp_env" "$secrets"
 chmod 600 "$secrets"
 
-gh_marker=none
-if [ -n "$pat" ]; then
-    if command -v gh >/dev/null 2>&1; then
-        # The token goes over stdin, never argv or the environment. gh writes
-        # only its own hosts.yml, not the tracked config.yml.
-        if printf '%s\n' "$pat" | gh auth login --with-token --hostname github.com; then
-            gh_marker=gh
-            log "gh authenticated for github.com"
-        else
-            log "gh auth login failed; run it by hand if gh commands fail"
-            exit 1
-        fi
+gh_login() {
+    # The token goes over stdin, never argv or the environment. gh writes
+    # only its own hosts.yml, not the tracked config.yml.
+    if printf '%s\n' "$1" | gh auth login --with-token --hostname github.com; then
+        log "gh authenticated for github.com"
     else
-        gh_marker=gh
-        log "gh is not installed; the next bootstrap will retry the personal PAT"
+        log "gh auth login failed; run it by hand if gh commands fail"
+        exit 1
+    fi
+}
+
+gh_marker=none
+if [ -n "$pat$work_pat" ]; then
+    gh_marker=gh
+    if command -v gh >/dev/null 2>&1; then
+        [ -z "$pat" ] || gh_login "$pat"
+        [ -z "$work_pat" ] || gh_login "$work_pat"
+    else
+        log "gh is not installed; the next bootstrap will retry the PATs"
     fi
 fi
 

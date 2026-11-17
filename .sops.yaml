@@ -1,7 +1,6 @@
-# Personal, cross-machine secrets only. They are encrypted to the passphrase-
-# wrapped admin age identity that every personal machine restores from backup.
-# smoreswork has no admin identity and must not decrypt them; work credentials
-# stay in 1Password, and homelab secrets stay in homelab-platform.
+# Cross-machine secrets, encrypted to the passphrase-wrapped admin age identity
+# that every machine restores from backup. Homelab secrets stay in
+# homelab-platform.
 keys:
   - &admin age1skuwunreduvw8gtkzyf9atsyjnku388ly8c252h3qger84fg5d7q4kf6xs
 creation_rules:

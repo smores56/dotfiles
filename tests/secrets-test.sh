@@ -22,6 +22,7 @@ printf 'sops\n' >>"$SECRETS_LOG"
 printf 'NEURALWATT_API_KEY=%s\n' "${FAKE_NEURALWATT-nw-test}"
 printf 'TINYFISH_API_KEY=%s\n' "${FAKE_TINYFISH-tf-test}"
 [ -n "${FAKE_PAT-ghp_test}" ] && printf 'GITHUB_PERSONAL_PAT=%s\n' "$FAKE_PAT"
+[ -n "${FAKE_WORK_PAT-}" ] && printf 'GITHUB_WORK_PAT=%s\n' "$FAKE_WORK_PAT"
 exit 0
 EOF
 
@@ -32,7 +33,7 @@ case $1 in
     auth)
         case $2 in
             status) [ -f "$GH_LOGIN" ] ;;
-            login) cat >"$GH_LOGIN" ;;
+            login) tee -a "$GH_LOGINS" >"$GH_LOGIN" ;;
         esac ;;
 esac
 EOF
@@ -40,7 +41,8 @@ chmod +x "$tmp/bin/sops" "$tmp/bin/gh"
 
 run() {
     env -i HOME="$home" PATH="$tmp/bin:/usr/bin:/bin" \
-        SECRETS_LOG="$tmp/log" GH_LOGIN="$tmp/login" \
+        SECRETS_LOG="$tmp/log" GH_LOGIN="$tmp/login" GH_LOGINS="$tmp/logins" \
+        MISE_ENV="${MISE_ENV-}" FAKE_WORK_PAT="${FAKE_WORK_PAT-}" \
         FAKE_NEURALWATT="${FAKE_NEURALWATT-nw-test}" \
         FAKE_TINYFISH="${FAKE_TINYFISH-tf-test}" \
         FAKE_PAT="${FAKE_PAT-ghp_test}" \
@@ -130,6 +132,24 @@ if grep -q 'auth login' "$tmp/log"; then
     no "an empty PAT skips gh auth"
 else
     ok "an empty PAT skips gh auth"
+fi
+
+printf 'changed4\n' >"$tmp/secrets.yaml"
+: >"$tmp/logins"
+MISE_ENV=desktop,work FAKE_WORK_PAT=github_pat_work run >/dev/null
+if [ "$(cat "$tmp/logins")" = "$(printf 'ghp_test\ngithub_pat_work')" ]; then
+    ok "a work machine logs gh in with the work PAT last, so it is active"
+else
+    no "a work machine logs gh in with the work PAT last, so it is active"
+fi
+
+printf 'changed5\n' >"$tmp/secrets.yaml"
+: >"$tmp/logins"
+MISE_ENV=desktop FAKE_WORK_PAT=github_pat_work run >/dev/null
+if grep -q github_pat_work "$tmp/logins"; then
+    no "a personal machine never hands gh the work PAT"
+else
+    ok "a personal machine never hands gh the work PAT"
 fi
 
 rm "$home/.config/sops/keys.age"

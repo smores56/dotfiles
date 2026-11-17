@@ -142,33 +142,32 @@ hardcoded. Tera templates render `~/.config/git/machine.inc` and `work.inc`;
 the base `.gitconfig` carries the shared git settings.
 
 smoreswork does not apply the `identity` environment. Its git identity is work
-everywhere, and git reaches github.com over https with `gh`'s token. `gh` keeps
-the work token in the macOS Keychain, logged in once from 1Password with
-`op read 'op://Employee/GitHub Personal Access Token/token' | gh auth login --with-token`;
-no personal token is on the laptop, the personal `sdlc` registry is not
-reachable from it, and `$SDLC_REPO` points at `smohr-blitzy/sdlc`. The token
-grants `dotfiles` Contents, `smohr-blitzy/sdlc` Issues, and work-organization
-Contents read plus Issues.
+everywhere, and git reaches github.com over https with `gh`'s token. The
+bootstrap logs `gh` in with `GITHUB_WORK_PAT` from `sops.yaml`, after the
+personal PAT, so `smohr-blitzy` is the active account; `$SDLC_REPO` points at
+`smohr-blitzy/sdlc`. The work token grants `dotfiles` Contents,
+`smohr-blitzy/sdlc` Issues, and work-organization Contents read plus Issues.
 
 Personal machines keep only these secrets:
 
 | Path | Format | Used by |
 | --- | --- | --- |
-| `sops.yaml` | SOPS ciphertext with `NEURALWATT_API_KEY`, `TINYFISH_API_KEY`, optional `GITHUB_PERSONAL_PAT` | `scripts/secrets.sh` at bootstrap |
+| `sops.yaml` | SOPS ciphertext with `NEURALWATT_API_KEY`, `TINYFISH_API_KEY`, optional `GITHUB_PERSONAL_PAT` and `GITHUB_WORK_PAT` | `scripts/secrets.sh` at bootstrap |
 | `~/.config/secrets.env` | derived cache, mode 600, `NAME=value` lines | the zsh `maki` launcher, for the Maki process only |
 | `~/.config/gh/hosts.yml` | gh's token store, mode 600 | `gh` and `sdlc` |
 | `~/.config/sops/keys.age` | passphrase-wrapped age identity | `~/.local/bin/sops-age-key` through `SOPS_AGE_KEY_CMD` |
 
 The bootstrap task decrypts `sops.yaml` once when the age identity exists and
 the ciphertext changed, writes the mode-600 provider cache, and logs `gh` in
-with the PAT if one is present. smoreswork has no age identity, so it leaves
-both alone; the ciphertext in the public repository is harmless there.
+with each PAT present; `GITHUB_WORK_PAT` is used only where `MISE_ENV`
+includes `work`, and logs in last.
 Bootstrap needs no GitHub auth: the repository, zim modules, tool downloads,
 and `sdlc` source are all in the checkout. `sdlc` is a stdlib script linked by
 the base environment, so no private repository is cloned.
 
-Only personal, cross-machine secrets belong in `sops.yaml`, encrypted to the
-admin identity by `.sops.yaml`. Work credentials stay in 1Password. Homelab
+Only cross-machine secrets belong in `sops.yaml`, encrypted to the admin
+identity by `.sops.yaml`; the work GitHub PAT is the one work credential there.
+Homelab
 material (Cloudflare, restic, R2, ingest) stays in homelab-platform, where it
 is used. Host and YubiKey private material and the age identity itself never
 enter this repository; public keys and `known_hosts` are plain files.
