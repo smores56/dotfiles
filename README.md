@@ -194,7 +194,9 @@ checks symlinks, templates, modes, rendered identity, and conflicts.
 abbreviations, prompt, and that the Maki keys stay out of the parent shell.
 `tests/handoff-test.sh` covers the smoreswork home-manager handoff, and
 `tests/cli.sh` exercises `repos`, `worktrees`, and `dev` against throwaway
-repositories. CI runs the same suite and real apply lanes on Fedora and macOS.
+repositories. CI runs the same suite and a real Fedora apply lane. The macOS lanes are opt-in
+with the `MACOS_CI` repository variable, because hosted macOS runners are not
+available to this account; smoreswork is verified by hand until they are.
 
 ## Rollout
 
