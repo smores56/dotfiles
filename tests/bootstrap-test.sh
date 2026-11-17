@@ -102,6 +102,9 @@ for target in \
     .local/bin/maki-session-search \
     .local/bin/maki-session-resume \
     .config/maki/init.lua \
+    .config/maki/mcp.toml \
+    .config/maki/plugin.toml \
+    .config/maki/permissions.toml \
     .agents/skills/sdlc/SKILL.md \
     .claude/CLAUDE.md \
     .claude/agents/Explore.md \
@@ -123,7 +126,7 @@ assert "Claude's own settings keys survive the merge" grep -q '"theme": "dark"' 
 assert "CLAUDE.md imports the machine's work rules" grep -qx '@~/.claude/work.md' "$h/.claude/CLAUDE.md"
 assert_not "CLAUDE.md names no retired memory tool" grep -qE 'memory_(search|write)|memory MCP' "$h/.claude/CLAUDE.md"
 assert_not "CLAUDE.md carries no work-only rule" grep -q Blitzy "$h/.claude/CLAUDE.md"
-for skill in "$root"/maki/skills/*/; do
+for skill in "$root"/home/.agents/skills/*/; do
     name=$(basename "$skill")
     assert "the $name skill reaches Claude Code" links_into_repo "$h/.claude/skills/$name/SKILL.md"
 done

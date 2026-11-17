@@ -39,8 +39,11 @@ bash_syntax() {
 
 # --- shell scripts
 
-for script in "$root"/home/.local/bin/* "$root"/maki/bin/maki-session-resume "$root/dev"; do
+for script in "$root"/home/.local/bin/* "$root/dev"; do
     [ -f "$script" ] || continue
+    case $(head -n 1 "$script") in
+        *python*) continue ;;
+    esac
     sh_syntax "$script"
 done
 
@@ -53,14 +56,14 @@ done
 
 if command -v python3 >/dev/null 2>&1; then
     if python3 -c 'import sys; compile(open(sys.argv[1]).read(), sys.argv[1], "exec")' \
-            "$root/maki/bin/maki-session-search" 2>"$tmp/err"; then
-        ok "syntax maki/bin/maki-session-search (python3)"
+            "$root/home/.local/bin/maki-session-search" 2>"$tmp/err"; then
+        ok "syntax home/.local/bin/maki-session-search (python3)"
     else
-        no "syntax maki/bin/maki-session-search (python3)"
+        no "syntax home/.local/bin/maki-session-search (python3)"
         sed 's/^/     /' "$tmp/err" >&2
     fi
 else
-    skip "syntax maki/bin/maki-session-search (python3 not installed)"
+    skip "syntax home/.local/bin/maki-session-search (python3 not installed)"
 fi
 
 # --- zsh
@@ -96,7 +99,7 @@ toml() {
 }
 
 for cfg in "$root"/mise.toml "$root"/mise.*.toml "$root"/global/*.toml "$root"/global/*.lock \
-        "$root"/desktop/.aerospace.toml "$root"/maki/config/*.toml \
+        "$root"/desktop/.aerospace.toml "$root"/home/.config/maki/*.toml \
         "$root"/home/.config/helix/*.toml "$root"/home/.config/television/cable/*.toml; do
     [ -f "$cfg" ] && toml "$cfg"
 done
@@ -188,9 +191,12 @@ for required in \
     "$root/README.md" \
     "$root/docs/manual-steps.md" \
     "$root/identity/.gitconfig" \
-    "$root/maki/config/init.lua" \
-    "$root/maki/config/providers.toml" \
-    "$root/maki/skills/sdlc/SKILL.md"; do
+    "$root/home/.config/maki/init.lua" \
+    "$root/home/.config/maki/mcp.toml" \
+    "$root/home/.config/maki/permissions.toml" \
+    "$root/home/.config/maki/plugin.toml" \
+    "$root/home/.config/maki/providers.toml" \
+    "$root/home/.agents/skills/sdlc/SKILL.md"; do
     if [ -f "$required" ] || [ -L "$required" ]; then
         ok "present $(rel "$required")"
     else
@@ -358,13 +364,13 @@ fi
 
 # shellcheck disable=SC2088 # matching a literal ~/ on purpose
 if grep -rnE '~/repos|~/ghq' "$root/mise.toml" "$root/mise.identity.toml" \
-        "$root/home/.local/bin/repos" "$root/maki/config/AGENTS.md" \
+        "$root/home/.local/bin/repos" "$root/home/.config/maki/AGENTS.md" \
         "$root/home/.claude/CLAUDE.md" "$root/README.md" \
         "$root/docs/manual-steps.md" "$root/scripts/install-mise.sh" >/dev/null 2>&1; then
     no "no file still points at ~/repos or ~/ghq"
     # shellcheck disable=SC2088 # matching a literal ~/ on purpose
     grep -rnE '~/repos|~/ghq' "$root/mise.toml" "$root/mise.identity.toml" \
-        "$root/home/.local/bin/repos" "$root/maki/config/AGENTS.md" \
+        "$root/home/.local/bin/repos" "$root/home/.config/maki/AGENTS.md" \
         "$root/home/.claude/CLAUDE.md" "$root/README.md" \
         "$root/docs/manual-steps.md" "$root/scripts/install-mise.sh" | sed 's/^/     /' >&2
 else
@@ -394,7 +400,7 @@ else
     no "personal and work SDLC registries must be hardcoded"
 fi
 
-if grep -qE '`worktrees prune --apply`' "$root/maki/config/AGENTS.md"; then
+if grep -qE '`worktrees prune --apply`' "$root/home/.config/maki/AGENTS.md"; then
     ok "AGENTS.md prunes with --apply"
 else
     no "AGENTS.md must prune with 'worktrees prune --apply' (prune is a dry run by default)"
@@ -490,11 +496,25 @@ require "the desktop lane empties the trash" \
 require "the desktop lane drives the nym VPN" \
     "$root/desktop/.config/zsh/conf.d/80-desktop.zsh" 'sudo nym-vpnc connect --wait'
 forbid "AGENTS.md names no retired shell abbreviation" \
-    "$root/maki/config/AGENTS.md" '`sl`/`ss`/`st`/`sn`'
+    "$root/home/.config/maki/AGENTS.md" '`sl`/`ss`/`st`/`sn`'
 forbid "CLAUDE.md names no retired shell abbreviation" \
     "$root/home/.claude/CLAUDE.md" '`sl`/`ss`/`st`/`sn`'
 require "AGENTS.md points at the sdlc picker" \
-    "$root/maki/config/AGENTS.md" '`s` (`sdlc ui`)'
+    "$root/home/.config/maki/AGENTS.md" '`s` (`sdlc ui`)'
+forbid "Maki leaves memory at its bundled default" \
+    "$root/home/.config/maki/init.lua" 'memory = '
+forbid "Maki leaves bash at its bundled default" \
+    "$root/home/.config/maki/init.lua" 'bash = '
+require "the TinyFish guard runs on every tool call" \
+    "$root/home/.config/maki/init.lua" 'set_slot("tool.*.input"'
+require "the TinyFish guard allows only search" \
+    "$root/home/.config/maki/init.lua" 'ctx.tool ~= "tinyfish__search"'
+require "the TinyFish MCP server is registered over HTTPS" \
+    "$root/home/.config/maki/mcp.toml" 'url = "https://agent.tinyfish.ai/mcp"'
+require "the TinyFish MCP server reads the launcher's key" \
+    "$root/home/.config/maki/mcp.toml" 'Authorization = "Bearer ${TINYFISH_API_KEY}"'
+require "the guard's manifest grants the session APIs" \
+    "$root/home/.config/maki/plugin.toml" 'session_read = true'
 require "CLAUDE.md points at the sdlc picker" \
     "$root/home/.claude/CLAUDE.md" '`s` (`sdlc ui`)'
 forbid "no fish residue in the check images" "$root/.github/workflows/check.yml" 'fish'
@@ -656,8 +676,11 @@ fi
 if $use_shellcheck; then
     if command -v shellcheck >/dev/null 2>&1; then
         for script in "$root"/home/.local/bin/* "$root"/work/.local/bin/* "$root"/desktop/.local/bin/* \
-                "$root/dev" "$root/maki/bin/maki-session-resume"; do
+                "$root/dev"; do
             [ -f "$script" ] || continue
+            case $(head -n 1 "$script") in
+                *python*) continue ;;
+            esac
             # SC3043: `local` is not POSIX, but every real /bin/sh implements it.
             if shellcheck -s sh -S warning -e SC3043 "$script" >"$tmp/out" 2>&1; then
                 ok "shellcheck $(rel "$script")"

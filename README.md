@@ -88,7 +88,7 @@ tool, handles the wallpaper sync.
 | `home/`, `identity/`, `desktop/`, `work/` | dotfiles shared by every machine or added by one environment |
 | `scripts/` | installer, bootstrap task, identity and secret materializers |
 | `sdlc/` | the stdlib sdlc CLI, its tests, and the phase-skill source |
-| `maki/` | Maki configuration, skills, and session helpers |
+| `maki/` | the pinned Maki release metadata |
 | `tests/` | source checks and throwaway-HOME behavioural tests |
 
 ## Daily use
@@ -218,7 +218,9 @@ The version, target, and sha256 are in `maki/pin.env`; the installer fails
 closed if the download does not match both the pin and the release's published
 `sha256sums.txt`. A Maki update is a pin bump followed by a re-run; never copy a
 release into `~/.local/bin` by hand. Maki talks directly to Neuralwatt and
-TinyFish: there is no capability broker, no agent VM, and no memory service.
+reaches TinyFish search through its MCP server: there is no capability broker
+and no agent VM. The other tools that server ships stay blocked by a guard in
+`init.lua`.
 
 ## Checks
 

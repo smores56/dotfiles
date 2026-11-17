@@ -1,8 +1,0 @@
-# Plugin permissions for Maki. `run` is needed by plugin jobstart calls; `net`
-# lets websearch_owned reach TinyFish. Edit in the dotfiles repo.
-[permissions]
-fs_read = true
-fs_write = true
-run = true
-env = true
-net = true
