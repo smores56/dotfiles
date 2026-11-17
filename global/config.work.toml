@@ -1,4 +1,5 @@
 # smoreswork: gh comes from Homebrew behind ~/.local/bin/gh, which hands it
-# the work token from 1Password per call; a mise gh would shadow that wrapper.
+# the work token per call; a mise gh would shadow that wrapper. ghq is disabled
+# too: the work Mac uses the repos wrapper and the ~/Blitzy flat layout.
 [settings]
-disable_tools = ["gh"]
+disable_tools = ["gh", "ghq"]

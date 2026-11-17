@@ -55,6 +55,22 @@ new_home() {
     printf '%s' "$home"
 }
 
+# The work environment refuses the generated placeholder key. Exercise that,
+# then substitute a test key for the rest of the work cases and restore it.
+key_file=$root/work/.config/git/work-signing.pub
+if grep -q 'replace-with-work-key' "$key_file" 2>/dev/null; then
+    hph=$(new_home work-placeholder)
+    run_mise "$hph" desktop,work dot apply >"$tmp/work-placeholder.log" 2>&1
+    assert_not "the work apply refuses the placeholder signing key" \
+        test -e "$hph/.config/git/work-signing.pub"
+    assert "the refusal names the placeholder" \
+        grep -q replace-with-work-key "$tmp/work-placeholder.log"
+    cp "$key_file" "$tmp/work-signing.pub"
+    printf 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFHdsAxdyKJywPFr5/RzDk1isLdil/G1GG67BWTmol0y test@work\n' \
+        >"$key_file"
+    trap 'cp "$tmp/work-signing.pub" "$key_file"; rm -rf "$tmp"' EXIT
+fi
+
 # --- base environment --------------------------------------------------------
 
 h=$(new_home base)
@@ -285,6 +301,7 @@ current_tools() {
 }
 assert "the base tool set includes gh" grep -qx gh <<<"$(current_tools "")"
 assert_not "the work environment leaves gh to the 1Password wrapper" grep -qx gh <<<"$(current_tools desktop,work)"
+assert_not "the work environment leaves ghq off" grep -qx ghq <<<"$(current_tools desktop,work)"
 
 # --- work identity: work everywhere, signed through 1Password ----------------
 

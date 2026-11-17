@@ -28,8 +28,8 @@ inferred set:
 ~/.dotfiles/scripts/install-mise.sh
 ```
 
-On smortress and smorespro, `install-mise.sh` also creates
-`/srv/git/github.com/smores56/dotfiles` as a symlink to `~/.dotfiles`. The set
+On smortress and smorespro, `install-mise.sh` creates `/srv/git` (one sudo
+prompt) and links `/srv/git/github.com/smores56/dotfiles` to `~/.dotfiles`. The set
 is `identity` on a server, `desktop,identity` on a Linux desktop, and
 `desktop,work` on macOS; `DOTFILES_ENVS` overrides it. No values are prompted:
 the identity and routing are hardcoded. The login shell is a separate step
@@ -63,7 +63,7 @@ shell file exports `MISE_ENV`.
 | --- | --- |
 | every machine | POSIX shell and coreutils, `curl`, `git`, `tar`, `gzip`, CA certificates |
 | Fedora Atomic / CoreOS | nothing more; the image ships `git`, `curl`, and, on desktops, `flatpak` |
-| smortress / smorespro | `/srv/git` created once and owned by you: `sudo install -d -o "$USER" -g "$(id -gn)" /srv/git` |
+| smortress / smorespro | nothing extra; `install-mise.sh` prompts for sudo once to create `/srv/git` owned by you |
 | macOS | Command Line Tools (they provide `git`) and Homebrew; run `scripts/install-homebrew.sh` once, interactively |
 | smoreswork | also the 1Password app for its SSH agent and `op-ssh-sign`; the bootstrap installs the `op` CLI |
 
@@ -155,7 +155,11 @@ everywhere, commits are signed by an SSH key in 1Password through `op-ssh-sign`,
 and git reaches github.com over SSH through the 1Password agent. `gh` is a
 wrapper at `~/.local/bin/gh` that reads the work token from 1Password per call;
 no personal token is on the laptop, the personal `sdlc` registry is not
-reachable from it, and `$SDLC_REPO` points at `smohr-blitzy/sdlc`.
+reachable from it, and `$SDLC_REPO` points at `smohr-blitzy/sdlc`. The token
+grants `dotfiles` Contents, `smohr-blitzy/sdlc` Issues, and work-organization
+Contents read plus Issues. Before the first bootstrap, replace the generated
+key in `work/.config/git/work-signing.pub` and the placeholder `op://`
+reference in `work/.config/gh-token-ref.tera`; the work apply refuses both.
 
 Personal machines keep only these secrets:
 

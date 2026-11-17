@@ -41,11 +41,18 @@ if [ -e "$config_dir" ] && [ ! -L "$config_dir" ]; then
     printf 'install-mise: moved the old %s to %s\n' "$config_dir" "$aside"
 fi
 
-# /srv/git belongs to the user, but its creation needs root once. Refuse
-# early rather than cloning into a root-owned tree.
+# /srv/git belongs to the user, but its creation needs root once. This is the
+# only interactive sudo in the bootstrap; an existing but foreign-owned root is
+# repaired rather than refused.
 if [ "$(uname -s)" != Darwin ]; then
-    [ -d /srv/git ] && [ -w /srv/git ] \
-        || die "create /srv/git once first: sudo install -d -o \"$USER\" -g \"$(id -gn)\" /srv/git"
+    if [ ! -d /srv/git ]; then
+        command -v sudo >/dev/null 2>&1 || die "sudo is required to create /srv/git"
+        sudo install -d -o "$USER" -g "$(id -gn)" /srv/git \
+            || die "could not create /srv/git"
+    elif [ ! -w /srv/git ]; then
+        command -v sudo >/dev/null 2>&1 || die "/srv/git is not writable and sudo is missing"
+        sudo chown "$USER:$(id -gn)" /srv/git || die "could not take ownership of /srv/git"
+    fi
 fi
 
 "$mise" bootstrap \

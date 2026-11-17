@@ -87,20 +87,15 @@ install -d -m 700 ~/.config/sops
 install -m 600 /media/<usb>/sops-backup/keys.age ~/.config/sops/keys.age
 ```
 
-Create the shared checkout root once; it must belong to you, not root:
-
-```sh
-sudo install -d -o "$USER" -g "$(id -gn)" /srv/git
-```
-
-Then clone the dotfiles repository at mise's default root:
+Clone the dotfiles repository at mise's default root:
 
 ```sh
 git clone git@github.com:smores56/dotfiles.git ~/.dotfiles
 cd ~/.dotfiles
 ```
 
-Install the latest mise and apply this machine's set:
+Install the latest mise and apply this machine's set. It asks for sudo once to
+create `/srv/git` and hand it to you:
 
 ```sh
 ~/.dotfiles/scripts/install-mise.sh
@@ -216,8 +211,10 @@ stay in 1Password, not here.
 
 ## 7. Re-authorize the Mac's public key
 
-smoreswork is managed by the `work` environment; a Mac kept outside the fleet
-needs only Tailscale and ordinary OpenSSH. Either way, its existing public key
+smoreswork is managed by the `work` environment; before its first bootstrap,
+replace the generated key in `work/.config/git/work-signing.pub` and the
+placeholder `op://` reference in `work/.config/gh-token-ref.tera`. A Mac kept
+outside the fleet needs only Tailscale and ordinary OpenSSH. Either way, its existing public key
 must be registered again on GitHub after the old machine's keys are retired.
 
 On the Mac:

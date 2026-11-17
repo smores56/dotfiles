@@ -9,6 +9,16 @@ mise_bin=${MISE_BIN:-$(command -v mise || true)}
 
 tmp=$(mktemp -d) || exit 1
 trap 'rm -rf "$tmp"' EXIT
+
+# The work environment refuses the placeholder signing key; use a test key for
+# this suite and restore the checked-in file on exit.
+key_file=$root/work/.config/git/work-signing.pub
+if grep -q 'replace-with-work-key' "$key_file" 2>/dev/null; then
+    cp "$key_file" "$tmp/work-signing.pub"
+    printf 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFHdsAxdyKJywPFr5/RzDk1isLdil/G1GG67BWTmol0y test@work\n' \
+        >"$key_file"
+    trap 'cp "$tmp/work-signing.pub" "$key_file"; rm -rf "$tmp"' EXIT
+fi
 pass=0 fail=0
 ok() { pass=$((pass + 1)); printf 'ok   %s\n' "$*"; }
 no() { fail=$((fail + 1)); printf 'FAIL %s\n' "$*" >&2; }

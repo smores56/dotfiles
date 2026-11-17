@@ -84,7 +84,7 @@
     path = ~/.config/git/machine.inc
 [credential "https://github.com"]
 	helper = 
-	helper = !gh auth git-credential
+	helper = !PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:$PATH" gh auth git-credential
 [credential "https://gist.github.com"]
 	helper = 
-	helper = !gh auth git-credential
+	helper = !PATH="$HOME/.local/share/mise/shims:$HOME/.local/bin:$PATH" gh auth git-credential
