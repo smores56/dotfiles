@@ -247,6 +247,22 @@ Verify from the Mac:
 ssh smores@<laptop-tailscale-name> true && echo mac-to-laptop-ok
 ```
 
+## 7a. Reach smortress over its tunnel
+
+smortress publishes SSH at `ssh.sammohr.dev` through its Cloudflare tunnel, so
+the work laptop needs neither Tailscale nor a VPN client. The work bootstrap
+installs `cloudflared` (`brew:cloudflared`), and `work/.ssh/config` names the
+host with `ProxyCommand cloudflared access ssh --hostname %h`.
+
+The key is the one smortress already accepts as `smores`: copy
+`~/.ssh/id_smortress-access` (mode 600) from the password manager or the USB
+backup. The first connection opens the Access login in a browser; it is cached
+for the session, not asked again per connection.
+
+```sh
+ssh smores@ssh.sammohr.dev true && echo tunnel-ssh-ok
+```
+
 ## 8. Shell hand-off
 
 Linux keeps bash as the login shell and uses the mise zsh for interactive
