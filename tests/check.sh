@@ -424,6 +424,25 @@ else
     no "provider keys must be passed by the maki() launcher only, never exported"
 fi
 
+# --- documentation and CI
+
+for stale in install.sh local.env scripts/bootstrap.sh packages/flatpaks.txt; do
+    if grep -qF -- "$stale" "$root/README.md" "$root/docs/manual-steps.md"; then
+        no "the docs still mention the retired $stale"
+    else
+        ok "the docs do not mention the retired $stale"
+    fi
+done
+
+for needle in 'fedora:43' 'macos-14' 'ubuntu-24.04-arm' 'tests/apply-lane.sh' \
+        'mise install --locked'; do
+    if grep -qF -- "$needle" "$root/.github/workflows/check.yml"; then
+        ok "CI declares $needle"
+    else
+        no "CI is missing $needle"
+    fi
+done
+
 # --- helix: every configured language server is a pinned tool
 
 helix_languages=$root/home/.config/helix/languages.toml

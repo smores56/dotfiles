@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -12,9 +15,89 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false
-      - name: Install checks
+      - name: Install check dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y bash git python3 shellcheck zsh
+      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
+        with:
+          version: 2026.11.9
+          sha256: 23ba592fcbc61f057e2b82c1eafd085832712ba0c759b714ca16cd06babca378
+          install: false
       - name: Run the checks
         run: tests/check.sh --shellcheck
+
+  # Every pinned tool must install from the lockfiles on each platform a
+  # machine runs.
+  locked:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            sha256: 23ba592fcbc61f057e2b82c1eafd085832712ba0c759b714ca16cd06babca378
+          - os: ubuntu-24.04-arm
+            sha256: cf2900bfb4279f8d8f8a19d5c27bf1bde826b3e742182f3f67511c588498c786
+          - os: macos-14
+            sha256: e4509f159e0492e89065edcf52f2918e2751e3574620586058468ba0563aed59
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
+        with:
+          version: 2026.11.9
+          sha256: ${{ matrix.sha256 }}
+          install: false
+      - name: Install the locked global tools
+        env:
+          MISE_GLOBAL_CONFIG_FILE: ${{ github.workspace }}/global/config.toml
+          MISE_ENV: desktop
+          MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+        run: mise install --locked
+
+  apply-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
+        with:
+          version: 2026.11.9
+          sha256: 23ba592fcbc61f057e2b82c1eafd085832712ba0c759b714ca16cd06babca378
+          install: false
+      - name: Install podman
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman
+      - name: Apply into a throwaway HOME on Fedora
+        run: |
+          podman run --rm \
+            -e HOME=/root -e TERM=dumb \
+            -v "$PWD:/src:ro" \
+            -v "$(command -v mise):/usr/local/bin/mise:ro" \
+            -w /src fedora:43 \
+            sh -euxc 'dnf install -y git tar gzip >/dev/null
+                      sh tests/apply-lane.sh desktop,identity /usr/local/bin/mise'
+
+  # This lane also covers the work environment, the macOS font copies, and the
+  # defaults.
+  apply-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
+        with:
+          version: 2026.11.9
+          sha256: e4509f159e0492e89065edcf52f2918e2751e3574620586058468ba0563aed59
+          install: false
+      - name: Apply into a throwaway HOME
+        env:
+          HOME: ${{ runner.temp }}/home
+        run: |
+          mkdir -p "$HOME"
+          sh tests/apply-lane.sh desktop,work "$(command -v mise)"
