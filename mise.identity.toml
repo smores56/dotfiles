@@ -46,7 +46,10 @@ default = ""
 # before the rendered files are written; scripts/identity.sh says what is refused.
 [bootstrap.hooks.pre-dotfiles]
 description = "check the identity vars"
-run = "sh {{ config_root }}/scripts/identity.sh check {{ vars.git_name | quote }} {{ vars.git_email | quote }} {{ vars.git_signing_key | quote }} {{ vars.personal_owner | quote }} {{ vars.repos_root | quote }} {{ vars.work_owners | quote }} {{ vars.work_flat_root | quote }} {{ vars.work_email | quote }} {{ vars.work_signing_key | quote }}"
+run = [
+  "sh {{ config_root }}/scripts/identity.sh check {{ vars.git_name | quote }} {{ vars.git_email | quote }} {{ vars.git_signing_key | quote }} {{ vars.personal_owner | quote }} {{ vars.repos_root | quote }} {{ vars.work_owners | quote }} {{ vars.work_flat_root | quote }} {{ vars.work_email | quote }} {{ vars.work_signing_key | quote }}",
+  "sh {{ config_root }}/scripts/retire-uv-sdlc.sh",
+]
 
 [bootstrap.hooks.post-dotfiles]
 description = "render allowed_signers"
