@@ -153,14 +153,14 @@ writes `~/.config/ssh/allowed_signers` from readable public keys.
 
 smoreswork does not apply the `identity` environment. Its git identity is work
 everywhere, commits are signed by an SSH key in 1Password through `op-ssh-sign`,
-and git reaches github.com over SSH through the 1Password agent. `gh` is a
-wrapper at `~/.local/bin/gh` that reads the work token from 1Password per call;
+and git reaches github.com over SSH through the 1Password agent. `gh` keeps
+the work token in the macOS Keychain, logged in once from 1Password with
+`op read 'op://Employee/GitHub Personal Access Token/token' | gh auth login --with-token`;
 no personal token is on the laptop, the personal `sdlc` registry is not
 reachable from it, and `$SDLC_REPO` points at `smohr-blitzy/sdlc`. The token
 grants `dotfiles` Contents, `smohr-blitzy/sdlc` Issues, and work-organization
 Contents read plus Issues. Before the first bootstrap, replace the generated
-key in `work/.config/git/work-signing.pub` and the placeholder `op://`
-reference in `work/.config/gh-token-ref.tera`; the work apply refuses both.
+key in `work/.config/git/work-signing.pub`; the work apply refuses it.
 
 Personal machines keep only these secrets:
 
