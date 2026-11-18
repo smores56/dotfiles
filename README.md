@@ -156,22 +156,27 @@ Every machine keeps only these secrets:
 
 | Path | Format | Used by |
 | --- | --- | --- |
-| `sops.yaml` | SOPS ciphertext with `NEURALWATT_API_KEY`, `TINYFISH_API_KEY`, `GITHUB_PERSONAL_PAT` and `GITHUB_WORK_PAT` | `scripts/secrets.sh` at bootstrap |
+| `sops.yaml` | SOPS ciphertext with `NEURALWATT_API_KEY`, `TINYFISH_API_KEY`, `GITHUB_PERSONAL_PAT`, `GITHUB_WORK_PAT`, `CLOUDFLARE_ACCESS_CLIENT_ID` and `CLOUDFLARE_ACCESS_CLIENT_SECRET` | `scripts/secrets.sh` at bootstrap |
 | `~/.config/secrets.env` | derived cache, mode 600, `NAME=value` lines | the zsh `maki` launcher, for the Maki process only |
 | `~/.config/github-token` | derived, mode 600, the machine's one token | `.zshenv`, exported as `GH_TOKEN` for `gh`, git, and `sdlc` |
+| `~/.config/cloudflare/access.env` | derived, mode 600, `NAME=value` lines | `~/.local/bin/smortress-ssh`, for the Access route to smortress only |
 | `~/.config/sops/keys.age` | passphrase-wrapped age identity | `~/.local/bin/sops-age-key` through `SOPS_AGE_KEY_CMD` |
 
 The bootstrap task decrypts `sops.yaml` once when the age identity exists and
 the ciphertext changed, writes the mode-600 provider cache, and writes the
 token file: `GITHUB_WORK_PAT` where `MISE_ENV` includes `work`,
-`GITHUB_PERSONAL_PAT` everywhere else.
+`GITHUB_PERSONAL_PAT` everywhere else. The same decrypt writes the Access
+service token to `~/.config/cloudflare/access.env`, which stays out of the
+provider cache: only `smortress-ssh` reads it, and only into cloudflared's
+environment.
 Bootstrap needs no GitHub auth: the repository, zim modules, tool downloads,
 and `sdlc` source are all in the checkout. `sdlc` is a stdlib script linked by
 the base environment, so no private repository is cloned.
 
 Only cross-machine secrets belong in `sops.yaml`, encrypted to the admin
 identity by `.sops.yaml`; the work GitHub PAT is the one work credential there.
-Homelab
+The Access service token is scoped to the SSH application, so a leak buys
+reachability on that one route and nothing else. Homelab
 material (Cloudflare, restic, R2, ingest) stays in homelab-platform, where it
 is used. Host and YubiKey private material and the age identity itself never
 enter this repository; public keys and `known_hosts` are plain files.
@@ -224,6 +229,7 @@ checks symlinks, templates, modes, rendered identity, and conflicts.
 `tests/shell-test.sh` starts an interactive zsh and checks the plugins,
 abbreviations, prompt, and that the Maki keys stay out of the parent shell.
 `tests/cli.sh` exercises `repos` and `worktrees` against throwaway
-repositories. `tests/secrets-test.sh`, `tests/detect-envs-test.sh`, and
-`tests/wallpapers-test.sh` cover the SOPS cache, machine-set inference, and the
-wallpaper sync. CI runs the same suite and a real Fedora apply lane.
+repositories. `tests/secrets-test.sh`, `tests/detect-envs-test.sh`,
+`tests/smortress-ssh-test.sh`, and `tests/wallpapers-test.sh` cover the SOPS
+cache, machine-set inference, the Access token wrapper, and the wallpaper
+sync. CI runs the same suite and a real Fedora apply lane.

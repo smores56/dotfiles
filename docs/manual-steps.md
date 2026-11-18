@@ -179,8 +179,8 @@ repositories and Issues read/write on `smores56/sdlc`: without it, personal
 machines have no git or `gh` access to GitHub. Set `GITHUB_WORK_PAT` to the
 `smohr-blitzy` classic token with `repo` scope (lifetime at most 366 days,
 which the Blitzy enterprise requires); only machines in the `work`
-environment use it. Save, commit the new ciphertext, and run the bootstrap
-task again.
+environment use it. The Cloudflare pair is step 6a. Save, commit the new
+ciphertext, and run the bootstrap task again.
 
 The desktop Flatpak ships the `bw` CLI if you prefer to read the values from
 Bitwarden in a terminal:
@@ -197,6 +197,47 @@ unset BW_SESSION
 
 `<neuralwatt-item>` and `<tinyfish-item>` are the Bitwarden login item names.
 Never commit the plaintext values; `sops` re-encrypts on save.
+
+## 6a. The Cloudflare Access service token
+
+SSH to smortress goes through Cloudflare Access, so every client machine needs
+one Access service token. Create it once in the Zero Trust dashboard under
+**Access → Service Auth**, restricted to the SSH application (a token that
+reaches the other applications is one leak away from the assistant's memory and
+the backup reader), with a one-year lifetime; rotate it whenever a machine
+leaves your control.
+
+Put both halves in `sops.yaml` like any other cross-machine secret:
+
+```sh
+cd ~/.dotfiles
+sops sops.yaml
+```
+
+- `CLOUDFLARE_ACCESS_CLIENT_ID` is the token's Client ID.
+- `CLOUDFLARE_ACCESS_CLIENT_SECRET` is the token's Client Secret.
+
+Save, commit the ciphertext, and re-run the delivery:
+
+```sh
+sh ~/.dotfiles/scripts/secrets.sh
+```
+
+The task writes `~/.config/cloudflare/access.env` (mode 600) and keeps the pair
+out of `~/.config/secrets.env`, so nothing that reads the Maki cache holds it.
+Only `~/.local/bin/smortress-ssh` reads the file, and only into cloudflared's
+environment. Verify without printing the secret:
+
+```sh
+test -s ~/.config/cloudflare/access.env && echo access-token-present
+test "$(stat -c %a ~/.config/cloudflare/access.env)" = 600 && echo access-mode-ok
+grep -c . ~/.config/cloudflare/access.env   # 2 lines, no values printed
+ssh smortress true && echo tunnel-ssh-with-token-ok
+```
+
+A machine without the file refuses the route and names it: there is no browser
+login fallback, because the route is meant to work from a systemd unit or a GUI
+launch, where no browser prompt can be answered.
 
 ## 7. The work laptop's GitHub token
 

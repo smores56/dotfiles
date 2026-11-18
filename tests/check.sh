@@ -249,6 +249,17 @@ else
     no "personal and work SDLC registries must be hardcoded"
 fi
 
+# The Access token has one producer and one consumer; a rename on either side
+# would silently leave the wrapper without a credential.
+if grep -q 'cloudflare/access.env' "$root/scripts/secrets.sh" \
+        && grep -q 'cloudflare/access.env' "$root/home/.local/bin/smortress-ssh" \
+        && grep -q 'CLOUDFLARE_ACCESS_CLIENT_SECRET' "$root/scripts/secrets.sh" \
+        && grep -q 'CLOUDFLARE_ACCESS_CLIENT_SECRET' "$root/home/.local/bin/smortress-ssh"; then
+    ok "secrets.sh delivers the Access token where smortress-ssh reads it"
+else
+    no "secrets.sh and smortress-ssh must agree on the Access token file and names"
+fi
+
 # --- Maki guards
 
 require() {  # require <desc> <path> <fixed-string>
