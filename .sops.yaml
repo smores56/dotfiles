@@ -1,7 +1,9 @@
 # Cross-machine secrets, encrypted to the passphrase-wrapped admin age identity
 # that every machine restores from backup and, once enrolled, to the YubiKey
-# beside it, so decryption uses whichever identity is at hand. Homelab secrets
-# stay in homelab-platform.
+# beside it. ~/.local/bin/sops-age-key prefers the YubiKey handle and does not
+# fall back: while ~/.config/sops/fido2-identity.txt is readable, sops uses that
+# identity alone, and a host without the token decrypts only after the handle
+# file is removed. Homelab secrets stay in homelab-platform.
 keys:
   - &admin age1skuwunreduvw8gtkzyf9atsyjnku388ly8c252h3qger84fg5d7q4kf6xs
   # The YubiKey's recipient comes from `age-plugin-fido2-hmac -g`, which needs

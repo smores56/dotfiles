@@ -22,10 +22,11 @@ if [ -e "$legacy" ]; then
     fail "remove the retired plaintext identity $legacy"
 fi
 
-# The YubiKey identity wins when it is provisioned: it is a plaintext
+# The YubiKey identity wins whenever it is provisioned: it is a plaintext
 # age-plugin-fido2-hmac handle that the token unlocks, so nothing here can leak
-# a long-term secret, and sops decrypts with whichever key is at hand. Removing
-# this file is the documented fallback to the admin identity.
+# a long-term secret. Nothing below can correct a wrong key either: while this
+# file is readable sops sees this identity alone, so removing it is the
+# documented way back to the passphrase-wrapped admin identity.
 fido2=$config/sops/fido2-identity.txt
 if [ -r "$fido2" ]; then
     exec cat "$fido2"

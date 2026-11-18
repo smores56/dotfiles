@@ -175,8 +175,10 @@ and `sdlc` source are all in the checkout. `sdlc` is a stdlib script linked by
 the base environment, so no private repository is cloned.
 
 Only cross-machine secrets belong in `sops.yaml`, encrypted by `.sops.yaml` to
-the admin identity and, once enrolled, to the YubiKey's FIDO2 recipient, so
-`sops` decrypts with whichever is at hand; the work GitHub PAT is the one work credential there.
+the admin identity and, once enrolled, to the YubiKey's FIDO2 recipient.
+`sops-age-key` prefers the YubiKey handle and does not fall back, so a host
+without the token decrypts only once `~/.config/sops/fido2-identity.txt` is
+removed; the work GitHub PAT is the one work credential there.
 The Access service token is scoped to the SSH application, so a leak buys
 reachability on that one route and nothing else. Homelab
 material (Cloudflare, restic, R2, ingest) stays in homelab-platform, where it

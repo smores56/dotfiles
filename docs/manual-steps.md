@@ -246,8 +246,9 @@ launch, where no browser prompt can be answered.
 ## 6b. The YubiKey age recipient
 
 `sops.yaml` is encrypted to the admin identity and, once enrolled, to the
-YubiKey beside it, so `sops` decrypts with whichever identity is at hand and the
-admin key stays as loss insurance. The recipient cannot be generated here: it
+YubiKey beside it. `sops-age-key` prefers the YubiKey handle and does not fall
+back, so the admin key stays as loss insurance: it is read only when the handle
+file is absent. The recipient cannot be generated here: it
 is derived from the token's hmac-secret, so this step needs the physical key.
 
 The plugin installs as a mise tool (`github:olastor/age-plugin-fido2-hmac` in
