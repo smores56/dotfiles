@@ -139,6 +139,31 @@ else
     ok "a node without a MagicDNS name fails the sync"
 fi
 
+# jq does the parse, so a host without it must hear that, not "cannot read the
+# tailnet name": the name may be perfectly readable. The PATH carries only what
+# the run needs before the parse.
+nojq=$tmp/nojq
+mkdir -p "$nojq"
+for tool in sh mkdir flock; do
+    ln -sf "$(command -v "$tool")" "$nojq/$tool"
+done
+ln -sf "$tmp/bin/tailscale" "$nojq/tailscale"
+ln -sf "$tmp/bin/rclone" "$nojq/rclone"
+if env -i HOME="$home" PATH="$nojq" XDG_CACHE_HOME="$home/.cache" \
+        RCLONE_LOG="$tmp/log" WALLPAPERS_RCLONE="$tmp/bin/rclone" \
+        WALLPAPERS_CACHE="$home/.cache/wallpapers6" \
+        sh "$script" sync 2>"$tmp/err"; then
+    no "a missing jq fails the sync"
+else
+    ok "a missing jq fails the sync"
+fi
+grep -q 'jq is required' "$tmp/err" \
+    && ok "the failure names the missing jq" \
+    || no "the failure names the missing jq ($(sed -n 1p "$tmp/err"))"
+grep -q 'cannot read the tailnet name' "$tmp/err" \
+    && no "a missing jq does not blame tailscaled" \
+    || ok "a missing jq does not blame tailscaled"
+
 # The SFTP path is gone, and nothing in the checkout may bring it back.
 if [ -e "$root/desktop/.local/bin/smortress-sftp" ]; then
     no "the SFTP helper is deleted"

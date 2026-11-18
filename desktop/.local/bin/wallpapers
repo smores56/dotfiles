@@ -59,6 +59,12 @@ source_url() {
         printf '%s\n' "$source"
         return 0
     fi
+    # Without jq the parse below yields an empty name, which would blame
+    # tailscaled for a missing package.
+    if ! command -v jq >/dev/null 2>&1; then
+        log "jq is required to read the tailnet name from tailscaled and is not on PATH"
+        return 1
+    fi
     status=$(tailscale status --json 2>/dev/null) || status=
     dns=$(printf '%s' "$status" | jq -r '.Self.DNSName // empty' 2>/dev/null) || dns=
     dns=${dns%.}
