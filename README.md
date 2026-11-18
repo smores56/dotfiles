@@ -161,6 +161,7 @@ Every machine keeps only these secrets:
 | `~/.config/github-token` | derived, mode 600, the machine's one token | `.zshenv`, exported as `GH_TOKEN` for `gh`, git, and `sdlc` |
 | `~/.config/cloudflare/access.env` | derived, mode 600, `NAME=value` lines | `~/.local/bin/smortress-ssh`, for the Access route to smortress only |
 | `~/.config/sops/keys.age` | passphrase-wrapped age identity | `~/.local/bin/sops-age-key` through `SOPS_AGE_KEY_CMD` |
+| `~/.config/sops/fido2-identity.txt` | YubiKey age handle, mode 600, usable only with the token | `~/.local/bin/sops-age-key`, which prefers it when present |
 
 The bootstrap task decrypts `sops.yaml` once when the age identity exists and
 the ciphertext changed, writes the mode-600 provider cache, and writes the
@@ -173,8 +174,9 @@ Bootstrap needs no GitHub auth: the repository, zim modules, tool downloads,
 and `sdlc` source are all in the checkout. `sdlc` is a stdlib script linked by
 the base environment, so no private repository is cloned.
 
-Only cross-machine secrets belong in `sops.yaml`, encrypted to the admin
-identity by `.sops.yaml`; the work GitHub PAT is the one work credential there.
+Only cross-machine secrets belong in `sops.yaml`, encrypted by `.sops.yaml` to
+the admin identity and, once enrolled, to the YubiKey's FIDO2 recipient, so
+`sops` decrypts with whichever is at hand; the work GitHub PAT is the one work credential there.
 The Access service token is scoped to the SSH application, so a leak buys
 reachability on that one route and nothing else. Homelab
 material (Cloudflare, restic, R2, ingest) stays in homelab-platform, where it

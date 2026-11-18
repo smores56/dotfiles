@@ -243,6 +243,66 @@ A machine without the file refuses the route and names it: there is no browser
 login fallback, because the route is meant to work from a systemd unit or a GUI
 launch, where no browser prompt can be answered.
 
+## 6b. The YubiKey age recipient
+
+`sops.yaml` is encrypted to the admin identity and, once enrolled, to the
+YubiKey beside it, so `sops` decrypts with whichever identity is at hand and the
+admin key stays as loss insurance. The recipient cannot be generated here: it
+is derived from the token's hmac-secret, so this step needs the physical key.
+
+The plugin installs as a mise tool (`github:olastor/age-plugin-fido2-hmac` in
+`global/config.toml`, so `mise bootstrap` provides it). It links `libfido2`:
+Fedora's image must ship `libfido2`, and the Mac needs `brew install libfido2`.
+
+Generate the recipient and its handle with the token attached:
+
+```sh
+age-plugin-fido2-hmac -g | tee /tmp/yubikey-age.txt
+```
+
+It asks for the token's FIDO2 PIN, then for a touch, and prints a comment line
+with the public key plus the `AGE-PLUGIN-FIDO2-HMAC-1...` identity. Answer
+**yes** to "separate identity" so the recipient is a plain age key. Keep the
+output as the identity file, readable only by you, and delete the copy:
+
+```sh
+install -d -m 700 ~/.config/sops
+install -m 600 /tmp/yubikey-age.txt ~/.config/sops/fido2-identity.txt
+shred -u /tmp/yubikey-age.txt
+grep '^# public key:' ~/.config/sops/fido2-identity.txt   # the recipient
+```
+
+`~/.local/bin/sops-age-key` hands that file to `sops` whenever it exists, so no
+passphrase is asked for; deleting the file is the documented fallback to the
+admin identity.
+
+Paste the printed `age1...` into `.sops.yaml`, uncommenting both lines:
+
+```yaml
+  # - &yubikey age1...
+      - age:
+          - *admin
+          # - *yubikey
+```
+
+Then re-encrypt the data key to the new recipient and prove both identities
+work:
+
+```sh
+cd ~/.dotfiles
+sops updatekeys sops.yaml
+sops -d sops.yaml >/dev/null && echo admin-identity-ok
+mv ~/.config/sops/keys.age /tmp/keys.age.off
+sops -d sops.yaml >/dev/null && echo yubikey-identity-ok   # touch the token
+mv /tmp/keys.age.off ~/.config/sops/keys.age
+```
+
+Nothing else has to change: `sops.yaml` stays the only secret file, and the
+private identity never enters this repository. The plugin is pre-1.0 upstream,
+which is why the admin key stays enrolled. Clearing the token's FIDO2 PIN block
+erases this credential along with the LUKS keyslot, the resident SSH handle and
+the `pam_u2f` mapping; the admin key is then the recovery.
+
 ## 7. The work laptop's GitHub token
 
 Restore the admin age identity (`~/.config/sops/keys.age`) before
