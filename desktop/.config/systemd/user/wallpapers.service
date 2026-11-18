@@ -10,5 +10,6 @@ TimeoutStartSec=20min
 ExecStart=%h/.local/bin/wallpapers sync
 Restart=on-failure
 RestartSec=30
-# rclone comes from the mise shims; systemd does not read the shell PATH.
+# rclone comes from the mise shims and tailscale from /usr/bin; systemd does
+# not read the shell PATH, and the URL is resolved from tailscaled.
 Environment=PATH=%h/.local/bin:%h/.local/share/mise/shims:/usr/local/bin:/usr/bin:/bin

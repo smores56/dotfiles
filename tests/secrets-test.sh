@@ -25,6 +25,8 @@ printf 'NEURALWATT_API_KEY=%s\n' "$FAKE_NEURALWATT"
 printf 'TINYFISH_API_KEY=%s\n' "$FAKE_TINYFISH"
 [ -n "$FAKE_PAT" ] && printf 'GITHUB_PERSONAL_PAT=%s\n' "$FAKE_PAT"
 [ -n "$FAKE_WORK_PAT" ] && printf 'GITHUB_WORK_PAT=%s\n' "$FAKE_WORK_PAT"
+[ -n "$FAKE_ACCESS_ID" ] && printf 'CLOUDFLARE_ACCESS_CLIENT_ID=%s\n' "$FAKE_ACCESS_ID"
+[ -n "$FAKE_ACCESS_SECRET" ] && printf 'CLOUDFLARE_ACCESS_CLIENT_SECRET=%s\n' "$FAKE_ACCESS_SECRET"
 exit 0
 EOF
 # The token is exported by zsh, never handed to gh: any gh call is a failure.
@@ -41,6 +43,8 @@ run() {
         FAKE_TINYFISH="${FAKE_TINYFISH-tf-test}" \
         FAKE_PAT="${FAKE_PAT-ghp_test}" \
         FAKE_WORK_PAT="${FAKE_WORK_PAT-ghp_work}" \
+        FAKE_ACCESS_ID="${FAKE_ACCESS_ID-cf-id-test}" \
+        FAKE_ACCESS_SECRET="${FAKE_ACCESS_SECRET-cf-secret-test}" \
         DOTFILES_SECRETS="$tmp/secrets.yaml" \
         sh "$root/scripts/secrets.sh" >"$tmp/out" 2>&1
 }
@@ -48,6 +52,8 @@ decrypts() { grep -c '^sops$' "$tmp/log"; }
 
 secrets=$home/.config/secrets.env
 token=$home/.config/github-token
+access=$home/.config/cloudflare/access.env
+state=$home/.local/state/dotfiles/secrets.sha256
 
 check "decrypt exits 0" run
 check "the provider keys are written" \
@@ -58,6 +64,14 @@ check "the token file is mode 600" test "$(mode_of "$token" 2>/dev/null)" = 600
 check "the PATs stay out of the Maki cache" bash -c "! grep -q ghp_ '$secrets'"
 check "the PATs are never printed" bash -c "! grep -q ghp_ '$tmp/out'"
 check "gh is never called" bash -c "! grep -q '^gh ' '$tmp/log'"
+check "the Access client id is written where the wrapper reads it" \
+    grep -qx 'CLOUDFLARE_ACCESS_CLIENT_ID=cf-id-test' "$access"
+check "the Access secret is written where the wrapper reads it" \
+    grep -qx 'CLOUDFLARE_ACCESS_CLIENT_SECRET=cf-secret-test' "$access"
+check "the Access token file is mode 600" test "$(mode_of "$access")" = 600
+check "the Access token directory is private" test "$(mode_of "$home/.config/cloudflare")" = 700
+check "the Access token stays out of the Maki cache" bash -c "! grep -q cf-secret-test '$secrets'"
+check "the Access token is never printed" bash -c "! grep -q cf-secret-test '$tmp/out'"
 
 run
 check "an unchanged file skips the second decrypt" test "$(decrypts)" -eq 1
@@ -97,6 +111,54 @@ check "an empty PAT is not decrypted again on every run" test "$(decrypts)" -eq 
 MISE_ENV=work FAKE_PAT='' run
 check "switching to work picks up the work PAT despite the empty personal one" \
     test "$(cat "$token" 2>/dev/null)" = ghp_work
+
+# --- the Access service token, delivered beside the provider keys ------------
+# The case above left the work PAT marker in the state; keep the environment
+# fixed so this block only ever exercises the Access marker.
+MISE_ENV=work
+
+before=$(decrypts)
+run
+check "an untouched machine does not decrypt for the Access token again" \
+    test "$(decrypts)" -eq "$before"
+
+chmod 644 "$access"
+run
+check "a loosened Access token file is tightened without decrypting" \
+    test "$(mode_of "$access")" = 600 -a "$(decrypts)" -eq "$before"
+
+rm "$access"
+run
+check "a deleted Access token file is restored without a changed file" \
+    test "$(mode_of "$access")" = 600 -a "$(decrypts)" -eq "$((before + 1))"
+
+# A state file from before the token existed carries two fields.
+sha=$(cut -d' ' -f1 "$state")
+printf '%s GITHUB_PERSONAL_PAT\n' "$sha" >"$state"
+before=$(decrypts)
+run
+check "a state file without an Access marker decrypts once more" \
+    test "$(decrypts)" -eq "$((before + 1))"
+
+printf 'access1\n' >"$tmp/secrets.yaml"
+before=$(decrypts)
+FAKE_ACCESS_ID='' run
+check "a cipher without the Access pair removes the token file" test ! -e "$access"
+check "a cipher without the Access pair warns" grep -q 'no CLOUDFLARE_ACCESS_CLIENT_ID' "$tmp/out"
+check "a cipher without the Access pair decrypts once, then settles" \
+    test "$(decrypts)" -eq "$((before + 1))"
+before=$(decrypts)
+FAKE_ACCESS_ID='' run
+check "the absent Access pair is not decrypted again on every run" \
+    test "$(decrypts)" -eq "$before"
+printf 'access2\n' >"$tmp/secrets.yaml"
+before=$(decrypts)
+run
+check "the Access token comes back with the cipher's pair" \
+    test "$(decrypts)" -eq "$((before + 1))"
+check "the restored Access token file is mode 600" \
+    test "$(mode_of "$access")" = 600
+MISE_ENV=
 
 rm "$home/.config/sops/keys.age"
 printf 'changed4\n' >"$tmp/secrets.yaml"

@@ -6,33 +6,18 @@
 # config.toml because this script tracks which images each aspect has already
 # shown, and Noctalia's state file would outrank the setting.
 #
-# The sync uses rclone's SFTP backend, so no host sync package is needed: rclone
-# is a mise tool, and the smortress key and known_hosts come from the identity
-# env. WALLPAPERS_SOURCE is host:path; WALLPAPERS_USER, WALLPAPERS_KEY,
-# WALLPAPERS_KNOWN_HOSTS, WALLPAPERS_RCLONE and WALLPAPERS_CACHE override the
-# defaults below, which is also how the tests drive it.
+# smortress serves /srv/wallpapers through `tailscale serve --bg --set-path
+# /wallpapers /srv/wallpapers`, authenticated by the device: the sync carries no
+# credential at all, and rclone pulls the directory index it serves. rclone is a
+# mise tool; ImageMagick and jq come from the image. WALLPAPERS_SOURCE overrides
+# the URL, WALLPAPERS_RCLONE and WALLPAPERS_CACHE the defaults below, which is
+# also how the tests drive it.
 set -eu
 
-source=${WALLPAPERS_SOURCE:-smortress:/srv/wallpapers/}
+source=${WALLPAPERS_SOURCE:-}
 cache=${WALLPAPERS_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/wallpapers}
 dest=$cache/Wallpapers
 state=$cache/state
-user=${WALLPAPERS_USER:-smores}
-key=${WALLPAPERS_KEY:-$HOME/.ssh/id_smortress-access}
-known_hosts=${WALLPAPERS_KNOWN_HOSTS:-$HOME/.config/ssh/known_hosts}
-
-# Tailscale SSH intercepts port 22 and the tailnet policy rejects `ssh`, so the
-# SFTP transport goes through `tailscale ssh`; see smortress-sftp.
-ssh_client=${WALLPAPERS_SSH:-}
-if [ -z "$ssh_client" ]; then
-    for candidate in "$(command -v smortress-sftp 2>/dev/null || true)" \
-            "$HOME/.local/bin/smortress-sftp"; do
-        if [ -n "$candidate" ] && [ -x "$candidate" ]; then
-            ssh_client=$candidate
-            break
-        fi
-    done
-fi
 
 log() { printf 'wallpapers: %s\n' "$*" >&2; }
 usage() {
@@ -66,23 +51,43 @@ find_rclone() {
     return 1
 }
 
+# tailscale serve publishes https://<node>.<tailnet>.ts.net/<path>. The tailnet
+# suffix is per-tailnet and this checkout pins none, so it is read from
+# tailscaled's own node rather than hardcoded.
+source_url() {
+    if [ -n "$source" ]; then
+        printf '%s\n' "$source"
+        return 0
+    fi
+    # Without jq the parse below yields an empty name, which would blame
+    # tailscaled for a missing package.
+    if ! command -v jq >/dev/null 2>&1; then
+        log "jq is required to read the tailnet name from tailscaled and is not on PATH"
+        return 1
+    fi
+    status=$(tailscale status --json 2>/dev/null) || status=
+    dns=$(printf '%s' "$status" | jq -r '.Self.DNSName // empty' 2>/dev/null) || dns=
+    dns=${dns%.}
+    suffix=${dns#*.}
+    if [ -z "$dns" ] || [ "$suffix" = "$dns" ]; then
+        log "cannot read the tailnet name from tailscaled; set WALLPAPERS_SOURCE"
+        return 1
+    fi
+    printf 'https://smortress.%s/wallpapers/\n' "$suffix"
+}
+
+# rclone's HTTP backend reads the HTML index the file server emits; the URL is
+# the whole remote, so no key, host key or user can be involved.
 remote_url() {
-    host=${source%%:*}
-    path=${source#*:}
-    if [ "$host" = "$source" ] || [ -z "$path" ]; then
-        log "WALLPAPERS_SOURCE must be host:path, not $source"
-        exit 2
-    fi
-    [ -f "$known_hosts" ] \
-        || { log "no known_hosts at $known_hosts; cannot verify $host"; exit 1; }
-    opts="host=$host,user=$user,known_hosts_file=$known_hosts"
-    if [ -n "$ssh_client" ]; then
-        opts="ssh=$ssh_client,$opts"
-    fi
-    if [ -f "$key" ]; then
-        opts="$opts,key_file=$key"
-    fi
-    printf ':sftp,%s:%s' "$opts" "$path"
+    url=$1
+    case $url in
+        http://* | https://*) ;;
+        *)
+            log "WALLPAPERS_SOURCE must be an http(s) URL, not $url"
+            return 1
+            ;;
+    esac
+    printf ":http,url='%s':" "$url"
 }
 
 # The timer and a manual run must not classify under each other's deletes.
@@ -98,12 +103,13 @@ lock() {
 sync_cache() {
     rclone_bin=$(find_rclone) \
         || { log 'rclone is required; run mise bootstrap'; return 1; }
-    remote=$(remote_url)
+    url=$(source_url) || return 1
+    remote=$(remote_url "$url") || return 1
     mkdir -p "$dest"
     # Probe before syncing, so an unreachable host never empties the cache.
     if ! listing=$("$rclone_bin" lsf "$remote" --files-only --max-depth 1 \
             --contimeout 20s --timeout 240s --retries 2 2>/dev/null); then
-        log "cannot list $source; keeping the cached set"
+        log "cannot list $url; keeping the cached set"
         return 1
     fi
     if [ -z "$listing" ]; then

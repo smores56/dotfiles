@@ -127,6 +127,10 @@ Authenticate in the browser window Tailscale opens. Confirm the node:
 tailscale status
 ```
 
+Enable HTTPS certificates for the tailnet in the admin console's DNS page:
+step 10 serves the wallpaper tree over them. Tailscale SSH stays off; SSH to
+smortress is the Cloudflare Access route in step 7a.
+
 ## 5. Maki and sdlc
 
 ```sh
@@ -179,8 +183,8 @@ repositories and Issues read/write on `smores56/sdlc`: without it, personal
 machines have no git or `gh` access to GitHub. Set `GITHUB_WORK_PAT` to the
 `smohr-blitzy` classic token with `repo` scope (lifetime at most 366 days,
 which the Blitzy enterprise requires); only machines in the `work`
-environment use it. Save, commit the new ciphertext, and run the bootstrap
-task again.
+environment use it. The Cloudflare pair is step 6a. Save, commit the new
+ciphertext, and run the bootstrap task again.
 
 The desktop Flatpak ships the `bw` CLI if you prefer to read the values from
 Bitwarden in a terminal:
@@ -198,6 +202,120 @@ unset BW_SESSION
 `<neuralwatt-item>` and `<tinyfish-item>` are the Bitwarden login item names.
 Never commit the plaintext values; `sops` re-encrypts on save.
 
+## 6a. The Cloudflare Access service token
+
+SSH to smortress goes through Cloudflare Access, so every client machine needs
+one Access service token. Create it once in the Zero Trust dashboard under
+**Access → Service Auth**, restricted to the SSH application (a token that
+reaches the other applications is one leak away from the assistant's memory and
+the backup reader), with a one-year lifetime; rotate it whenever a machine
+leaves your control.
+
+Put both halves in `sops.yaml` like any other cross-machine secret:
+
+```sh
+cd ~/.dotfiles
+sops sops.yaml
+```
+
+- `CLOUDFLARE_ACCESS_CLIENT_ID` is the token's Client ID.
+- `CLOUDFLARE_ACCESS_CLIENT_SECRET` is the token's Client Secret.
+
+Save, commit the ciphertext, and re-run the delivery:
+
+```sh
+sh ~/.dotfiles/scripts/secrets.sh
+```
+
+The task writes `~/.config/cloudflare/access.env` (mode 600) and keeps the pair
+out of `~/.config/secrets.env`, so nothing that reads the Maki cache holds it.
+Only `~/.local/bin/smortress-ssh` reads the file, and only into cloudflared's
+environment. Verify without printing the secret:
+
+```sh
+test -s ~/.config/cloudflare/access.env && echo access-token-present
+test "$(stat -c %a ~/.config/cloudflare/access.env)" = 600 && echo access-mode-ok
+grep -c . ~/.config/cloudflare/access.env   # 2 lines, no values printed
+ssh smortress true && echo tunnel-ssh-with-token-ok
+```
+
+A machine without the file refuses the route and names it: there is no browser
+login fallback, because the route is meant to work from a systemd unit or a GUI
+launch, where no browser prompt can be answered.
+
+## 6b. The YubiKey age recipient
+
+`sops.yaml` is encrypted to the admin identity and, once enrolled, to the
+YubiKey beside it. `sops-age-key` prefers the YubiKey handle and does not fall
+back, so the admin key stays as loss insurance: it is read only when the handle
+file is absent. The recipient cannot be generated here: it
+is derived from the token's hmac-secret, so this step needs the physical key.
+
+The plugin installs as a mise tool (`github:olastor/age-plugin-fido2-hmac` in
+`global/config.toml`, so `mise bootstrap` provides it). It links `libfido2`:
+Fedora's image must ship `libfido2`, and the Mac needs `brew install libfido2`.
+
+Generate the recipient and its handle with the token attached:
+
+```sh
+age-plugin-fido2-hmac -g | tee /tmp/yubikey-age.txt
+```
+
+It asks for the token's FIDO2 PIN, then for a touch, and prints a comment line
+with the public key plus the `AGE-PLUGIN-FIDO2-HMAC-1...` identity. Answer
+**yes** to "separate identity" so the recipient is a plain age key. Keep the
+output as the identity file, readable only by you, and delete the copy:
+
+```sh
+install -d -m 700 ~/.config/sops
+install -m 600 /tmp/yubikey-age.txt ~/.config/sops/fido2-identity.txt
+shred -u /tmp/yubikey-age.txt
+grep '^# public key:' ~/.config/sops/fido2-identity.txt   # the recipient
+```
+
+`~/.local/bin/sops-age-key` hands that file to `sops` whenever it exists, so no
+passphrase is asked for; deleting the file is the documented fallback to the
+admin identity.
+
+Paste the printed `age1...` into `.sops.yaml`, uncommenting both lines:
+
+```yaml
+  # - &yubikey age1...
+      - age:
+          - *admin
+          # - *yubikey
+```
+
+Then re-encrypt the data key to the new recipient and prove each identity on its
+own. `sops-age-key` prefers the YubiKey handle whenever that file is readable and
+never falls back, so the admin key can only be proven with the handle moved
+aside; keep it inside `~/.config/sops` (mode 700), never in a shared directory
+like `/tmp`:
+
+```sh
+cd ~/.dotfiles
+sops updatekeys sops.yaml
+
+# The admin key: no token involved, only the passphrase on keys.age.
+mv ~/.config/sops/fido2-identity.txt ~/.config/sops/fido2-identity.txt.off
+sops -d sops.yaml >/dev/null && echo admin-identity-ok
+mv ~/.config/sops/fido2-identity.txt.off ~/.config/sops/fido2-identity.txt
+
+# The YubiKey path: the handle is back, so this asks for the PIN and a touch and
+# never opens keys.age.
+sops -d sops.yaml >/dev/null && echo yubikey-identity-ok   # touch the token
+```
+
+Restore the handle before investigating a failed admin decrypt: while
+`fido2-identity.txt.off` is there, every `sops` call on this machine takes the
+passphrase path, which is not the state to leave a host in.
+
+Nothing else has to change: `sops.yaml` stays the only secret file, and the
+private identity never enters this repository. The plugin is pre-1.0 upstream,
+which is why the admin key stays enrolled. Clearing the token's FIDO2 PIN block
+erases this credential along with the LUKS keyslot, the resident SSH handle and
+the `pam_u2f` mapping; the admin key is then the recovery.
+
 ## 7. The work laptop's GitHub token
 
 Restore the admin age identity (`~/.config/sops/keys.age`) before
@@ -206,18 +324,24 @@ smoreswork's first bootstrap; the bootstrap then writes `GITHUB_WORK_PAT` from
 
 ## 7a. Reach smortress over its tunnel
 
-smortress publishes SSH at `ssh.sammohr.dev` through its Cloudflare tunnel, so
-the work laptop needs neither Tailscale nor a VPN client. The work bootstrap
-installs `cloudflared` (`brew:cloudflared`), and `work/.ssh/config` names the
-host with `ProxyCommand cloudflared access ssh --hostname %h`.
+smortress publishes SSH at `ssh.sammohr.dev` through its Cloudflare tunnel, and
+Access is the only route for every machine, the work laptop included: no
+Tailscale SSH, no VPN client. `~/.ssh/smortress.conf` carries the one route
+(`ProxyCommand %d/.local/bin/smortress-ssh %h`), and both `~/.ssh/config` files
+include it.
+
+`cloudflared` comes from `brew:cloudflared` on smoreswork and from the pinned
+`aqua:cloudflare/cloudflared` in `global/config.desktop.toml` on smorespro, so
+`mise bootstrap` installs it either way. The wrapper reads the Access service
+token from step 6a; without that file it stops and names it.
 
 The key is the one smortress already accepts as `smores`: copy
 `~/.ssh/id_smortress-access` (mode 600) from the password manager or the USB
-backup. The first connection opens the Access login in a browser; it is cached
-for the session, not asked again per connection.
+backup. Both halves are needed: Access verifies the service token, sshd verifies
+the key.
 
 ```sh
-ssh smores@ssh.sammohr.dev true && echo tunnel-ssh-ok
+ssh smortress true && echo tunnel-ssh-ok
 ```
 
 ## 8. Login shell
@@ -280,6 +404,25 @@ journalctl --user -u wallpapers -n 20
 ```
 
 A run with no session (greetd, SSH) logs a skip instead of failing the unit.
-The SFTP transport goes through `smortress-sftp`, because Tailscale SSH
-intercepts port 22 and rejects plain `ssh`; `/srv/wallpapers` on smortress must
-hold the images, and an empty source is reported and the cache kept.
+
+The cache is mirrored over HTTPS from smortress, which serves `/srv/wallpapers`
+with Tailscale's own file server: the request is authenticated by the device, so
+the three-hourly timer carries no credential, and the old SFTP helper is gone.
+On smortress, once:
+
+```sh
+sudo tailscale serve --bg --set-path /wallpapers /srv/wallpapers
+tailscale serve status
+```
+
+`tailscale serve` needs HTTPS certificates enabled for the tailnet (admin
+console, DNS page) and MagicDNS. `/srv/wallpapers` must hold the images; an
+empty listing is reported and the cache kept. The URL is
+`https://smortress.<tailnet>.ts.net/wallpapers/`, which the sync resolves from
+`tailscale status --json` instead of a pinned tailnet name. Confirm the listing
+before relying on the timer:
+
+```sh
+suffix=$(tailscale status --json | jq -r '.Self.DNSName' | sed 's/\.$//; s/^[^.]*\.//')
+curl -fsS "https://smortress.$suffix/wallpapers/" | head -n 5
+```

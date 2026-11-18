@@ -1,7 +1,0 @@
-#!/bin/sh
-# rclone's SFTP transport for smortress. Plain ssh to port 22 is intercepted by
-# Tailscale SSH, whose tailnet policy denies the host's `smores` account that
-# key-only sshd expects, so speak SFTP through `tailscale ssh`, which
-# authenticates with the tailnet identity instead. rclone invokes this with its
-# own ssh arguments; the destination and subsystem are fixed here.
-exec tailscale ssh smortress -- /usr/libexec/openssh/sftp-server

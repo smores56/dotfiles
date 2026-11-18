@@ -167,7 +167,16 @@ for config in sorted(root.glob("config*.toml")):
     tools = tomllib.loads(config.read_text()).get("tools", {})
     locked = tomllib.loads(lock_path.read_text()).get("tools", {}) if lock_path.exists() else {}
     for name, spec in tools.items():
-        want = set().union(*(os_platforms[o] for o in spec["os"])) if isinstance(spec, dict) and "os" in spec else all_platforms
+        # A tool upstream does not build for every architecture in its os list
+        # names the platforms it publishes (age-plugin-fido2-hmac has no
+        # linux-arm64 binary); mise skips the rest and warns. `platforms` is
+        # this check's key, not mise's.
+        if isinstance(spec, dict) and "platforms" in spec:
+            want = set(spec["platforms"])
+        elif isinstance(spec, dict) and "os" in spec:
+            want = set().union(*(os_platforms[o] for o in spec["os"]))
+        else:
+            want = all_platforms
         pin = spec["version"] if isinstance(spec, dict) else spec
         entries = [e for e in locked.get(name, []) if e.get("version") == pin]
         if not entries:
@@ -247,6 +256,17 @@ if grep -q 'SDLC_REPO=smores56/sdlc' "$root/home/.config/zsh/.zshenv" \
     ok "the SDLC registry follows the machine's GitHub account"
 else
     no "personal and work SDLC registries must be hardcoded"
+fi
+
+# The Access token has one producer and one consumer; a rename on either side
+# would silently leave the wrapper without a credential.
+if grep -q 'cloudflare/access.env' "$root/scripts/secrets.sh" \
+        && grep -q 'cloudflare/access.env' "$root/home/.local/bin/smortress-ssh" \
+        && grep -q 'CLOUDFLARE_ACCESS_CLIENT_SECRET' "$root/scripts/secrets.sh" \
+        && grep -q 'CLOUDFLARE_ACCESS_CLIENT_SECRET' "$root/home/.local/bin/smortress-ssh"; then
+    ok "secrets.sh delivers the Access token where smortress-ssh reads it"
+else
+    no "secrets.sh and smortress-ssh must agree on the Access token file and names"
 fi
 
 # --- Maki guards
@@ -337,6 +357,18 @@ if command -v git >/dev/null 2>&1 && command -v bash >/dev/null 2>&1; then
     else
         no "behavioral tests (tests/wallpapers-test.sh)"
         sed 's/^/     /' "$tmp/wallpapers.log" >&2
+    fi
+    if bash "$root/tests/smortress-ssh-test.sh" >"$tmp/smortress-ssh.log" 2>&1; then
+        ok "behavioral tests (tests/smortress-ssh-test.sh)"
+    else
+        no "behavioral tests (tests/smortress-ssh-test.sh)"
+        sed 's/^/     /' "$tmp/smortress-ssh.log" >&2
+    fi
+    if bash "$root/tests/sops-age-key-test.sh" >"$tmp/sops-age-key.log" 2>&1; then
+        ok "behavioral tests (tests/sops-age-key-test.sh)"
+    else
+        no "behavioral tests (tests/sops-age-key-test.sh)"
+        sed 's/^/     /' "$tmp/sops-age-key.log" >&2
     fi
     if bash "$root/tests/detect-envs-test.sh" >"$tmp/detect-envs.log" 2>&1; then
         ok "behavioral tests (tests/detect-envs-test.sh)"

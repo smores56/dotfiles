@@ -79,6 +79,7 @@ for target in \
     .config/television/cable/repos.toml \
     .config/gh/config.yml \
     .local/bin/repos \
+    .local/bin/smortress-ssh \
     .local/bin/worktrees \
     .local/bin/sops-age-key \
     .local/bin/maki-session-search \
@@ -118,6 +119,7 @@ assert "the base work.md is the empty placeholder" grep -q 'No machine-specific 
 for target in \
     .gitconfig \
     .ssh/config \
+    .ssh/smortress.conf \
     .aerospace.toml \
     .local/bin/wallpapers \
     .config/systemd/user/wallpapers.timer \
@@ -181,6 +183,11 @@ else
 fi
 assert "identity links ~/.gitconfig" links_into_repo "$h/.gitconfig"
 assert "identity links ~/.ssh/config" links_into_repo "$h/.ssh/config"
+assert "identity links the shared smortress route" links_into_repo "$h/.ssh/smortress.conf"
+# The route is one file under home/, included by both ssh configs, and the
+# wrapper it names is the only place the Access token is read.
+assert "the smortress route proxies through the token wrapper" \
+    bash -c "env -i HOME='$h' PATH=/usr/bin:/bin ssh -F '$h/.ssh/config' -G smortress 2>/dev/null | grep -qxF 'proxycommand %d/.local/bin/smortress-ssh %h'"
 assert "identity keeps the base links" links_into_repo "$h/.config/helix/config.toml"
 for inc in machine work; do
     assert "identity renders ~/.config/git/$inc.inc" test -f "$h/.config/git/$inc.inc"
@@ -268,6 +275,9 @@ h=$(new_home work)
 printf 'export EMPLOYER_RC_TEST=1\n' >"$h/.zshrc"
 run_mise "$h" desktop,work dot apply >"$tmp/work.log" 2>&1 \
     || { no "work apply exits 0"; sed 's/^/     /' "$tmp/work.log" >&2; }
+assert "work links the shared smortress route" links_into_repo "$h/.ssh/smortress.conf"
+assert "the work smortress route is the same wrapper" \
+    bash -c "env -i HOME='$h' PATH=/usr/bin:/bin ssh -F '$h/.ssh/config' -G smortress 2>/dev/null | grep -qxF 'proxycommand %d/.local/bin/smortress-ssh %h'"
 assert "work links the zsh environment hook" links_into_repo "$h/.config/zsh/env.d/work.zsh"
 assert "work links the interactive work hook" links_into_repo "$h/.config/zsh/conf.d/90-work.zsh"
 assert "work links the Claude work rules" grep -q 'This is a work host' "$h/.claude/work.md"

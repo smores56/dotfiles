@@ -42,6 +42,11 @@ shellcheck = "0.11.0"
 # identity through ~/.local/bin/sops-age-key.
 "aqua:getsops/sops" = "3.13.3"
 "aqua:FiloSottile/age" = "1.3.2"
+# The FIDO2 hmac-secret plugin gives sops a YubiKey identity beside the admin
+# key (see .sops.yaml). Upstream publishes no linux-arm64 binary, so the pin
+# names the platforms that exist; mise skips the rest and `platforms` is what
+# the lockfile coverage check reads.
+"github:olastor/age-plugin-fido2-hmac" = { version = "0.5.0", platforms = ["linux-x64", "macos-arm64"] }
 # Helix language servers and formatters. npm-based servers are left out: they
 # would need a mise node, which shadows the employer's nvm node on smoreswork;
 # mdformat is left out because its plugins cannot be dependency-locked.
