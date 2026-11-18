@@ -285,17 +285,29 @@ Paste the printed `age1...` into `.sops.yaml`, uncommenting both lines:
           # - *yubikey
 ```
 
-Then re-encrypt the data key to the new recipient and prove both identities
-work:
+Then re-encrypt the data key to the new recipient and prove each identity on its
+own. `sops-age-key` prefers the YubiKey handle whenever that file is readable and
+never falls back, so the admin key can only be proven with the handle moved
+aside; keep it inside `~/.config/sops` (mode 700), never in a shared directory
+like `/tmp`:
 
 ```sh
 cd ~/.dotfiles
 sops updatekeys sops.yaml
+
+# The admin key: no token involved, only the passphrase on keys.age.
+mv ~/.config/sops/fido2-identity.txt ~/.config/sops/fido2-identity.txt.off
 sops -d sops.yaml >/dev/null && echo admin-identity-ok
-mv ~/.config/sops/keys.age /tmp/keys.age.off
+mv ~/.config/sops/fido2-identity.txt.off ~/.config/sops/fido2-identity.txt
+
+# The YubiKey path: the handle is back, so this asks for the PIN and a touch and
+# never opens keys.age.
 sops -d sops.yaml >/dev/null && echo yubikey-identity-ok   # touch the token
-mv /tmp/keys.age.off ~/.config/sops/keys.age
 ```
+
+Restore the handle before investigating a failed admin decrypt: while
+`fido2-identity.txt.off` is there, every `sops` call on this machine takes the
+passphrase path, which is not the state to leave a host in.
 
 Nothing else has to change: `sops.yaml` stays the only secret file, and the
 private identity never enters this repository. The plugin is pre-1.0 upstream,
