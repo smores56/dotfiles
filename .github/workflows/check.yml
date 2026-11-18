@@ -36,8 +36,16 @@ jobs:
         include:
           - os: ubuntu-latest
             sha256: f13f3e5ec88807e0161669b3aa07a91d84478cdf1e95b5b92b63f85a25d42395
+            disable_tools: ""
           - os: ubuntu-24.04-arm
             sha256: b8dd05af6447cee933928664982a8cb2fa646e6951cfc8539db23ce2554a7b04
+            # age-plugin-fido2-hmac ships no linux-arm64 asset (v0.5.0 publishes
+            # linux-amd64, darwin-amd64, darwin-arm64 and windows-amd64), so the
+            # locked install has no URL to use on this runner. Skipping it here
+            # still proves every other pin resolves from the lockfiles on arm64;
+            # the repository check asserts the `platforms` list in
+            # global/config.toml matches what upstream actually publishes.
+            disable_tools: github:olastor/age-plugin-fido2-hmac
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
@@ -56,6 +64,7 @@ jobs:
         env:
           MISE_ENV: desktop
           MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+          MISE_DISABLE_TOOLS: ${{ matrix.disable_tools }}
         run: mise install --locked
 
   apply-linux:
