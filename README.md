@@ -179,8 +179,10 @@ the admin identity and, once enrolled, to the YubiKey's FIDO2 recipient.
 `sops-age-key` prefers the YubiKey handle and does not fall back, so a host
 without the token decrypts only once `~/.config/sops/fido2-identity.txt` is
 removed; the work GitHub PAT is the one work credential there.
-The Access service token is scoped to the SSH application, so a leak buys
-reachability on that one route and nothing else. Homelab
+The Access service token is scoped to the SSH application, but the scoping is
+one-directional: the other applications still match every service token
+(`any_valid_service_token`), so memory, agent and backrest admit this one too
+until their policies name a token of their own. Homelab
 material (Cloudflare, restic, R2, ingest) stays in homelab-platform, where it
 is used. Host and YubiKey private material and the age identity itself never
 enter this repository; public keys and `known_hosts` are plain files.
