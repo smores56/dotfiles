@@ -127,6 +127,10 @@ Authenticate in the browser window Tailscale opens. Confirm the node:
 tailscale status
 ```
 
+Enable HTTPS certificates for the tailnet in the admin console's DNS page:
+step 10 serves the wallpaper tree over them. Tailscale SSH stays off; SSH to
+smortress is the Cloudflare Access route in step 7a.
+
 ## 5. Maki and sdlc
 
 ```sh
@@ -327,6 +331,25 @@ journalctl --user -u wallpapers -n 20
 ```
 
 A run with no session (greetd, SSH) logs a skip instead of failing the unit.
-The SFTP transport goes through `smortress-sftp`, because Tailscale SSH
-intercepts port 22 and rejects plain `ssh`; `/srv/wallpapers` on smortress must
-hold the images, and an empty source is reported and the cache kept.
+
+The cache is mirrored over HTTPS from smortress, which serves `/srv/wallpapers`
+with Tailscale's own file server: the request is authenticated by the device, so
+the three-hourly timer carries no credential, and the old SFTP helper is gone.
+On smortress, once:
+
+```sh
+sudo tailscale serve --bg --set-path /wallpapers /srv/wallpapers
+tailscale serve status
+```
+
+`tailscale serve` needs HTTPS certificates enabled for the tailnet (admin
+console, DNS page) and MagicDNS. `/srv/wallpapers` must hold the images; an
+empty listing is reported and the cache kept. The URL is
+`https://smortress.<tailnet>.ts.net/wallpapers/`, which the sync resolves from
+`tailscale status --json` instead of a pinned tailnet name. Confirm the listing
+before relying on the timer:
+
+```sh
+suffix=$(tailscale status --json | jq -r '.Self.DNSName' | sed 's/\.$//; s/^[^.]*\.//')
+curl -fsS "https://smortress.$suffix/wallpapers/" | head -n 5
+```
