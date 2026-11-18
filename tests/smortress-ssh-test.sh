@@ -126,5 +126,42 @@ case $out in
     *) no "the failure points at mise bootstrap (got '$out')" ;;
 esac
 
+# 8. The shared block offers both halves of the login. `IdentitiesOnly yes` means
+# ssh tries no key this block does not name, so a dropped line removes that key
+# from the route silently. Parsed with `ssh -G`, which is the same resolution ssh
+# performs before it offers anything.
+if command -v ssh >/dev/null 2>&1; then
+    conf=$root/home/.ssh/smortress.conf
+    resolved=$(ssh -G -F "$conf" smortress 2>/dev/null)
+    identities=$(printf '%s\n' "$resolved" | sed -n 's/^identityfile //p')
+    # ssh -G prints the paths as written, so the expectations keep their tilde.
+    tilde='~'
+    sk=$tilde/.ssh/id_smortress
+    file_key=$tilde/.ssh/id_smortress-access
+    for key in "$sk" "$file_key"; do
+        if printf '%s\n' "$identities" | grep -qxF "$key"; then
+            ok "the ssh block offers $key"
+        else
+            no "the ssh block offers $key (offered: $(printf '%s' "$identities" | tr '\n' ' '))"
+        fi
+    done
+    # The resident handle is the hardware key, so it is tried first; the file key
+    # answers only when the token cannot sign.
+    if [ "$(printf '%s\n' "$identities" | sed -n 1p)" = "$sk" ]; then
+        ok "the ssh block tries the resident handle first"
+    else
+        no "the ssh block tries the resident handle first (first: $(printf '%s\n' "$identities" | sed -n 1p))"
+    fi
+    # Without this, ssh would also offer every agent key, and the AND property in
+    # the header would not hold.
+    if printf '%s\n' "$resolved" | grep -qx 'identitiesonly yes'; then
+        ok "the ssh block offers nothing beyond its own keys"
+    else
+        no "the ssh block offers nothing beyond its own keys"
+    fi
+else
+    printf 'skip identity assertions: ssh is not installed\n'
+fi
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
