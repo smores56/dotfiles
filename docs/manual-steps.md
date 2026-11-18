@@ -206,18 +206,24 @@ smoreswork's first bootstrap; the bootstrap then writes `GITHUB_WORK_PAT` from
 
 ## 7a. Reach smortress over its tunnel
 
-smortress publishes SSH at `ssh.sammohr.dev` through its Cloudflare tunnel, so
-the work laptop needs neither Tailscale nor a VPN client. The work bootstrap
-installs `cloudflared` (`brew:cloudflared`), and `work/.ssh/config` names the
-host with `ProxyCommand cloudflared access ssh --hostname %h`.
+smortress publishes SSH at `ssh.sammohr.dev` through its Cloudflare tunnel, and
+Access is the only route for every machine, the work laptop included: no
+Tailscale SSH, no VPN client. `~/.ssh/smortress.conf` carries the one route
+(`ProxyCommand %d/.local/bin/smortress-ssh %h`), and both `~/.ssh/config` files
+include it.
+
+`cloudflared` comes from `brew:cloudflared` on smoreswork and from the pinned
+`aqua:cloudflare/cloudflared` in `global/config.desktop.toml` on smorespro, so
+`mise bootstrap` installs it either way. The wrapper reads the Access service
+token from step 6a; without that file it stops and names it.
 
 The key is the one smortress already accepts as `smores`: copy
 `~/.ssh/id_smortress-access` (mode 600) from the password manager or the USB
-backup. The first connection opens the Access login in a browser; it is cached
-for the session, not asked again per connection.
+backup. Both halves are needed: Access verifies the service token, sshd verifies
+the key.
 
 ```sh
-ssh smores@ssh.sammohr.dev true && echo tunnel-ssh-ok
+ssh smortress true && echo tunnel-ssh-ok
 ```
 
 ## 8. Login shell

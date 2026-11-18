@@ -338,6 +338,12 @@ if command -v git >/dev/null 2>&1 && command -v bash >/dev/null 2>&1; then
         no "behavioral tests (tests/wallpapers-test.sh)"
         sed 's/^/     /' "$tmp/wallpapers.log" >&2
     fi
+    if bash "$root/tests/smortress-ssh-test.sh" >"$tmp/smortress-ssh.log" 2>&1; then
+        ok "behavioral tests (tests/smortress-ssh-test.sh)"
+    else
+        no "behavioral tests (tests/smortress-ssh-test.sh)"
+        sed 's/^/     /' "$tmp/smortress-ssh.log" >&2
+    fi
     if bash "$root/tests/detect-envs-test.sh" >"$tmp/detect-envs.log" 2>&1; then
         ok "behavioral tests (tests/detect-envs-test.sh)"
     else

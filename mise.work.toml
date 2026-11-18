@@ -5,6 +5,8 @@
 "~/.claude/work.md" = { source = "work/.claude/work.md" }
 "~/.gitconfig" = { source = "identity/.gitconfig" }
 "~/.ssh/config" = { source = "work/.ssh/config" }
+# The same smortress route the personal machines use, from one copy.
+"~/.ssh/smortress.conf" = { source = "home/.ssh/smortress.conf" }
 "~/.config/git/machine.inc" = { source = "work/.config/git/machine.inc.tera", mode = "template" }
 "~/.cargo/config.toml" = { source = "work/.cargo/config.toml" }
 
@@ -18,8 +20,9 @@ login_shell = "/bin/zsh"
 # AeroSpace comes from a tap that mise can only evaluate with Ruby 3, so it
 # is installed by hand: brew install --cask nikitabobko/tap/aerospace
 [bootstrap.packages]
-# The Cloudflare tunnel client is the SSH transport to smortress; work/.ssh/config
-# names the host and the access key.
+# The Cloudflare tunnel client is the SSH transport to smortress, called from
+# ~/.local/bin/smortress-ssh. Homebrew is the only backend on this laptop; the
+# Linux desktops pin the same client in global/config.desktop.toml.
 "brew:cloudflared" = "latest"
 "brew-cask:brave-browser" = { version = "latest", appdir = "~/Applications" }
 "brew-cask:docker-desktop" = { version = "latest", appdir = "~/Applications" }

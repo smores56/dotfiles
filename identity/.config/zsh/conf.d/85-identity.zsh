@@ -1,5 +1,5 @@
-# Personal machines only. Tailscale resolves the node and checks its host key,
-# so this needs no ~/.ssh entry; `-t` is handed to the system ssh, and zsh is
-# the shell the identity lane deploys on smortress.
+# Personal machines only. The route lives in ~/.ssh/smortress.conf (Cloudflare
+# Access through the token wrapper), so `sm` is plain ssh; `-t zsh` is what the
+# identity lane deploys on smortress.
 (( $+functions[abbr] )) &&
-  abbr add --session --quiet --force -- 'sm=tailscale ssh smortress -t zsh'
+  abbr add --session --quiet --force -- 'sm=ssh smortress -t zsh'
