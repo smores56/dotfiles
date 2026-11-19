@@ -353,7 +353,9 @@ shells. No `/etc/shells` change and no `chsh` are needed:
 readlink -f ~/.local/bin/zsh        # a binary under ~/.local/share/mise
 zsh -ic 'echo $ZSH_VERSION'         # 5.9.x, with zimfw loaded
 echo "$SHELL"                       # still bash
-env | grep '^CONDA_' || true        # no CONDA_* variables leak
+# pure exports CONDA_CHANGEPS1=no (it hides conda's prompt), so only an
+# activated prefix is a leak:
+env | grep -E '^CONDA_(PREFIX|DEFAULT_ENV|SHLVL)=' || true
 ```
 
 Open a new terminal and confirm the interactive shell is zsh. The login hook

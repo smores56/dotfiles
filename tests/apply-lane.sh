@@ -115,9 +115,18 @@ TERM=xterm-256color "$zsh_bin" -i -c \
     '(( $+functions[prompt_pure_setup] )) && (( $+functions[abbr] )) && (( $+functions[maki] ))' \
     || fail "the interactive zsh does not load zimfw and the plugin set"
 
-# The conda zsh launcher would export CONDA_* into every child; the link must
-# point at the real binary, and no CONDA_* may reach an interactive shell.
-if env | grep -q '^CONDA_'; then
-    fail "CONDA_* leaked into the environment"
-fi
+# The conda zsh launcher exports CONDA_* and prepends the conda prefix for
+# every child; the link must point at the real binary. Inspect the deployed
+# shell with the caller's own conda variables removed, so the assertion tests
+# that link instead of the environment this script was run from. pure exports
+# CONDA_CHANGEPS1=no to hide conda's prompt by design, so only the variables
+# that mark an activated prefix count.
+# shellcheck disable=SC2016 # zsh expands these, not the calling shell
+conda_env=$(env -u CONDA_PREFIX -u CONDA_DEFAULT_ENV -u CONDA_SHLVL \
+    -u CONDA_PROMPT_MODIFIER -u CONDA_PYTHON_EXE TERM=xterm-256color \
+    "$zsh_bin" -i -c 'print -r -- "${CONDA_PREFIX}${CONDA_DEFAULT_ENV}${CONDA_SHLVL}"')
+[ -z "$conda_env" ] || fail "the zsh link leaked a conda prefix: $conda_env"
+case $(readlink "$zsh_bin" 2>/dev/null || printf '%s' "$zsh_bin") in
+    */.mise-bins/*) fail "$zsh_bin points at mise's conda launcher, not the binary" ;;
+esac
 printf 'apply-lane: %s passed\n' "$env_set"
