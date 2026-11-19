@@ -1723,7 +1723,9 @@ def build_parser():
 
 
 def main(argv=None):
-    args = build_parser().parse_args(argv)
+    argv = sys.argv[1:] if argv is None else argv
+    # A bare `sdlc` is the human entry point: the picker.
+    args = build_parser().parse_args(argv or ["ui"])
     try:
         args.fn(args)
     except CliError as exc:

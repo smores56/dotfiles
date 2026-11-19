@@ -1006,6 +1006,12 @@ class UiCliTest(GhTest):
         self.serve_list([feature])
         self.fakes()
 
+    def test_no_command_is_the_picker(self):
+        out = self.run_cli()
+        self.assertNotIn("required", out.stderr)
+        calls = self.tv_calls()
+        self.assertTrue(any("sdlc-features" in call for call in calls[:1]))
+
     def test_picks_the_feature_before_the_action(self):
         self.run_cli("ui")
         calls = self.tv_calls()
