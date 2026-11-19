@@ -187,7 +187,7 @@ assert "identity links the shared smortress route" links_into_repo "$h/.ssh/smor
 # The route is one file under home/, included by both ssh configs, and the
 # wrapper it names is the only place the Access token is read.
 assert "the smortress route proxies through the token wrapper" \
-    bash -c "env -i HOME='$h' PATH=/usr/bin:/bin ssh -F '$h/.ssh/config' -G smortress 2>/dev/null | grep -qxF 'proxycommand %d/.local/bin/smortress-ssh %h'"
+    bash -c "env -i HOME='$h' PATH=/usr/bin:/bin ssh -F '$h/.ssh/config' -G smortress 2>/dev/null | grep -qxF 'proxycommand \$HOME/.local/bin/smortress-ssh %h'"
 assert "identity keeps the base links" links_into_repo "$h/.config/helix/config.toml"
 for inc in machine work; do
     assert "identity renders ~/.config/git/$inc.inc" test -f "$h/.config/git/$inc.inc"
@@ -277,7 +277,7 @@ run_mise "$h" desktop,work dot apply >"$tmp/work.log" 2>&1 \
     || { no "work apply exits 0"; sed 's/^/     /' "$tmp/work.log" >&2; }
 assert "work links the shared smortress route" links_into_repo "$h/.ssh/smortress.conf"
 assert "the work smortress route is the same wrapper" \
-    bash -c "env -i HOME='$h' PATH=/usr/bin:/bin ssh -F '$h/.ssh/config' -G smortress 2>/dev/null | grep -qxF 'proxycommand %d/.local/bin/smortress-ssh %h'"
+    bash -c "env -i HOME='$h' PATH=/usr/bin:/bin ssh -F '$h/.ssh/config' -G smortress 2>/dev/null | grep -qxF 'proxycommand \$HOME/.local/bin/smortress-ssh %h'"
 assert "work links the zsh environment hook" links_into_repo "$h/.config/zsh/env.d/work.zsh"
 assert "work links the interactive work hook" links_into_repo "$h/.config/zsh/conf.d/90-work.zsh"
 assert "work links the Claude work rules" grep -q 'This is a work host' "$h/.claude/work.md"

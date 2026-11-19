@@ -327,7 +327,7 @@ smoreswork's first bootstrap; the bootstrap then writes `GITHUB_WORK_PAT` from
 smortress publishes SSH at `ssh.sammohr.dev` through its Cloudflare tunnel, and
 Access is the only route for every machine, the work laptop included: no
 Tailscale SSH, no VPN client. `~/.ssh/smortress.conf` carries the one route
-(`ProxyCommand %d/.local/bin/smortress-ssh %h`), and both `~/.ssh/config` files
+(`ProxyCommand $HOME/.local/bin/smortress-ssh %h`), and both `~/.ssh/config` files
 include it.
 
 `cloudflared` comes from `brew:cloudflared` on smoreswork and from the pinned

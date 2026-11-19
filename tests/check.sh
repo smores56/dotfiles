@@ -208,10 +208,24 @@ else
 fi
 
 secret_pattern='BEGIN [A-Z ]*PRIVATE KEY|AGE-SECRET-KEY-[A-Z0-9]|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}'
-if grep -rInE "$secret_pattern" "$root/home" "$root/identity" "$root/desktop" \
-        "$root/work" "$root/maki" "$root/global" "$root/scripts" "$root/tests" \
-        "$root/.github" >/dev/null 2>&1; then
-    no "secret material in a managed file"
+# An sk- private key file is a pointer, not a secret: it holds the FIDO2
+# credential id, the application string and the flags, and the private scalar
+# never exists off the token. ssh-keygen will derive its public half without a
+# device, which is what distinguishes it from a real key. Anything that fails
+# that test is still secret material.
+secret_hits=$(grep -rIlE "$secret_pattern" "$root/home" "$root/identity" "$root/desktop" \
+    "$root/work" "$root/maki" "$root/global" "$root/scripts" "$root/tests" \
+    "$root/.github" 2>/dev/null || true)
+offenders=''
+for hit in $secret_hits; do
+    if grep -q 'BEGIN OPENSSH PRIVATE' "$hit" \
+            && ssh-keygen -y -f "$hit" 2>/dev/null | grep -q '^sk-ssh-ed25519@openssh.com '; then
+        continue
+    fi
+    offenders="$offenders $hit"
+done
+if [ -n "$offenders" ]; then
+    no "secret material in a managed file:$offenders"
 else
     ok "no secret material in managed files"
 fi

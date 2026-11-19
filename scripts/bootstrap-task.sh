@@ -35,8 +35,12 @@ link_conda_zsh() {
 }
 
 # ssh refuses a group- or world-writable ~/.ssh; mise creates parents 0755.
+# mise copies the deployed files with the repo's 0644, and ssh refuses a private
+# key file that is readable by anyone else. The sk stub holds no secret, but ssh
+# cannot tell that, so the mode is tightened after every apply.
 tighten_ssh_dir() {
     [ -d "$HOME/.ssh" ] && chmod 700 "$HOME/.ssh"
+    [ -f "$HOME/.ssh/id_smortress" ] && chmod 600 "$HOME/.ssh/id_smortress"
     return 0
 }
 
