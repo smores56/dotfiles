@@ -29,7 +29,10 @@ inferred set:
 ```
 
 On smortress and smorespro, `install-mise.sh` creates `/srv/git` (one sudo
-prompt) and links `/srv/git/github.com/smores56/dotfiles` to `~/.dotfiles`. The set
+prompt) and links `/srv/git/github.com/smores56/dotfiles` to `~/.dotfiles`.
+`scripts/link-dotfiles-checkout.sh` re-asserts that alias on every bootstrap
+when the parent is writable, so a moved or deleted link is repaired rather
+than surfacing later as a `repos` failure. The set
 is `identity` on a server, `desktop,identity` on a Linux desktop, and
 `desktop,work` on macOS; `DOTFILES_ENVS` overrides it. The login shell is a separate step
 because `chsh` asks for a password:

@@ -218,10 +218,14 @@ secret_hits=$(grep -rIlE "$secret_pattern" "$root/home" "$root/identity" "$root/
     "$root/.github" 2>/dev/null || true)
 offenders=''
 for hit in $secret_hits; do
+    probe=$tmp/sk-probe$$
     if grep -q 'BEGIN OPENSSH PRIVATE' "$hit" \
-            && ssh-keygen -y -f "$hit" 2>/dev/null | grep -q '^sk-ssh-ed25519@openssh.com '; then
+            && cp "$hit" "$probe" && chmod 600 "$probe" \
+            && ssh-keygen -y -f "$probe" 2>/dev/null | grep -q '^sk-ssh-ed25519@openssh.com '; then
+        rm -f "$probe"
         continue
     fi
+    rm -f "$probe"
     offenders="$offenders $hit"
 done
 if [ -n "$offenders" ]; then
@@ -349,6 +353,12 @@ if command -v git >/dev/null 2>&1 && command -v bash >/dev/null 2>&1; then
     else
         no "behavioral tests (tests/bootstrap-test.sh)"
         sed 's/^/     /' "$tmp/bootstrap.log" >&2
+    fi
+    if bash "$root/tests/dotfiles-layout-test.sh" >"$tmp/layout.log" 2>&1; then
+        ok "behavioral tests (tests/dotfiles-layout-test.sh)"
+    else
+        no "behavioral tests (tests/dotfiles-layout-test.sh)"
+        sed 's/^/     /' "$tmp/layout.log" >&2
     fi
     if bash "$root/tests/shell-test.sh" >"$tmp/shell.log" 2>&1; then
         if grep -q '^skip shell tests' "$tmp/shell.log"; then

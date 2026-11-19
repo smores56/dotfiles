@@ -44,7 +44,18 @@ tighten_ssh_dir() {
     return 0
 }
 
+# The /srv/git alias is install-mise.sh's job, but it is the one piece of that
+# install a later move can drop, and a missing alias breaks `repos` and every
+# instruction that names the canonical path. Re-assert it where the parent is
+# writable; where it is not, the script names the single sudo instead.
+link_dotfiles_checkout() {
+    [ "$(uname -s)" = Linux ] || return 0
+    sh "$(dirname "$0")/link-dotfiles-checkout.sh" \
+        || log "dotfiles alias unchanged; see scripts/link-dotfiles-checkout.sh"
+}
+
 link_conda_zsh
+link_dotfiles_checkout
 sh "$(dirname "$0")/zim-build.sh" || die "zim build failed; the shell has no plugins until it succeeds"
 tighten_ssh_dir
 sh "$(dirname "$0")/secrets.sh" \
