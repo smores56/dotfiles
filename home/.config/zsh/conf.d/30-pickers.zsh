@@ -28,4 +28,3 @@ w() {  # pick a worktree of the current repository
 }
 ef() { local f; f=$(tv files) && [[ -n $f ]] && hx "$f" }
 et() { local f; f=$(tv text) && [[ -n $f ]] && hx "$f" }
-ms() { local s; s=$(tv maki-sessions) && [[ -n $s ]] && maki-session-resume "$s" }

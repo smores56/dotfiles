@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# install-maki.sh: install the pinned Maki release into ~/.local/bin.
+# install-maki.sh: install the pinned Maki release into ~/.local/libexec.
+#
+# The binary stays off PATH: ~/.local/bin/maki is the dotfiles wrapper that
+# hands it the provider keys.
 #
 # The version, target, and sha256 live in maki/pin.env. The script downloads
 # the release tarball, verifies it against both the embedded pin and the
@@ -18,7 +21,7 @@ usage() {
     cat <<'EOF'
 usage: install-maki.sh [--prefix DIR] [--dry-run]
 
-  --prefix DIR  install into DIR/.local/bin (default: $HOME)
+  --prefix DIR  install into DIR/.local/libexec (default: $HOME)
   --dry-run     print the download URL and checksum; write nothing
 EOF
 }
@@ -58,7 +61,8 @@ asset="maki-${MAKI_VERSION}-${MAKI_TARGET}.tar.gz"
 base="https://github.com/${MAKI_REPO}/releases/download/${MAKI_VERSION}"
 url="${base}/${asset}"
 sums_url="${base}/sha256sums.txt"
-dest=$prefix/.local/bin/maki
+dest=$prefix/.local/libexec/maki
+legacy=$prefix/.local/bin/maki
 
 if $dry_run; then
     printf 'would download %s\n' "$url"
@@ -94,7 +98,14 @@ tar -xzf "$work/$asset" -C "$work" || fail "could not extract $asset"
 binary=$(find "$work" -type f -name maki -perm -u+x | head -n 1)
 [ -n "$binary" ] || fail "$asset contains no maki executable"
 
-mkdir -p "$prefix/.local/bin"
+mkdir -p "$prefix/.local/libexec"
 install -m 0755 "$binary" "$dest.tmp"
 mv -- "$dest.tmp" "$dest"
 printf 'installed maki %s at %s\n' "$MAKI_VERSION" "$dest"
+
+# Older installs put the binary where the wrapper's link now goes, and mise
+# refuses to replace a real file. Only a regular file is ours to remove.
+if [ -f "$legacy" ] && [ ! -L "$legacy" ]; then
+    rm -f -- "$legacy"
+    printf 'removed the old binary at %s; `mise -C ~/.dotfiles dot apply` links the wrapper there\n' "$legacy"
+fi

@@ -81,8 +81,7 @@ for target in \
     .config/gh/config.yml \
     .local/bin/smortress-ssh \
     .local/bin/sops-age-key \
-    .local/bin/maki-session-search \
-    .local/bin/maki-session-resume \
+    .local/bin/maki \
     .config/maki/init.lua \
     .config/maki/mcp.toml \
     .config/maki/plugin.toml \

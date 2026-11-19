@@ -59,19 +59,6 @@ for repo in "$h"/.local/share/zsh-plugins/*/; do
 done
 expect "zim's compiled files leave the plugin checkouts clean" "" "$dirty"
 
-# A stand-in maki that reports which provider keys it received.
-cat >"$h/.local/bin/maki" <<'EOF'
-#!/bin/sh
-printf 'child:%s:%s\n' "${NEURALWATT_API_KEY:-unset}" "${TINYFISH_API_KEY:-unset}"
-EOF
-chmod +x "$h/.local/bin/maki"
-mkdir -p "$h/.config"
-# Every shape the zsh launcher accepted: comments, blank lines, CRLF, spaces
-# around =, an export prefix, and one layer of quotes.
-printf '# provider keys\r\n\r\n  # indented comment\r\nexport NEURALWATT_API_KEY = "nw-test"  \r\n\r\nTINYFISH_API_KEY=tf-test\r\n' \
-    >"$h/.config/secrets.env"
-chmod 600 "$h/.config/secrets.env"
-
 zi() {  # zi <script>: run inside an interactive zsh in the test HOME
     # The distro zshrc starts compinit before the config; zim completion owns
     # it, and on a runner without a tty the distro call aborts noisily.
@@ -80,7 +67,7 @@ zi() {  # zi <script>: run inside an interactive zsh in the test HOME
 }
 
 for fn in abbr prompt_pure_setup _zsh_autosuggest_start -ftb-complete \
-        fast-theme maki ef et ms; do
+        fast-theme ef et; do
     expect "zsh -i defines $fn" yes "$(zi "(( \$+functions[$fn] )) && print yes || print no")"
 done
 if [ "$(uname -s)" = Darwin ] || command -v notify-send >/dev/null 2>&1; then
@@ -126,11 +113,6 @@ ln -s "$tmp/renamed-away.zsh" "$h/.config/zsh/conf.d/50-renamed-away.zsh"
 zi : >/dev/null
 expect "a dangling conf.d link is skipped silently" "" "$(cat "$tmp/zi.err")"
 rm "$h/.config/zsh/conf.d/50-renamed-away.zsh"
-
-expect "maki receives the provider keys" "child:nw-test:tf-test" "$(zi 'maki' 2>&1)"
-expect "maki parses the file without complaints" "" "$(zi 'maki >/dev/null' 2>&1)"
-expect "the provider keys never reach the parent shell" "unset:unset" \
-    "$(zi 'maki >/dev/null; print -r -- ${NEURALWATT_API_KEY:-unset}:${TINYFISH_API_KEY:-unset}')"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

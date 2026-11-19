@@ -17,7 +17,7 @@ experimental = true
 # The Fedora images ship no zsh. bootstrap-task.sh links the real binary to
 # ~/.local/bin/zsh, never mise's launcher, which leaks CONDA_* into children.
 "conda:zsh" = { version = "5.9.2", os = ["linux"] }
-# python runs the maki-session-search helper.
+# python runs the sdlc CLI and the repository checks.
 python = "3.14.10"
 gh = "2.104.0"
 jq = "1.8.2"

@@ -53,20 +53,6 @@ for script in "$root"/scripts/*.sh "$root"/tests/*.sh; do
     bash_syntax "$script"
 done
 
-# --- python helper
-
-if command -v python3 >/dev/null 2>&1; then
-    if python3 -c 'import sys; compile(open(sys.argv[1]).read(), sys.argv[1], "exec")' \
-            "$root/home/.local/bin/maki-session-search" 2>"$tmp/err"; then
-        ok "syntax home/.local/bin/maki-session-search (python3)"
-    else
-        no "syntax home/.local/bin/maki-session-search (python3)"
-        sed 's/^/     /' "$tmp/err" >&2
-    fi
-else
-    skip "syntax home/.local/bin/maki-session-search (python3 not installed)"
-fi
-
 # --- zsh
 
 if command -v zsh >/dev/null 2>&1; then
@@ -368,11 +354,11 @@ require "the TinyFish guard runs on every tool call" \
 require "the TinyFish guard allows only search" \
     "$root/home/.config/maki/init.lua" 'ctx.tool ~= "tinyfish__search"'
 
-if grep -q '^maki() {' "$root/home/.config/zsh/conf.d/40-maki.zsh" 2>/dev/null \
+if grep -qF 'TINYFISH_API_KEY=$tinyfish exec "$bin"' "$root/home/.local/bin/maki" 2>/dev/null \
         && ! grep -rlE '^\s*export (NEURALWATT|TINYFISH)_API_KEY' "$root/home" >/dev/null 2>&1; then
     ok "provider keys reach only the maki process, never an export"
 else
-    no "provider keys must be passed by the maki() launcher only, never exported"
+    no "provider keys must be passed by the ~/.local/bin/maki wrapper only, never exported"
 fi
 
 # --- helix: every configured language server is a pinned tool
@@ -424,6 +410,12 @@ if command -v git >/dev/null 2>&1 && command -v bash >/dev/null 2>&1; then
     else
         no "behavioral tests (tests/bootstrap-script-test.sh)"
         sed 's/^/     /' "$tmp/bootstrap-script.log" >&2
+    fi
+    if bash "$root/tests/maki-test.sh" >"$tmp/maki.log" 2>&1; then
+        ok "behavioral tests (tests/maki-test.sh)"
+    else
+        no "behavioral tests (tests/maki-test.sh)"
+        sed 's/^/     /' "$tmp/maki.log" >&2
     fi
     if bash "$root/tests/git-get-test.sh" >"$tmp/git-get.log" 2>&1; then
         if grep -q '^skip git get tests' "$tmp/git-get.log"; then

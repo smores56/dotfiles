@@ -1,0 +1,47 @@
+#!/bin/sh
+# maki with its provider keys. ~/.config/secrets.env (mode 600, NAME=value
+# lines) holds them; they reach only the maki process tree, never the shell
+# that started it, and nothing prints a value. The binary lives off PATH in
+# ~/.local/libexec, where scripts/install-maki.sh puts it, so this wrapper is
+# the only `maki` any shell or agent finds.
+bin=${MAKI_BIN:-$HOME/.local/libexec/maki}
+secrets=${XDG_CONFIG_HOME:-$HOME/.config}/secrets.env
+
+warn() { printf 'maki: %s\n' "$*" >&2; }
+ltrim() { printf '%s' "${1#"${1%%[![:space:]]*}"}"; }
+rtrim() { printf '%s' "${1%"${1##*[![:space:]]}"}"; }
+
+[ -x "$bin" ] || { warn "$bin is missing; run ~/.dotfiles/scripts/install-maki.sh"; exit 127; }
+
+if [ ! -e "$secrets" ]; then
+    warn "$secrets is missing; the providers will reject the session"
+    exec "$bin" "$@"
+fi
+mode=$(stat -c %a "$secrets" 2>/dev/null || stat -f %Lp "$secrets" 2>/dev/null)
+[ -n "$mode" ] && [ "$mode" != 600 ] && warn "$secrets is mode $mode, expected 600"
+
+neuralwatt=
+tinyfish=
+lineno=0
+cr=$(printf '\r')
+while IFS= read -r line || [ -n "$line" ]; do
+    lineno=$((lineno + 1))
+    line=$(ltrim "${line%"$cr"}")
+    case $line in ''|'#'*) continue ;; esac
+    case $line in
+        *=*) ;;
+        *) warn "$secrets:$lineno: skipped (no =)"; continue ;;
+    esac
+    name=$(rtrim "${line%%=*}")
+    case $name in export[[:space:]]*) name=$(ltrim "${name#export}") ;; esac
+    value=$(rtrim "$(ltrim "${line#*=}")")
+    # One layer of matching quotes is cosmetic.
+    case $value in \"*\"|\'*\') value=${value#?}; value=${value%?} ;; esac
+    case $name in
+        NEURALWATT_API_KEY) neuralwatt=$value ;;
+        TINYFISH_API_KEY) tinyfish=$value ;;
+        *) warn "$secrets:$lineno: skipped ($name is not a Maki provider key)" ;;
+    esac
+done <"$secrets"
+
+NEURALWATT_API_KEY=$neuralwatt TINYFISH_API_KEY=$tinyfish exec "$bin" "$@"
