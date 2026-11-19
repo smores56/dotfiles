@@ -13,6 +13,7 @@ abbr -a s sdlc
 # pull.rebase is on, so --no-rebase keeps this a fast-forward or nothing.
 abbr -a d 'git -C ~/.dotfiles pull --ff-only --no-rebase --autostash && mise -C ~/.dotfiles bootstrap --prune-dotfiles'
 abbr -a gw git worktree
+abbr -a sm ssh smortress -t fish
 # fish's own clipboard functions: copy also sends OSC 52, so it works over SSH
 # and through zellij; paste reads pbpaste or wl-paste locally.
 abbr -a copy fish_clipboard_copy

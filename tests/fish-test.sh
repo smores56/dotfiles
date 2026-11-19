@@ -200,6 +200,7 @@ expect "a starts claude on work" claude "$(exp_ a "$hw")"
 expect "r lists the flat work clones" \
     'path dirname ~/Blitzy/*/.git ~/Blitzy/*/.worktrees/*/.git | fzf | read f; and c $f' "$(exp_ r "$hw")"
 expect "work has no git get" "" "$(exp_ gc "$hw")"
+expect "sm opens fish on smortress from work" 'ssh smortress -t fish' "$(exp_ sm "$hw")"
 
 fw_() {  # fw_ <script>: an interactive fish on the work machine
     (cd "$hw" && env -i HOME="$hw" PATH="$base_path" TERM=xterm-256color \

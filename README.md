@@ -58,8 +58,8 @@ Environments are additive; an environment only adds files and hooks.
 
 | Environment | Adds |
 | --- | --- |
-| base | fish, the shared env, helix, zellij, yazi, lazygit, gh, `sdlc`, global mise files |
-| `identity` | git identity templates with `git get`, `~/.ssh/config`, the `r`, `gc` and `sm` abbreviations |
+| base | fish, the shared env, the `sm` abbreviation, helix, zellij, yazi, lazygit, gh, `sdlc`, global mise files |
+| `identity` | git identity templates with `git get`, `~/.ssh/config`, the `r` and `gc` abbreviations |
 | `desktop` | kitty, fonts, clipboard and trash helpers, Flatpaks or casks, wallpapers, systemd units |
 | `work` | work env and fish hooks, work git identity, the github.com SSH entry, Claude work rules, macOS defaults, work casks |
 
