@@ -3,7 +3,7 @@
 keys:
   - &admin age1skuwunreduvw8gtkzyf9atsyjnku388ly8c252h3qger84fg5d7q4kf6xs
   # `age-plugin-fido2-hmac -g`; regenerate only after a token reset, which
-  # orphans this recipient (docs/manual-steps.md, step 6b).
+  # orphans this recipient (README, "Rebuilding a machine").
   - &yubikey age18suc3usnfah6g3fldvhhvmchyupg3tp2p5vgzfuprvcn6untva9qem4lf0
 creation_rules:
   - path_regex: ^sops\.yaml$

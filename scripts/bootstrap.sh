@@ -38,10 +38,8 @@ esac
 repo=$ROOT/$host/$owner/$name
 checkout_target=$repo/main
 
-# A real directory at the checkout is a pre-clean-bare machine: converting it
-# moves the running checkout, so it is a human step (docs/manual-steps.md).
 if [ -e "$CHECKOUT" ] || [ -L "$CHECKOUT" ]; then
-    [ -L "$CHECKOUT" ] || die "$CHECKOUT is a real directory; see the migration note in docs/manual-steps.md"
+    [ -L "$CHECKOUT" ] || die "$CHECKOUT is a real directory; move it aside and re-run"
     # readlink -f fails while the worktree is missing, so a broken link to the
     # expected target also passes; the link script repairs it below.
     raw=$(readlink "$CHECKOUT")
@@ -67,7 +65,7 @@ if [ ! -e "$repo/.git" ]; then
         || die "could not clone $REMOTE"
 fi
 git -C "$repo" rev-parse --is-bare-repository 2>/dev/null | grep -qx true \
-    || die "$repo is not a clean-bare clone; remove the old checkout first (docs/manual-steps.md)"
+    || die "$repo is not a clean-bare clone; remove the old checkout and re-run"
 
 git -C "$repo" config remote.origin.fetch "$refspec"
 git -C "$repo" fetch origin || die "could not fetch origin"
