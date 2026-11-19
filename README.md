@@ -1,186 +1,139 @@
 # dotfiles
 
-One mise project for three machines:
+My setup for three machines, managed entirely by mise: tools, dotfiles,
+desktop apps, and the bootstrap.
 
-| Machine | System |
-| --- | --- |
-| `smortress` | Fedora CoreOS server |
-| `smorespro` | Fedora bootc desktop (niri + Noctalia) |
-| `smoreswork` | macOS work laptop |
+| Machine | What it is | Environments |
+| --- | --- | --- |
+| `smortress` | Fedora CoreOS server | `identity` |
+| `smorespro` | Fedora bootc desktop (niri + Noctalia) | `desktop,identity` |
+| `smoreswork` | macOS work laptop | `desktop,work` |
 
-mise owns the tools, dotfiles, desktop packages, bootstrap task, and login
-shell. There is no symlink installer and no second configuration manager.
+## Set up a machine
 
-## Bootstrap
+You need `curl`, `git`, `tar` and `gzip`. On macOS, also install the Command
+Line Tools and run `scripts/install-homebrew.sh` once.
 
-A fresh personal Linux machine:
+On a personal Linux machine, one command does everything; it asks for sudo once
+to create `/srv/git`:
 
 ```sh
 curl -fsSL https://bootstrap.sammohr.dev | sh
-mise -C ~/.dotfiles bootstrap --only user   # login shell; chsh asks for a password
+mise -C ~/.dotfiles bootstrap --only user   # sets the login shell; asks for your password
 ```
 
-`bootstrap.sammohr.dev` is a Cloudflare redirect to `scripts/bootstrap.sh` on
-`main`, with an Access bypass scoped to that hostname alone. The script asks
-for sudo once to create `/srv/git`, clones the repository clean-bare, adds the
-`main` worktree, links `~/.dotfiles` to it, and hands off to
-`scripts/install-mise.sh`, which installs mise. The work laptop clones `~/.dotfiles` by hand and runs
-`scripts/install-mise.sh`.
+On the work Mac, clone this repository to `~/.dotfiles` and run
+`~/.dotfiles/scripts/install-mise.sh`.
 
-`install-mise.sh` passes `--config-dir global`, which links `~/.config/mise` to
-`global/`; a bare `mise bootstrap` before that link exists applies only the
-dotfiles. The machine set is inferred — `identity` on a server,
-`desktop,identity` on a Linux desktop, `desktop,work` on macOS — overridden by
-`DOTFILES_ENVS`, and saved in `~/.config/mise/miserc.local.toml`.
+The environments are picked from the machine (see the table above); set
+`DOTFILES_ENVS` to override them.
 
-| If it fails | Do |
+| If it fails with | Do this |
 | --- | --- |
-| `macOS keeps a normal clone` | run `~/.dotfiles/scripts/install-mise.sh` |
+| `macOS keeps a normal clone` | run `~/.dotfiles/scripts/install-mise.sh` instead |
 | `~/.dotfiles is a real directory` | move it aside and re-run |
 | `not a clean-bare clone` | remove the old checkout and re-run |
-| mise refuses to replace a file | resolve the conflict by hand; bootstrap never passes `--force-dotfiles` |
+| mise refusing to replace a file | sort out the conflict by hand, then re-run |
 
-## Rebuilding a machine
-
-Before wiping a disk, back up what exists nowhere else: the FIDO2 credential
-handles are unrecoverable afterwards.
+## Day to day
 
 ```sh
-(cd /srv/git/github.com/smores56/nix-config && nix run .#key-backup)  # copy the printed dir off-machine
+d                    # pull the dotfiles and re-bootstrap
+mise dot diff        # preview what an apply would change
+git get owner/repo   # clone a repository (also `gc`)
+```
+
+Personal repositories live under `/srv/git/<host>/<owner>/<repo>`, with the
+default branch at `<repo>/main` and task worktrees beside it:
+
+```sh
+git -C "$repo" worktree add "$repo/<slug>" -b smores/<slug> origin/main
+```
+
+`r` jumps to any worktree, `w` to one in the current repository. Work
+repositories on the Mac are plain clones in `~/Blitzy`.
+
+## What each environment adds
+
+Everything builds on the base; each environment only adds.
+
+| Environment | Adds |
+| --- | --- |
+| base | fish, helix, zellij, yazi, lazygit, gh, `sdlc`, the shared env, global mise config |
+| `identity` | personal git identity and `git get`, SSH config, the `r` and `gc` abbreviations |
+| `desktop` | kitty, fonts, clipboard and trash helpers, Flatpaks or casks, wallpapers |
+| `work` | work env and git identity, the github.com SSH entry, Claude work rules, macOS defaults and casks |
+
+fish is the interactive shell. Login shells stay the system's own (bash on
+Fedora, zsh on macOS) and only load `~/.config/shell/env.sh`, which fish
+imports too.
+
+Git commits as `Sam Mohr <sam@sammohr.dev>` on personal checkouts and
+`<smohr@blitzy.com>` on work ones; the work Mac is work everywhere. Each
+machine has one GitHub token, exported as `GH_TOKEN` and used by git over
+https.
+
+## Secrets
+
+Secrets shared across machines live encrypted in `sops.yaml`. Edit them with
+`sops sops.yaml` and commit; the next bootstrap decrypts them into mode-600
+files that only their one consumer reads.
+
+| Key | What it is | Lands in |
+| --- | --- | --- |
+| `NEURALWATT_API_KEY`, `TINYFISH_API_KEY` | from Bitwarden | `~/.config/maki/secrets.env`, for Maki only |
+| `GITHUB_PERSONAL_PAT` | fine-grained: Contents read/write on my repos, Issues read/write on `smores56/sdlc` | `~/.config/gh/token` on personal machines |
+| `GITHUB_WORK_PAT` | `smohr-blitzy` classic, `repo` scope, at most 366 days (fine-grained can't reach both work orgs) | `~/.config/gh/token` on the work Mac |
+| `CLOUDFLARE_ACCESS_CLIENT_ID`, `_SECRET` | Zero Trust service token for the SSH app, one-year lifetime | `~/.config/cloudflare/access.env`, for `smortress-ssh` only |
+
+Decrypting uses the YubiKey (`~/.config/sops/fido2-identity.txt`) when its
+handle is present, with no fallback; otherwise the passphrase-protected admin
+key (`~/.config/sops/keys.age`). Neither is ever committed. Other Access apps
+still accept any service token until their policies name their own.
+
+## Rebuild a machine
+
+**Before wiping a disk**, back up the FIDO2 credential handles; they can't be
+recovered afterwards. Copy them, `~/.ssh` and `~/.config/sops` somewhere
+off the machine:
+
+```sh
+(cd /srv/git/github.com/smores56/nix-config && nix run .#key-backup)
 cp -a ~/.ssh ~/.config/sops /media/<usb>/
 ```
 
-On the new machine, restore `~/.ssh` and `~/.config/sops` (modes 700/600),
-then bootstrap. OS install for smorespro is in
-[smorespro-image](https://github.com/smores56/smorespro-image/blob/main/docs/switch.md).
+Then install the OS ([smorespro-image](https://github.com/smores56/smorespro-image/blob/main/docs/switch.md)
+for the desktop), restore those two directories, and run the setup above.
 
-Secrets are edited with `sops sops.yaml`, committed, and delivered by the next
-bootstrap:
-
-| Key | Value |
-| --- | --- |
-| `NEURALWATT_API_KEY`, `TINYFISH_API_KEY` | the Bitwarden items of those names |
-| `GITHUB_PERSONAL_PAT` | fine-grained: Contents read/write on your repos, Issues read/write on `smores56/sdlc` |
-| `GITHUB_WORK_PAT` | `smohr-blitzy` classic, `repo` scope, at most 366 days (Blitzy enterprise rule) |
-| `CLOUDFLARE_ACCESS_*` | a Zero Trust service token (Access → Service Auth) restricted to the SSH app, one-year lifetime |
-
-After a YubiKey reset (or on a new machine), regenerate the age handle, answering
-yes to "separate identity", then re-encrypt and prove each identity alone. The
-admin key stays enrolled as recovery: the plugin is pre-1.0.
+On a new machine or after a YubiKey reset, regenerate the YubiKey handle
+(answer yes to "separate identity"). After a reset, also re-encrypt and check
+that each identity decrypts on its own; the admin key stays enrolled as a
+backup because the plugin is pre-1.0.
 
 ```sh
 age-plugin-fido2-hmac -g > ~/.config/sops/fido2-identity.txt && chmod 600 ~/.config/sops/fido2-identity.txt
-# after a reset: replace &yubikey in .sops.yaml with the "# public key:" line, then
+# after a reset: put its "# public key:" in .sops.yaml as &yubikey, then
 sops updatekeys sops.yaml
 mv ~/.config/sops/fido2-identity.txt{,.off}; sops -d sops.yaml >/dev/null && echo admin-ok
 mv ~/.config/sops/fido2-identity.txt{.off,}; sops -d sops.yaml >/dev/null && echo yubikey-ok
 ```
 
-Once per host: `sudo tailscale up` (MagicDNS and HTTPS certs on in the admin
-console); on smortress, `sudo tailscale serve --bg --set-path /wallpapers
-/srv/wallpapers`; on smorespro, `noctalia msg color-scheme-set community "Rose
-Pine Moon"` (its GUI state outranks the config file).
+A few things are set once per host, outside the repository:
 
-## Environments
+- every Linux host: `sudo tailscale up`, with MagicDNS and HTTPS certificates on
+- smortress: `sudo tailscale serve --bg --set-path /wallpapers /srv/wallpapers`
+- smorespro: `noctalia msg color-scheme-set community "Rose Pine Moon"`, since
+  Noctalia's GUI state overrides its config file
 
-Environments are additive.
+## Maintenance
 
-| Environment | Adds |
-| --- | --- |
-| base | fish, the shared env, the `sm` abbreviation, helix, zellij, yazi, lazygit, gh, `sdlc`, global mise files |
-| `identity` | git identity templates with `git get`, `~/.ssh/config`, the `r` and `gc` abbreviations |
-| `desktop` | kitty, fonts, clipboard and trash helpers, Flatpaks or casks, wallpapers, systemd units |
-| `work` | work env and fish hooks, work git identity, the github.com SSH entry, Claude work rules, macOS defaults, work casks |
-
-## Host prerequisites
-
-| Platform | Before the first bootstrap |
-| --- | --- |
-| every machine | POSIX shell and coreutils, `curl`, `git`, `tar`, `gzip`, CA certificates |
-| Fedora Atomic / CoreOS | nothing more |
-| macOS | Command Line Tools and Homebrew; run `scripts/install-homebrew.sh` once, interactively |
-
-smorespro has no rpm-ostree layer: every host package comes from
-[smorespro-image](https://github.com/smores56/smorespro-image).
-
-## Daily use
-
-```sh
-mise dot diff                    # what a dotfile apply would change
-mise dot apply                   # deploy the checkout's dotfiles
-mise bootstrap                   # tools, repos, dotfiles, and the bootstrap task
-d                                # pull the dotfiles and bootstrap
-
-git get owner/project            # or gc: clean-bare clone, default branch beside it
-repo=/srv/git/github.com/owner/project
-git -C "$repo" worktree add "$repo/<slug>" -b smores/<slug> origin/main
-```
-
-Checkouts are worktrees beside a clean-bare gitdir: `<repo>/main` and
-`<repo>/<slug>`. `r` picks a worktree of any checkout, `w` one of the current
-checkout. The work Mac keeps work repositories flat in `~/Blitzy`.
-
-## Shell
-
-fish is the interactive shell; kitty and zellij start it through its mise shim.
-Login shells stay the platform's own (bash on Fedora, `/bin/zsh` on macOS) and
-only source `~/.config/shell/env.sh`, the POSIX environment that fish imports in
-`conf.d/00-env.fish`.
-
-## Identity and secrets
-
-Git identity is `Sam Mohr <sam@sammohr.dev>` on personal checkouts and
-`Sam Mohr <smohr@blitzy.com>` on work checkouts; smoreswork skips `identity`
-and is work everywhere. Commits are not signed.
-
-Each machine holds one GitHub token, exported as `GH_TOKEN` and handed to every
-https remote by `gh auth git-credential`; `git@github.com:` remotes are
-rewritten to https. smoreswork uses `GITHUB_WORK_PAT` (classic, `repo` scope,
-because a fine-grained token reaches only one of the two work orgs); every other
-machine uses `GITHUB_PERSONAL_PAT`.
-
-| Path | Format | Used by |
-| --- | --- | --- |
-| `sops.yaml` | SOPS ciphertext: `NEURALWATT_API_KEY`, `TINYFISH_API_KEY`, `GITHUB_PERSONAL_PAT`, `GITHUB_WORK_PAT`, `CLOUDFLARE_ACCESS_CLIENT_ID`, `CLOUDFLARE_ACCESS_CLIENT_SECRET` | `scripts/secrets.sh` at bootstrap |
-| `~/.config/maki/secrets.env` | derived, mode 600, `NAME=value` | `~/.local/bin/maki`, for the Maki process only |
-| `~/.config/gh/token` | derived, mode 600, the machine's one token | `~/.config/shell/env.sh` as `GH_TOKEN` |
-| `~/.config/cloudflare/access.env` | derived, mode 600, `NAME=value` | `~/.local/bin/smortress-ssh`, into cloudflared's environment only |
-| `~/.config/sops/keys.age` | passphrase-wrapped admin age identity | `~/.local/bin/sops-age-key` via `SOPS_AGE_KEY_CMD` |
-| `~/.config/sops/fido2-identity.txt` | YubiKey age handle, mode 600 | `sops-age-key`, which prefers it and never falls back |
-
-Bootstrap decrypts `sops.yaml` when the age identity exists and the ciphertext
-changed. It needs no GitHub auth.
-
-Only cross-machine secrets belong in `sops.yaml`. The Access service token is
-scoped to the SSH application, but the other Access applications still accept
-any valid service token until their policies name their own. Homelab material
-stays in homelab-platform. Private keys and the age identity never enter this
-repository.
-
-## Tools
-
-Tools are pinned in `global/config.toml` and `global/config.desktop.toml` with
-`locked = true`, so an unlocked tool fails to install. Bump one at a time:
+Tools are pinned and locked in `global/`; an unlocked tool won't install. Bump
+one at a time, then relock:
 
 ```sh
 mise lock --global --platform linux-x64,linux-arm64,macos-arm64
 ```
 
-Desktop apps are user Flatpaks (Linux, unpinned) and Homebrew casks into
-`~/Applications` (macOS), declared in `mise.desktop.toml`.
+Maki is pinned in `maki/pin.env`; bump it and re-run `scripts/install-maki.sh`.
 
-## Maki
-
-```sh
-scripts/install-maki.sh      # verify against maki/pin.env, install ~/.local/libexec/maki
-maki                         # the key wrapper, or the `a` abbreviation
-```
-
-An update is a pin bump in `maki/pin.env` and a re-run.
-
-## Checks
-
-```sh
-tests/check.sh                # syntax, TOML, guards, behavioural tests
-tests/check.sh --shellcheck   # also shellcheck every script
-```
+Run the checks with `tests/check.sh` (add `--shellcheck` to lint every script).
