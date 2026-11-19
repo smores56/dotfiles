@@ -4,8 +4,11 @@
     email = "sam@sammohr.dev"
 [smores]
     flow = "local"
-    workFlat = "~/Blitzy"
-    workOwners = "blitzy-ai blitzy-platform"
+
+# ghq owns the personal checkout root; worktrees live beside each bare
+# repository (see AGENTS.md).
+[ghq]
+    root = "/srv/git"
 
 # Work checkouts, by path and by remote URL.
 [includeIf "gitdir:/srv/git/github.com/blitzy-ai/"]
