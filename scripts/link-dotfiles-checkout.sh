@@ -1,8 +1,8 @@
 #!/bin/sh
 # Maintain ~/.dotfiles as a symlink to the dotfiles default worktree.
 #
-# The checkout is a git worktree of the clean-bare repository under the ghq
-# root; mise keeps its fixed ~/.dotfiles. bootstrap.sh creates the link once,
+# The checkout is a git worktree of the clean-bare repository under the
+# checkout root; mise keeps its fixed ~/.dotfiles. bootstrap.sh creates the link once,
 # and every bootstrap re-asserts it because a moved root would otherwise break
 # every mise command. A machine without the worktree (the work laptop, which
 # keeps a real clone) is a no-op.

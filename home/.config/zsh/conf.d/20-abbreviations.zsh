@@ -23,7 +23,7 @@
     dv    'dev'
     gq    'ghq'
     gw    'git worktree'
-    gc    '~/.dotfiles/scripts/clone-checkout.sh'
+    gc    'git get'
   )
   # zsh-abbr forks `rm` per add to release a queue lock that session adds
   # never take; its file-loading flag skips that (~3ms per abbreviation).

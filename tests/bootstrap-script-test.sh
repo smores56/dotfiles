@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Behavioural tests for scripts/bootstrap.sh. Hermetic: a fixture remote, a fake
-# ghq, and a preinstalled fake mise, so nothing reaches the network or installs.
+# Behavioural tests for scripts/bootstrap.sh. Hermetic: a fixture remote that
+# git reaches through url.insteadOf, and a preinstalled fake mise, so nothing
+# reaches the network or installs.
 set -uo pipefail
 
 root=$(cd -- "$(dirname -- "$0")/.." && pwd)
@@ -39,40 +40,23 @@ git clone -q --bare "$tmp/src" "$tmp/remote.git"
 
 # --- fakes ------------------------------------------------------------------
 
-mkdir -p "$tmp/bin" "$tmp/home/.local/bin"
-# A mise already installed: bootstrap skips the network installer, and the
-# script reaches ghq through `mise exec ghq@<version> -- ghq`.
+mkdir -p "$tmp/home/.local/bin"
+# A mise already installed, so bootstrap skips the network installer. The
+# clone needs no mise, so the fake records any call as a failure.
 cat >"$tmp/home/.local/bin/mise" <<EOF
 #!/bin/sh
 printf '%s\\n' "\$*" >>"$tmp/mise.log"
-[ "\$1" = exec ] || exit 9
-shift
-shift
-shift
-[ "\$1" = ghq ] || exit 9
-shift
-exec "$tmp/bin/ghq" "\$@"
+exit 9
 EOF
 chmod +x "$tmp/home/.local/bin/mise"
-# ghq records the call and builds the clean-bare fixture in its root.
-cat >"$tmp/bin/ghq" <<EOF
-#!/bin/sh
-printf '%s\\n' "\$*" >>"$tmp/ghq.log"
-[ "\$1" = get ] || exit 9
-shift
-[ "\$1" = --clean-bare ] || exit 9
-shift
-dest="\$GHQ_ROOT/github.com/smores56/dotfiles/.git"
-mkdir -p "\$(dirname "\$dest")"
-git clone -q --bare "$tmp/remote.git" "\$dest"
-EOF
-chmod +x "$tmp/bin/ghq"
 
 run_bootstrap() {  # run_bootstrap <home> <root> <checkout>
-    env -i HOME="$1" PATH="$tmp/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+    env -i HOME="$1" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
         BOOTSTRAP_ROOT="$2" BOOTSTRAP_CHECKOUT="$3" \
         BOOTSTRAP_REMOTE="https://github.com/smores56/dotfiles.git" \
         BOOTSTRAP_MARKER="$tmp/marker" \
+        GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="url.file://$tmp/remote.git.insteadOf" \
+        GIT_CONFIG_VALUE_0=https://github.com/smores56/dotfiles.git \
         sh "$script"
 }
 
@@ -90,12 +74,12 @@ else
     sed 's/^/     /' "$tmp/out" >&2
 fi
 
-assert "bootstrap runs the pinned ghq through mise" \
-    grep -qx 'exec ghq@1.12.0 -- ghq get --clean-bare https://github.com/smores56/dotfiles.git' "$tmp/mise.log"
-assert "bootstrap clones through ghq get --clean-bare" \
-    grep -qx 'get --clean-bare https://github.com/smores56/dotfiles.git' "$tmp/ghq.log"
+assert_not "the clone needs no mise" test -e "$tmp/mise.log"
 repo=$repos/github.com/smores56/dotfiles
-assert "the bare gitdir lands under the root" test -d "$repo/.git"
+assert "the bare gitdir lands under the root" \
+    test "$(git -C "$repo" rev-parse --is-bare-repository)" = true
+assert "origin's branches are fetched as remote-tracking refs" \
+    git -C "$repo" rev-parse --verify -q refs/remotes/origin/main
 assert "the default worktree is created" test -f "$repo/main/scripts/install-mise.sh"
 assert "the fetch refspec is configured" \
     test "$(git -C "$repo" config --get remote.origin.fetch)" = '+refs/heads/*:refs/remotes/origin/*'
@@ -104,6 +88,15 @@ assert "main tracks origin/main" \
 assert "$HOME/.dotfiles is a symlink to the main worktree" \
     test "$(readlink "$home/.dotfiles")" = "$repo/main"
 assert "the checkout's installer runs" test -e "$tmp/marker"
+
+rm -f "$tmp/marker"
+if run_bootstrap "$home" "$repos" "$home/.dotfiles" >"$tmp/out-rerun" 2>&1; then
+    ok "a second bootstrap keeps the clone and succeeds"
+else
+    no "a second bootstrap keeps the clone and succeeds"
+    sed 's/^/     /' "$tmp/out-rerun" >&2
+fi
+assert "the second bootstrap runs the installer again" test -e "$tmp/marker"
 
 # --- a machine that already has a real checkout -----------------------------
 

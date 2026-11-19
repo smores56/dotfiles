@@ -292,42 +292,32 @@ fi
 
 # --- cross-file consistency
 
-if grep -qF '"aqua:x-motemen/ghq" = { version = "1.12.0", os = ["linux"] }' \
-        "$root/global/config.toml"; then
-    ok "ghq is pinned for Linux only"
+if grep -rqE 'ghq' "$root/global" "$root/scripts" "$root/identity" \
+        "$root/mise.toml" "$root"/mise.*.toml 2>/dev/null; then
+    no "nothing pins, calls, or configures ghq; git get replaced it"
+    grep -rnE 'ghq' "$root/global" "$root/scripts" "$root/identity" \
+        "$root/mise.toml" "$root"/mise.*.toml 2>/dev/null | sed 's/^/     /' >&2
 else
-    no "ghq must be pinned for Linux only in global/config.toml"
+    ok "nothing pins, calls, or configures ghq; git get replaced it"
 fi
 
-if grep -A1 '^\[ghq\]' "$root/identity/.config/git/machine.inc.tera" \
-        | grep -qx '    root = "/srv/git"' \
-        && ! grep -q '^\[ghq\]' "$root/work/.config/git/machine.inc.tera"; then
-    ok "only the personal machine template sets ghq.root"
-else
-    no "ghq.root belongs in the personal template and nowhere else"
-fi
-
-root_ghq=$(sed -n 's|.*root = "\(/srv/git\)"|\1|p' \
-    "$root/identity/.config/git/machine.inc.tera" | head -1)
-boot_root=$(sed -n 's|^ROOT=${BOOTSTRAP_ROOT:-\(/srv/git\)}$|\1|p' \
+var_root=$(sed -n 's|^repos_root = "\(/[^"]*\)"$|\1|p' "$root/mise.identity.toml" | head -1)
+boot_root=$(sed -n 's|^ROOT=${BOOTSTRAP_ROOT:-\(/[^}]*\)}$|\1|p' \
     "$root/scripts/bootstrap.sh" | head -1)
 link_root=$(sed -n 's|^checkout=${DOTFILES_CHECKOUT:-\(/srv/git\)/.*|\1|p' \
     "$root/scripts/link-dotfiles-checkout.sh" | head -1)
-if [ -n "$root_ghq" ] && [ "$root_ghq" = "$boot_root" ] && [ "$root_ghq" = "$link_root" ]; then
-    ok "the ghq root matches in the template, bootstrap, and the link script"
+if [ -n "$var_root" ] && [ "$var_root" = "$boot_root" ] && [ "$var_root" = "$link_root" ]; then
+    ok "the checkout root matches in repos_root, bootstrap, and the link script"
 else
-    no "the ghq root must match in identity/machine.inc.tera, bootstrap.sh, and link-dotfiles-checkout.sh"
+    no "repos_root in mise.identity.toml, bootstrap.sh's ROOT, and link-dotfiles-checkout.sh must match"
 fi
 
-bootstrap_ghq=$(sed -n 's/^GHQ_VERSION=${GHQ_VERSION:-\([0-9.]*\)}$/\1/p' \
-    "$root/scripts/bootstrap.sh" 2>/dev/null | head -1)
-config_ghq=$(sed -n 's/.*"aqua:x-motemen\/ghq" = { version = "\([0-9.]*\)".*/\1/p' \
-    "$root/global/config.toml" | head -1)
-if [ -n "$bootstrap_ghq" ] && [ "$bootstrap_ghq" = "$config_ghq" ] \
-        && grep -qF 'get --clean-bare' "$root/scripts/bootstrap.sh"; then
-    ok "the bootstrap clones with ghq at the pinned version"
+if grep -qF "git clone --bare -c remote.origin.fetch=" "$root/scripts/bootstrap.sh" \
+        && grep -qF "git clone --bare -c remote.origin.fetch=" "$root/identity/.config/git/machine.inc.tera" \
+        && ! grep -q '{{ vars.repos_root }}' "$root/work/.config/git/machine.inc.tera"; then
+    ok "bootstrap and git get make the same clean-bare clone, on personal machines only"
 else
-    no "scripts/bootstrap.sh must clone with ghq at the global pin"
+    no "bootstrap.sh and the identity git get alias must both clone bare with the fetch refspec"
 fi
 
 if [ ! -e "$root/home/.local/bin/repos" ] && [ ! -e "$root/home/.local/bin/worktrees" ]; then
@@ -435,11 +425,15 @@ if command -v git >/dev/null 2>&1 && command -v bash >/dev/null 2>&1; then
         no "behavioral tests (tests/bootstrap-script-test.sh)"
         sed 's/^/     /' "$tmp/bootstrap-script.log" >&2
     fi
-    if bash "$root/tests/clone-checkout-test.sh" >"$tmp/clone-checkout.log" 2>&1; then
-        ok "behavioral tests (tests/clone-checkout-test.sh)"
+    if bash "$root/tests/git-get-test.sh" >"$tmp/git-get.log" 2>&1; then
+        if grep -q '^skip git get tests' "$tmp/git-get.log"; then
+            skip "behavioral tests (tests/git-get-test.sh: mise not installed)"
+        else
+            ok "behavioral tests (tests/git-get-test.sh)"
+        fi
     else
-        no "behavioral tests (tests/clone-checkout-test.sh)"
-        sed 's/^/     /' "$tmp/clone-checkout.log" >&2
+        no "behavioral tests (tests/git-get-test.sh)"
+        sed 's/^/     /' "$tmp/git-get.log" >&2
     fi
     if bash "$root/tests/picker-cables-test.sh" >"$tmp/picker-cables.log" 2>&1; then
         ok "behavioral tests (tests/picker-cables-test.sh)"

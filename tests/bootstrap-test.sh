@@ -220,8 +220,10 @@ assert "a personal checkout signs as the personal identity" \
     test "$(gitcfg "$h/scratch" user.email)" = sam@sammohr.dev
 assert "a personal checkout uses the local flow" \
     test "$(gitcfg "$h/scratch" smores.flow)" = local
-assert "a personal checkout keeps its worktrees under /srv/git" \
-    test "$(gitcfg "$h/scratch" ghq.root)" = /srv/git
+assert "git get clones under /srv/git" \
+    grep -qF 'd=/srv/git/github.com/' <<<"$(gitcfg "$h/scratch" alias.get)"
+assert "the work routing follows the same root" \
+    grep -qF 'gitdir:/srv/git/github.com/blitzy-ai/' "$h/.config/git/machine.inc"
 assert "a work remote anywhere uses the work identity" \
     test "$(gitcfg "$h/wip/elsewhere" user.email)" = smohr@blitzy.com
 assert "a work checkout uses the pr flow" test "$(gitcfg "$h/wip/elsewhere" smores.flow)" = pr
@@ -345,7 +347,7 @@ done
 assert "the work name is hardcoded" test "$(gitcfg "$h/scratch" user.name)" = "Sam Mohr"
 assert "work commits are not signed" test -z "$(gitcfg "$h/scratch" commit.gpgsign)"
 assert "the work flow is pr" test "$(gitcfg "$h/scratch" smores.flow)" = pr
-assert "the work machine has no ghq root" test -z "$(gitcfg "$h/scratch" ghq.root)"
+assert "the work machine has no git get" test -z "$(gitcfg "$h/scratch" alias.get)"
 assert "work GitHub remotes stay on https" \
     test "$(env -i HOME="$h" PATH=/usr/bin:/bin git -C "$h/Blitzy/svc" ls-remote --get-url origin)" = https://github.com/blitzy-ai/svc.git
 assert "the work SSH config has no github.com entry" \

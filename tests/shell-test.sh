@@ -104,8 +104,7 @@ expect "w jumps through the picker function" yes \
     "$(zi '(( $+functions[w] )) && print yes || print no')"
 expect "abbreviation gq expands to ghq" ghq "$(zi 'abbr expand gq')"
 expect "abbreviation gw expands to git worktree" 'git worktree' "$(zi 'abbr expand gw')"
-expect "abbreviation gc expands to the clone-checkout script" \
-    '~/.dotfiles/scripts/clone-checkout.sh' "$(zi 'abbr expand gc')"
+expect "abbreviation gc expands to git get" 'git get' "$(zi 'abbr expand gc')"
 expect "the wrapper abbreviation cr is gone" no \
     "$(zi 'abbr list-abbreviations --session | grep -qx "\"cr\"" && print yes || print no')"
 expect "the wrapper abbreviation wn is gone" no \

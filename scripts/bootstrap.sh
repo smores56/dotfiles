@@ -5,9 +5,10 @@
 # on main), so it must run without a checkout, without mise, and without any
 # repo config:
 #
-#   1. create the ghq root (the one sudo prompt)
+#   1. create the checkout root (the one sudo prompt)
 #   2. install mise, the same official installer install-mise.sh uses
-#   3. clone the dotfiles with ghq's clean-bare layout
+#   3. clone the dotfiles clean-bare, the layout `git get` makes once the
+#      dotfiles are applied: <root>/<host>/<owner>/<repo>/.git
 #   4. add the default worktree and point ~/.dotfiles at it
 #   5. hand off to the checkout's install-mise.sh
 #
@@ -19,7 +20,6 @@ set -eu
 REMOTE=${BOOTSTRAP_REMOTE:-https://github.com/smores56/dotfiles.git}
 ROOT=${BOOTSTRAP_ROOT:-/srv/git}
 CHECKOUT=${BOOTSTRAP_CHECKOUT:-$HOME/.dotfiles}
-GHQ_VERSION=${GHQ_VERSION:-1.12.0}
 MISE=$HOME/.local/bin/mise
 
 die() { printf 'bootstrap: %s\n' "$*" >&2; exit 1; }
@@ -86,20 +86,23 @@ fi
 SKIP_MISE_INSTALL=1
 export SKIP_MISE_INSTALL
 
-# Always the pinned ghq through mise: a `ghq` on PATH may be a stale shim or a
-# binary another writer controls, and this clone's scripts run below.
-log "cloning $REMOTE"
-GHQ_ROOT="$ROOT" MISE_LOCKED=0 "$MISE" exec "ghq@$GHQ_VERSION" -- ghq \
-    get --clean-bare "$REMOTE" || die "ghq get failed"
-[ -d "$repo/.git" ] || die "ghq did not create $repo/.git"
+# The fetch refspec at clone time fills origin/* in the same pass, so main can
+# track it. A re-run keeps the clone it finds.
+refspec='+refs/heads/*:refs/remotes/origin/*'
+if [ ! -e "$repo/.git" ]; then
+    log "cloning $REMOTE"
+    git clone --bare -c remote.origin.fetch="$refspec" "$REMOTE" "$repo/.git" \
+        || die "could not clone $REMOTE"
+fi
 git -C "$repo" rev-parse --is-bare-repository 2>/dev/null | grep -qx true \
     || die "$repo is not a clean-bare clone; remove the old checkout first (docs/manual-steps.md)"
 
-git -C "$repo" config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
+git -C "$repo" config remote.origin.fetch "$refspec"
+git -C "$repo" fetch origin || die "could not fetch origin"
 if [ ! -e "$repo/main" ]; then
-    git -C "$repo" worktree add "$repo/main" main || die "could not add the main worktree"
+    git -C "$repo" worktree add -B main "$repo/main" origin/main >/dev/null \
+        || die "could not add the main worktree"
 fi
-git -C "$repo/main" fetch origin || die "could not fetch origin"
 git -C "$repo/main" branch --set-upstream-to=origin/main >/dev/null \
     || die "could not set main's upstream"
 
