@@ -23,15 +23,16 @@ envs=$(sh "$(dirname "$0")/detect-envs.sh") || die "could not infer the machine 
 [ -n "$envs" ] || die "the inferred machine set is empty; set DOTFILES_ENVS"
 
 mise=$HOME/.local/bin/mise
-# scripts/bootstrap.sh installs mise before it runs this; only a bare clone (the
-# work laptop) needs the installer here. An empty MISE_VERSION resolves the
-# latest stable release with a checksum; 0s removes the 24-hour delay.
-if [ ! -x "$mise" ]; then
+# scripts/bootstrap.sh installs mise before it runs this and sets
+# SKIP_MISE_INSTALL so the download happens once. A direct run still installs
+# or upgrades. An empty MISE_VERSION resolves the latest stable release with a
+# checksum; 0s removes the 24-hour delay.
+if [ "${SKIP_MISE_INSTALL:-}" != 1 ]; then
     curl -fsSL --proto '=https' --tlsv1.2 https://mise.run \
         | MISE_VERSION='' MISE_MINIMUM_RELEASE_AGE=0s MISE_INSTALL_HELP=0 sh \
         || die "the official mise installer failed"
-    [ -x "$mise" ] || die "the official installer did not write $mise"
 fi
+[ -x "$mise" ] || die "the official installer did not write $mise"
 printf 'install-mise: %s for %s\n' "$("$mise" --version)" "$envs"
 
 # /srv/git and the ~/.dotfiles symlink are scripts/bootstrap.sh's job; this

@@ -23,6 +23,7 @@ run() {
 }
 
 mkdir -p "$tmp/worktree/main" "$tmp/home"
+: >"$tmp/worktree/main/.git"
 
 # 1. The link is created and points at the worktree.
 run "$tmp/home/.dotfiles" "$tmp/worktree/main"
@@ -70,7 +71,16 @@ else
     no "does nothing when the worktree is absent"
 fi
 
-# 6. An unwritable parent is reported, and nothing is created under it.
+# 6. A directory that is not a checkout is left alone.
+mkdir -p "$tmp/empty/main"
+run "$tmp/home/empty" "$tmp/empty/main"
+if [ ! -e "$tmp/home/empty" ] && grep -q 'no checkout' "$tmp/out"; then
+    ok "does nothing when the target is not a checkout"
+else
+    no "does nothing when the target is not a checkout"
+fi
+
+# 7. An unwritable parent is reported, and nothing is created under it.
 mkdir -p "$tmp/ro" && chmod 555 "$tmp/ro"
 run "$tmp/ro/.dotfiles" "$tmp/worktree/main"
 chmod 755 "$tmp/ro"

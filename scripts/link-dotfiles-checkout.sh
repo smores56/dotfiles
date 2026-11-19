@@ -17,7 +17,7 @@ checkout=${DOTFILES_CHECKOUT:-/srv/git/github.com/smores56/dotfiles/main}
 
 log() { printf 'dotfiles-layout: %s\n' "$*"; }
 
-[ -d "$checkout" ] || { log "no worktree at $checkout; nothing to link"; exit 0; }
+[ -e "$checkout/.git" ] || { log "no checkout at $checkout; nothing to link"; exit 0; }
 
 if [ -L "$link" ]; then
     target=$(readlink -f "$link" 2>/dev/null || printf '%s' "$link")

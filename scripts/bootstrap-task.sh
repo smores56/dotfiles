@@ -51,7 +51,7 @@ tighten_ssh_dir() {
 link_dotfiles_checkout() {
     [ "$(uname -s)" = Linux ] || return 0
     sh "$(dirname "$0")/link-dotfiles-checkout.sh" \
-        || log "dotfiles alias unchanged; see scripts/link-dotfiles-checkout.sh"
+        || log "dotfiles link unchanged; see scripts/link-dotfiles-checkout.sh"
 }
 
 link_conda_zsh

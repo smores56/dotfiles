@@ -106,9 +106,9 @@ mise dot diff                    # what a dotfile apply would change
 mise dot apply                   # deploy the checkout's dotfiles
 mise bootstrap                   # tools, repos, dotfiles, and the bootstrap task
 
-gq get --clean-bare owner/project   # the clone; then add the main worktree
+ghq get --clean-bare owner/project   # then the checkout recipe in AGENTS.md
 repo="$(ghq root)/github.com/owner/project"
-gw add "$repo/<slug>" -b smores/<slug> origin/main
+git -C "$repo" worktree add "$repo/<slug>" -b smores/<slug> origin/main
 gw list
 ```
 

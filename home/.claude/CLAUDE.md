@@ -6,12 +6,13 @@
   ```
   ghq get --clean-bare <owner/repo>
   repo="$(ghq root)/github.com/<owner>/<repo>"
+  b=$(git -C "$repo" symbolic-ref --short HEAD)
   git -C "$repo" config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
-  git -C "$repo" worktree add "$repo/main" main
-  git -C "$repo/main" fetch origin
-  git -C "$repo/main" branch --set-upstream-to=origin/main
+  git -C "$repo" worktree add "$repo/$b" "$b"
+  git -C "$repo/$b" fetch origin
+  git -C "$repo/$b" branch --set-upstream-to="origin/$b"
   ```
-- Every checkout is a worktree beside the bare gitdir: `<repo>/main` for the default branch and `<repo>/<slug>` for task work; create one with `git -C <repo> worktree add <repo>/<slug> -b <branch> origin/main` after `git fetch` and use the path you named — no JSON
+- Every checkout is a worktree beside the bare gitdir: `<repo>/<default-branch>` (main in these repos) and `<repo>/<slug>` for task work; create one with `git -C <repo> worktree add <repo>/<slug> -b <branch> origin/main` after `git fetch` and use the path you named — no JSON
 - Branches have these shapes: `smores/<slug>` in personal repos, `{ticket}-<slug>` for ticketed work and `{type}/<slug>` for unticketed work in employer repos; never hand-build another shape
 - Sync with `git fetch` in any worktree; `ghq get -u` refuses to update a branch that is checked out, so it is never used
 - Run `research` before any non-trivial design; run `review` before merging non-trivial changes

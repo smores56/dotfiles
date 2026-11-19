@@ -32,23 +32,24 @@ case $REMOTE in
     *) die "expected an https remote, got: $REMOTE" ;;
 esac
 path=${path%.git}
-case $path in
-    */*/*) ;;
-    *) die "expected host/owner/repo in the remote, got: $REMOTE" ;;
-esac
-host=${path%%/*}
+old_ifs=$IFS
+IFS=/
+# shellcheck disable=SC2086 # splitting on / is the point
+set -- $path
+IFS=$old_ifs
+[ $# -eq 3 ] || die "expected host/owner/repo in the remote, got: $REMOTE"
+host=$1
+owner=$2
+name=$3
+for part in "$host" "$owner" "$name"; do
+    case $part in
+        ''|.|..|*..*|-*) die "invalid path component in the remote: $part" ;;
+    esac
+done
 case $host in
     *@*|*:*) die "credentials in the remote are not supported: $REMOTE" ;;
 esac
-rest=${path#*/}
-owner=${rest%%/*}
-name=${rest#*/}
-for part in "$host" "$owner" "$name"; do
-    case $part in
-        ''|.|..|-*) die "invalid path component in the remote: $part" ;;
-    esac
-done
-repo=$ROOT/$path
+repo=$ROOT/$host/$owner/$name
 checkout_target=$repo/main
 
 # A real directory at the checkout is a pre-clean-bare machine: converting it
@@ -80,6 +81,10 @@ if [ ! -x "$MISE" ]; then
         || die "the official mise installer failed"
     [ -x "$MISE" ] || die "the official installer did not write $MISE"
 fi
+# install-mise.sh runs below and must not download mise a second time; it still
+# upgrades when invoked directly.
+SKIP_MISE_INSTALL=1
+export SKIP_MISE_INSTALL
 
 # Always the pinned ghq through mise: a `ghq` on PATH may be a stale shim or a
 # binary another writer controls, and this clone's scripts run below.
@@ -87,6 +92,8 @@ log "cloning $REMOTE"
 GHQ_ROOT="$ROOT" MISE_LOCKED=0 "$MISE" exec "ghq@$GHQ_VERSION" -- ghq \
     get --clean-bare "$REMOTE" || die "ghq get failed"
 [ -d "$repo/.git" ] || die "ghq did not create $repo/.git"
+git -C "$repo" rev-parse --is-bare-repository 2>/dev/null | grep -qx true \
+    || die "$repo is not a clean-bare clone; remove the old checkout first (docs/manual-steps.md)"
 
 git -C "$repo" config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
 if [ ! -e "$repo/main" ]; then
