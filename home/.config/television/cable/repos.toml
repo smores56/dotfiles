@@ -1,10 +1,10 @@
 [metadata]
 name = "repos"
-description = "local repositories"
-requirements = ["repos", "git"]
+description = "Checkouts under the ghq root, opened at their default worktree"
+requirements = ["ghq", "git"]
 
 [source]
-command = "repos list"
+command = '''if command -v ghq >/dev/null 2>&1; then ghq list -p | while IFS= read -r r; do b=$(git -C "$r" symbolic-ref --short HEAD 2>/dev/null) || b=""; if [ -n "$b" ] && [ -d "$r/$b" ]; then printf "%s/%s\n" "$r" "$b"; else printf "%s\n" "$r"; fi; done; fi'''
 display = "{}"
 output = "{}"
 
