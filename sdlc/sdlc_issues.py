@@ -698,50 +698,16 @@ def task_counts(tasks):
     return open_count, ready, blocked
 
 
-def run_tv(cable, name):
-    proc = subprocess.run(
-        ["tv", "--cable-dir", cable, name], stdout=subprocess.PIPE, text=True
-    )
-    if proc.returncode != 0 or not proc.stdout.strip():
-        raise CliError("selection canceled")
-    return proc.stdout.splitlines()[0].strip()
+def pick(candidates, header="sdlc features", previews=None):
+    """fzf, then a numbered prompt. Returns one candidate line.
 
-
-def pick(candidates, header="sdlc features"):
-    """tv, then fzf, then a numbered prompt. Returns one candidate line.
-
-    Only stdout is captured: both TUIs paint on stderr, so capturing that
-    hides the interface while they wait for keys.
+    `previews` maps each row's first tab field to its preview text, written to
+    files so no row hits the network. Only stdout is captured: fzf paints on
+    stderr, so capturing that hides the interface while it waits for keys.
     """
     if not candidates:
         raise CliError("nothing to pick")
-    if shutil.which("tv"):
-        handle, path = tempfile.mkstemp(prefix="sdlc-", suffix=".txt")
-        try:
-            with os.fdopen(handle, "w") as fh:
-                fh.write("\n".join(candidates) + "\n")
-            proc = subprocess.run(
-                [
-                    "tv",
-                    "--source-command",
-                    "cat %s" % shlex.quote(path),
-                    "--no-preview",
-                    "--input-header",
-                    header,
-                ],
-                stdout=subprocess.PIPE,
-                text=True,
-            )
-        finally:
-            os.unlink(path)
-    elif shutil.which("fzf"):
-        proc = subprocess.run(
-            ["fzf", "--delimiter", "\t", "--with-nth", "1,2,3,4"],
-            input="\n".join(candidates) + "\n",
-            stdout=subprocess.PIPE,
-            text=True,
-        )
-    else:
+    if not shutil.which("fzf"):
         for index, candidate in enumerate(candidates, 1):
             sys.stderr.write("  %d) %s\n" % (index, candidate))
         sys.stderr.write("pick: ")
@@ -755,6 +721,17 @@ def pick(candidates, header="sdlc features"):
             if answer in candidate:
                 return candidate
         raise CliError("no matching selection: %s" % answer)
+    with tempfile.TemporaryDirectory(prefix="sdlc-previews-") as tmp:
+        argv = ["fzf", "--delimiter", "\t", "--with-nth", "1..", "--header", header]
+        if previews:
+            write_previews(tmp, previews)
+            argv += ["--preview", "cat %s/{1}.md" % shlex.quote(tmp)]
+        proc = subprocess.run(
+            argv,
+            input="\n".join(candidates) + "\n",
+            stdout=subprocess.PIPE,
+            text=True,
+        )
     if proc.returncode != 0 or not proc.stdout.strip():
         raise CliError("selection canceled")
     return proc.stdout.splitlines()[0]
@@ -861,42 +838,10 @@ def action_preview(feature, action):
     return "\n".join(lines) + "\n"
 
 
-def write_picker_channel(tmp, name, rows, previews, display, output="{split:\\t:0}"):
-    """Write a tv channel whose previews are precomputed files read by `cat`.
-
-    A live `gh` preview would block the picker on the network for every row.
-    """
-    cable = os.path.join(tmp, "cable")
-    previews_dir = os.path.join(tmp, "previews")
-    os.makedirs(cable)
-    os.makedirs(previews_dir)
-    source = os.path.join(tmp, "%s.tsv" % name)
-    with open(source, "w") as fh:
-        fh.write("\n".join(rows) + "\n")
+def write_previews(directory, previews):
     for key, text in previews.items():
-        with open(os.path.join(previews_dir, "%s.md" % key), "w") as fh:
+        with open(os.path.join(directory, "%s.md" % key), "w") as fh:
             fh.write(text)
-    preview = "cat %s/{split:\\t:0}.md" % shlex.quote(previews_dir)
-    channel = (
-        '[metadata]\nname = "%s"\nrequirements = ["sdlc"]\n\n'
-        '[source]\ncommand = "cat %s"\nentry_delimiter = "\\n"\n'
-        'display = "%s"\n'
-        'output = "%s"\n\n'
-        '[preview]\ncommand = "%s"\n'
-    ) % (name, shlex.quote(source), display, output, preview)
-    with open(os.path.join(cable, "%s.toml" % name), "w") as fh:
-        fh.write(channel)
-    return cable
-
-
-def write_picker_cable(tmp, features):
-    return write_picker_channel(
-        tmp,
-        "sdlc-features",
-        [path_row(feature) for feature in features],
-        {str(feature["number"]): preview_text(feature) for feature in features},
-        display="#{split:\\t:0} #{split:\\t:1} [#{split:\\t:2}] {split:\\t:3}",
-    )
 
 
 def parse_revdiff_annotations(text):
@@ -1011,18 +956,13 @@ def cwd_repo_name(cwd=None):
 
 
 def pick_action(feature=None):
-    if feature is None or not shutil.which("tv"):
-        return pick(list(ACTIONS), header="sdlc actions").strip()
     rows = ["%s\t%s" % (action, ACTION_HELP[action]) for action in ACTIONS]
-    with tempfile.TemporaryDirectory(prefix="sdlc-cable-") as tmp:
-        cable = write_picker_channel(
-            tmp,
-            "sdlc-actions",
-            rows,
-            {action: action_preview(feature, action) for action in ACTIONS},
-            display="#{split:\\t:0} {split:\\t:1}",
-        )
-        return run_tv(cable, "sdlc-actions")
+    previews = (
+        None
+        if feature is None
+        else {action: action_preview(feature, action) for action in ACTIONS}
+    )
+    return pick(rows, header="sdlc actions", previews=previews).split("\t")[0]
 
 
 def pick_feature(repo, all_states=False, features=None):
@@ -1032,12 +972,10 @@ def pick_feature(repo, all_states=False, features=None):
         raise CliError("no active features in %s" % repo)
     cwd = cwd_repo_name()
     features.sort(key=lambda feature: 0 if cwd and cwd in repo_names(feature) else 1)
-    rows = [path_row(feature) for feature in features]
-    if not shutil.which("tv"):
-        return int(pick(rows).split("\t")[0])
-
-    with tempfile.TemporaryDirectory(prefix="sdlc-cable-") as tmp:
-        selected = run_tv(write_picker_cable(tmp, features), "sdlc-features")
+    selected = pick(
+        [path_row(feature) for feature in features],
+        previews={str(f["number"]): preview_text(f) for f in features},
+    ).split("\t")[0]
     try:
         return int(selected)
     except ValueError:

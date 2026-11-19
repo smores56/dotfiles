@@ -20,7 +20,7 @@ sdlc new SLUG --repo OWNER/REPO     # create the feature issue
 sdlc task add FEATURE TITLE [--needs T1,T2|10,12]
 sdlc task start|done|cancel ISSUE
 sdlc complete|cancel FEATURE
-sdlc ui [ACTION] [FEATURE]          # picker (the default); uses tv when present
+sdlc ui [ACTION] [FEATURE]          # picker (the default); uses fzf when present
 sdlc review FEATURE [--dry-run]     # revdiff review -> issue comment
 sdlc comment [FEATURE]              # comment in $EDITOR
 sdlc hook add OWNER/REPO --url URL [--events a,b] [--secret-file PATH]

@@ -105,41 +105,37 @@ if os.path.exists(exit_path):
         sys.exit(int(fh.read().strip()))
 '''
 
-FAKE_TV = '''#!{python}
-import json, os, re, shlex, sys
+FAKE_FZF = '''#!{python}
+import json, os, shlex, sys
 
 state = os.environ["FAKE_GH_STATE"]
 args = sys.argv[1:]
-sys.stderr.write("tv draws its ui here\\n")
-with open(os.path.join(state, "tv.jsonl"), "a") as fh:
+rows = sys.stdin.read().splitlines()
+sys.stderr.write("fzf draws its ui here\\n")
+with open(os.path.join(state, "fzf.jsonl"), "a") as fh:
     fh.write(json.dumps(args) + "\\n")
-PICKS = {"sdlc-features": "tv-feature.txt", "sdlc-actions": "tv-action.txt"}
-if "--cable-dir" in args:
-    cable = args[args.index("--cable-dir") + 1]
-    name = args[args.index("--cable-dir") + 2]
-    with open(os.path.join(cable, name + ".toml")) as fh:
-        channel = fh.read()
-    # Snapshot the channel and its precomputed previews: the CLI deletes its
-    # temp dir on exit, so this is the only way a test can inspect them.
-    snap = os.path.join(state, "cable-" + name)
+header = args[args.index("--header") + 1]
+name = header.replace(" ", "-")
+with open(os.path.join(state, "rows-" + name + ".txt"), "w") as fh:
+    fh.write("\\n".join(rows))
+if "--preview" in args:
+    # Snapshot the precomputed previews: the CLI deletes its temp dir on exit,
+    # so this is the only way a test can inspect them.
+    command = args[args.index("--preview") + 1]
+    preview_dir = os.path.dirname(shlex.split(command)[1])
+    snap = os.path.join(state, "previews-" + name)
     os.makedirs(snap, exist_ok=True)
-    with open(os.path.join(snap, name + ".toml"), "w") as fh:
-        fh.write(channel)
-    preview = re.search(r'^\\[preview\\]\\ncommand = "(.*)"$', channel, re.M).group(1)
-    preview_dir = shlex.split(preview)[1].split("{split")[0]
     for entry in os.listdir(preview_dir):
         with open(os.path.join(preview_dir, entry)) as fh:
             text = fh.read()
         with open(os.path.join(snap, entry), "w") as fh:
             fh.write(text)
-    with open(os.path.join(state, PICKS[name])) as fh:
-        sys.stdout.write(fh.read().strip() + "\\n")
-    sys.exit(0)
-if "--source-command" in args:
-    source = args[args.index("--source-command") + 1]
-    if source.startswith("cat "):
-        with open(source[4:].strip("'")) as fh:
-            sys.stdout.write(fh.read().splitlines()[0] + "\\n")
+picks = {"sdlc features": "fzf-feature.txt", "sdlc actions": "fzf-action.txt"}
+with open(os.path.join(state, picks[header])) as fh:
+    want = fh.read().strip()
+for row in rows:
+    if row.split("\\t")[0] == want:
+        sys.stdout.write(row + "\\n")
         sys.exit(0)
 sys.exit(1)
 '''
@@ -292,9 +288,9 @@ class GhTest(unittest.TestCase):
 
     def fakes(self):
         self.script("revdiff", FAKE_REVDIFF)
-        self.script("tv", FAKE_TV)
-        self.serve("tv-feature.txt", "1\n")
-        self.serve("tv-action.txt", "show\n")
+        self.script("fzf", FAKE_FZF)
+        self.serve("fzf-feature.txt", "1\n")
+        self.serve("fzf-action.txt", "show\n")
 
     def reset_calls(self):
         path = os.path.join(self.state, "calls.jsonl")
@@ -314,8 +310,8 @@ class GhTest(unittest.TestCase):
     def calls_for(self, *prefix):
         return [call for call in self.calls() if call[: len(prefix)] == list(prefix)]
 
-    def tv_calls(self):
-        return self.recorded("tv.jsonl")
+    def fzf_calls(self):
+        return self.recorded("fzf.jsonl")
 
     def run_cli(self, *args, stdin=None, path=None):
         env = dict(os.environ)
@@ -422,11 +418,11 @@ class ListTest(GhTest):
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertEqual(out.stdout.strip(), "3")
 
-    def test_pick_keeps_the_tv_ui_on_stderr(self):
+    def test_pick_keeps_the_fzf_ui_on_stderr(self):
         self.fakes()
         out = self.run_cli("list", "--all", "--pick", path="")
         self.assertEqual(out.returncode, 0, out.stderr)
-        self.assertIn("tv draws its ui here", out.stderr)
+        self.assertIn("fzf draws its ui here", out.stderr)
 
 
 class ShowTest(GhTest):
@@ -904,15 +900,15 @@ class UiCliTest(GhTest):
     def test_no_command_is_the_picker(self):
         out = self.run_cli()
         self.assertNotIn("required", out.stderr)
-        calls = self.tv_calls()
-        self.assertTrue(any("sdlc-features" in call for call in calls[:1]))
+        calls = self.fzf_calls()
+        self.assertTrue(any("sdlc features" in call for call in calls[:1]))
 
     def test_picks_the_feature_before_the_action(self):
         self.run_cli("ui")
-        calls = self.tv_calls()
+        calls = self.fzf_calls()
         self.assertGreaterEqual(len(calls), 2)
-        self.assertTrue(any("sdlc-features" in call for call in calls[:1]))
-        self.assertFalse(any("sdlc-features" in call for call in calls[1:2]))
+        self.assertTrue(any("sdlc features" in call for call in calls[:1]))
+        self.assertFalse(any("sdlc features" in call for call in calls[1:2]))
 
     def test_approve_stays_behind_the_tty_gate(self):
         out = self.run_cli("ui", "1", "approve")
@@ -920,11 +916,11 @@ class UiCliTest(GhTest):
         self.assertIn("TTY", out.stderr + out.stdout)
         self.assertEqual(self.calls_for("issue", "edit"), [])
 
-    def test_action_and_feature_dispatch_without_tv(self):
+    def test_action_and_feature_dispatch_without_a_picker(self):
         out = self.run_cli("ui", "show", "1")
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertIn("Use GitHub issues.", out.stdout)
-        self.assertEqual(self.tv_calls(), [])
+        self.assertEqual(self.fzf_calls(), [])
         # Only cmd_show's own fetch: no preview cost when the action is explicit.
         self.assertEqual([call[:2] for call in self.calls()], [["issue", "view"]])
 
@@ -932,19 +928,17 @@ class UiCliTest(GhTest):
         out = self.run_cli("ui", "1")
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertIn("Use GitHub issues.", out.stdout)
-        self.assertTrue(self.tv_calls())
+        self.assertTrue(self.fzf_calls())
 
-    def test_action_picker_channel_previews_every_action_locally(self):
+    def test_action_picker_previews_every_action_locally(self):
         out = self.run_cli("ui", "1")
         self.assertEqual(out.returncode, 0, out.stderr)
-        snap = os.path.join(self.state, "cable-sdlc-actions")
-        with open(os.path.join(snap, "sdlc-actions.toml")) as fh:
-            channel = fh.read()
-        self.assertIn('output = "{split:\\t:0}"', channel)
-        self.assertIn("[preview]", channel)
+        snap = os.path.join(self.state, "previews-sdlc-actions")
+        args = [c for c in self.fzf_calls() if "sdlc actions" in c][0]
         # The preview is a local cat over precomputed files: never gh or sdlc.
-        preview = channel.split("[preview]", 1)[1]
-        self.assertIn("command = \"cat ", preview)
+        preview = args[args.index("--preview") + 1]
+        self.assertTrue(preview.startswith("cat "))
+        self.assertIn("{1}.md", preview)
         self.assertNotIn("gh ", preview)
         self.assertNotIn("sdlc status", preview)
         previews = {}
@@ -965,15 +959,15 @@ class UiCliTest(GhTest):
             self.assertIn(action, previews[action])
 
     def test_action_picker_adds_no_gh_calls_after_picking_a_feature(self):
-        self.serve("tv-action.txt", "complete\n")
+        self.serve("fzf-action.txt", "complete\n")
         out = self.run_cli("ui", stdin="n\n")
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertIn("not completed", out.stdout)
-        self.assertTrue(any("sdlc-actions" in call for call in self.tv_calls()))
+        self.assertTrue(any("sdlc actions" in call for call in self.fzf_calls()))
         self.assertEqual([call[:2] for call in self.calls()], [["issue", "list"]])
 
     def test_feature_arg_costs_one_fetch_before_the_action_picker(self):
-        self.serve("tv-action.txt", "complete\n")
+        self.serve("fzf-action.txt", "complete\n")
         out = self.run_cli("ui", "1", stdin="n\n")
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertIn("not completed", out.stdout)
@@ -983,12 +977,27 @@ class UiCliTest(GhTest):
         out = self.run_cli("ui", "show")
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertIn("Use GitHub issues.", out.stdout)
-        self.assertTrue(any("sdlc-features" in call for call in self.tv_calls()))
+        self.assertTrue(any("sdlc features" in call for call in self.fzf_calls()))
 
-    def test_feature_picker_keeps_the_tv_ui_on_stderr(self):
+    def test_feature_picker_previews_each_feature_from_files(self):
         out = self.run_cli("ui", "show")
         self.assertEqual(out.returncode, 0, out.stderr)
-        self.assertIn("tv draws its ui here", out.stderr)
+        args = [c for c in self.fzf_calls() if "sdlc features" in c][0]
+        self.assertEqual(args[args.index("--with-nth") + 1], "1..")
+        self.assertEqual(args[args.index("--delimiter") + 1], "\t")
+        self.assertIn("{1}.md", args[args.index("--preview") + 1])
+        with open(os.path.join(self.state, "previews-sdlc-features", "1.md")) as fh:
+            self.assertIn("Use GitHub issues.", fh.read())
+
+    def test_action_picker_passes_a_preview_once_a_feature_is_known(self):
+        self.run_cli("ui", "1")
+        args = [c for c in self.fzf_calls() if "sdlc actions" in c][0]
+        self.assertIn("--preview", args)
+
+    def test_feature_picker_keeps_the_fzf_ui_on_stderr(self):
+        out = self.run_cli("ui", "show")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertIn("fzf draws its ui here", out.stderr)
 
     def test_complete_declines_by_default(self):
         out = self.run_cli("ui", "1", "complete", stdin="n\n")
@@ -1027,10 +1036,10 @@ class CommentCliTest(GhTest):
     def test_comment_without_a_feature_uses_the_picker(self):
         out = self.run_cli("comment")
         self.assertEqual(out.returncode, 0, out.stderr)
-        self.assertTrue(any("sdlc-features" in call for call in self.tv_calls()))
+        self.assertTrue(any("sdlc features" in call for call in self.fzf_calls()))
 
 
-class PickerCableTest(unittest.TestCase):
+class PickerPreviewsTest(unittest.TestCase):
     def test_preview_reads_precomputed_files_instead_of_github(self):
         features = [
             issue(1, "One", DESIGN, ["type:feature", "repo:nix-config", "status:todo"]),
@@ -1042,15 +1051,14 @@ class PickerCableTest(unittest.TestCase):
             ),
         ]
         with tempfile.TemporaryDirectory() as tmp:
-            cable = sdlc_issues.write_picker_cable(tmp, features)
-            with open(os.path.join(cable, "sdlc-features.toml")) as fh:
-                channel = fh.read()
-            self.assertIn("cat ", channel)
-            self.assertNotIn("status {split", channel)
-            with open(os.path.join(tmp, "previews", "1.md")) as fh:
+            sdlc_issues.write_previews(
+                tmp, {str(f["number"]): sdlc_issues.preview_text(f) for f in features}
+            )
+            with open(os.path.join(tmp, "1.md")) as fh:
                 preview = fh.read()
             self.assertIn("#1 One", preview)
             self.assertIn("Use GitHub issues.", preview)
+            self.assertTrue(os.path.exists(os.path.join(tmp, "2.md")))
 
 
 class ActionPreviewTest(unittest.TestCase):
