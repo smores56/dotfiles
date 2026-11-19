@@ -46,7 +46,7 @@ run() {
         FAKE_ACCESS_ID="${FAKE_ACCESS_ID-cf-id-test}" \
         FAKE_ACCESS_SECRET="${FAKE_ACCESS_SECRET-cf-secret-test}" \
         DOTFILES_SECRETS="$tmp/secrets.yaml" \
-        sh "$root/scripts/secrets.sh" >"$tmp/out" 2>&1
+        sh "$root/scripts/secrets.sh" "$@" >"$tmp/out" 2>&1
 }
 decrypts() { grep -c '^sops$' "$tmp/log"; }
 
@@ -103,7 +103,7 @@ check "missing provider keys keep the existing file" grep -qx old "$secrets"
 
 printf 'changed3\n' >"$tmp/secrets.yaml"
 FAKE_PAT='' run
-check "an empty PAT removes the token file" test ! -e "$token"
+check "an empty PAT leaves the token file alone" test -e "$token"
 check "an empty PAT warns that git and gh have no token" grep -q 'no GITHUB_PERSONAL_PAT' "$tmp/out"
 run_before=$(decrypts)
 FAKE_PAT='' run
@@ -143,7 +143,7 @@ check "a state file without an Access marker decrypts once more" \
 printf 'access1\n' >"$tmp/secrets.yaml"
 before=$(decrypts)
 FAKE_ACCESS_ID='' run
-check "a cipher without the Access pair removes the token file" test ! -e "$access"
+check "a cipher without the Access pair leaves the token file alone" test -e "$access"
 check "a cipher without the Access pair warns" grep -q 'no CLOUDFLARE_ACCESS_CLIENT_ID' "$tmp/out"
 check "a cipher without the Access pair decrypts once, then settles" \
     test "$(decrypts)" -eq "$((before + 1))"
@@ -165,6 +165,24 @@ printf 'changed4\n' >"$tmp/secrets.yaml"
 run_before=$(decrypts)
 run
 check "a machine without the age identity is left alone" test "$(decrypts)" -eq "$run_before"
+
+
+# An absent key must not delete a credential, because a stale checkout carries an
+# older cipher than the one that delivered it. Removal is opt-in.
+# The block above removes the age key to prove the no-key path; restore it.
+: >"$home/.config/sops/keys.age"
+printf 'prune1\n' >"$tmp/secrets.yaml"
+run
+check "--prune guard setup: token exists" test -e "$token"
+check "--prune guard setup: the Access file exists" test -e "$access"
+printf 'prune2\n' >"$tmp/secrets.yaml"
+FAKE_PAT='' FAKE_ACCESS_ID='' FAKE_ACCESS_SECRET='' run
+check "an absent PAT leaves the token in place" test -e "$token"
+check "an absent Access pair leaves access.env in place" test -e "$access"
+check "an absent pair says how to remove it" grep -q -- '--prune removes it' "$tmp/out"
+FAKE_PAT='' FAKE_ACCESS_ID='' FAKE_ACCESS_SECRET='' run --prune
+check "--prune removes the token" test ! -e "$token"
+check "--prune removes access.env" test ! -e "$access"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

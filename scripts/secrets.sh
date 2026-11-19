@@ -22,6 +22,16 @@ state=${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/secrets.sha256
 
 log() { printf 'secrets: %s\n' "$*"; }
 
+# An absent key in the cipher is not proof the credential should go: a checkout
+# that is behind carries an older cipher than the one that delivered the file,
+# and deleting on absence turns that into a silent outage. Removal is explicit.
+prune=false
+case ${1:-} in
+    --prune) prune=true ;;
+    '') ;;
+    *) printf 'usage: %s [--prune]\n' "$0" >&2; exit 2 ;;
+esac
+
 [ -f "$cipher" ] || exit 0
 [ -r "$key" ] || { log "no $key on this machine; leaving the secrets alone"; exit 0; }
 
@@ -49,7 +59,9 @@ if [ -n "$state_line" ]; then
 $state_line
 EOF
 fi
-if [ "$want" = "$have" ] && [ -s "$secrets" ]; then
+# --prune has work to do even when the ciphertext is unchanged, so it never
+# takes the satisfied path.
+if ! $prune && [ "$want" = "$have" ] && [ -s "$secrets" ]; then
     # A restored or copied file can lose its mode; repair it on every run.
     chmod 600 "$secrets"
     token_ok=no
@@ -113,9 +125,11 @@ if [ -n "$pat" ]; then
     mv "$token.tmp.$$" "$token"
     chmod 600 "$token"
     token_marker=$pat_name
-else
+elif $prune; then
     rm -f "$token"
-    log "$cipher has no $pat_name; git and gh have no GitHub token"
+    log "$cipher has no $pat_name; removed $token"
+else
+    log "$cipher has no $pat_name; leaving $token in place (--prune removes it)"
 fi
 
 access_marker=none
@@ -128,9 +142,11 @@ if [ -n "$access_id" ] && [ -n "$access_secret" ]; then
     mv "$access.tmp.$$" "$access"
     chmod 600 "$access"
     access_marker=yes
-else
+elif $prune; then
     rm -f "$access"
-    log "$cipher has no CLOUDFLARE_ACCESS_CLIENT_ID and CLOUDFLARE_ACCESS_CLIENT_SECRET; smortress-ssh has no service token"
+    log "$cipher has no CLOUDFLARE_ACCESS_CLIENT_ID and CLOUDFLARE_ACCESS_CLIENT_SECRET; removed the service token"
+else
+    log "$cipher has no CLOUDFLARE_ACCESS_CLIENT_ID and CLOUDFLARE_ACCESS_CLIENT_SECRET; leaving $access in place (--prune removes it)"
 fi
 
 mkdir -p "$(dirname "$state")"
