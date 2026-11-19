@@ -163,5 +163,21 @@ else
     printf 'skip identity assertions: ssh is not installed\n'
 fi
 
+# ProxyCommand is expanded from a fixed token list that does not include %d, and
+# an unknown token aborts the connection with "vdollar_percent_expand: unknown
+# key %d" rather than passing it through. $HOME works because the command runs
+# through the user's shell.
+block=$root/home/.ssh/smortress.conf
+if grep -q 'ProxyCommand .*%d' "$block"; then
+    no "the ssh block does not use %d in ProxyCommand"
+else
+    ok "the ssh block does not use %d in ProxyCommand"
+fi
+if grep -q 'ProxyCommand \$HOME/\.local/bin/smortress-ssh %h' "$block"; then
+    ok "the ssh block reaches the wrapper through \$HOME"
+else
+    no "the ssh block reaches the wrapper through \$HOME"
+fi
+
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
