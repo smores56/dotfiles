@@ -1,8 +1,9 @@
 #!/bin/sh
-# install-mise.sh: set up a machine that has no mise yet. Runs the official
-# installer for the latest stable mise, then applies this repository's latest
-# main with `mise bootstrap`. The machine set is inferred by detect-envs.sh;
-# override it with DOTFILES_ENVS when the inference is wrong.
+# install-mise.sh: install mise and apply this repository's latest main.
+# Runs with the checkout already in place at ~/.dotfiles: scripts/bootstrap.sh
+# creates it on a personal Linux machine, and the work laptop clones it by
+# hand. The machine set is inferred by detect-envs.sh; override it with
+# DOTFILES_ENVS when the inference is wrong.
 #
 # usage: install-mise.sh [extra bootstrap args...]
 #   DOTFILES_ENVS=desktop,identity scripts/install-mise.sh
@@ -31,32 +32,10 @@ curl -fsSL --proto '=https' --tlsv1.2 https://mise.run \
 [ -x "$mise" ] || die "the official installer did not write $mise"
 printf 'install-mise: %s for %s\n' "$("$mise" --version)" "$envs"
 
-# /srv/git belongs to the user, but its creation needs root once. This is the
-# only interactive sudo in the bootstrap; an existing but foreign-owned root is
-# repaired rather than refused.
-if [ "$(uname -s)" != Darwin ]; then
-    if [ ! -d /srv/git ]; then
-        command -v sudo >/dev/null 2>&1 || die "sudo is required to create /srv/git"
-        sudo install -d -o "$USER" -g "$(id -gn)" /srv/git \
-            || die "could not create /srv/git"
-    elif [ ! -w /srv/git ]; then
-        command -v sudo >/dev/null 2>&1 || die "/srv/git is not writable and sudo is missing"
-        sudo chown "$USER:$(id -gn)" /srv/git || die "could not take ownership of /srv/git"
-    fi
-fi
-
+# /srv/git and the ~/.dotfiles symlink are scripts/bootstrap.sh's job; this
+# script only needs an existing checkout.
 "$mise" bootstrap \
     --from "$REPO_URL" --from-dir "$CHECKOUT" --config-dir global \
     -E "$envs" --save-env --skip user --update --yes "$@"
 
-# Dotfiles stay at mise's default root; the /srv/git path is the stable alias.
-if [ "$(uname -s)" != Darwin ]; then
-    link=/srv/git/github.com/smores56/dotfiles
-    mkdir -p "$(dirname "$link")"
-    if [ -L "$link" ] || [ ! -e "$link" ]; then
-        ln -sfn "$CHECKOUT" "$link"
-        printf 'install-mise: linked %s -> %s\n' "$link" "$CHECKOUT"
-    else
-        die "$link exists and is not a symlink; move it aside and re-run"
-    fi
-fi
+

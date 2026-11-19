@@ -1,27 +1,28 @@
 #!/bin/sh
-# Keep /srv/git/<host>/<owner>/<repo> pointing at the live checkout.
+# Maintain ~/.dotfiles as a symlink to the dotfiles default worktree.
 #
-# The checkout stays where mise puts it (~/.dotfiles on every machine); the /srv
-# path is the stable alias the agent instructions and `repos` use. install-mise.sh
-# creates it once, but it is the one piece of that install a later move can drop,
-# so bootstrap re-asserts it whenever the parent is writable. Nothing is created
-# when it cannot be: a foreign-owned /srv/git needs the single sudo in
-# install-mise.sh, not a bootstrap that half-succeeds.
+# The checkout is a git worktree of the clean-bare repository under the ghq
+# root; mise keeps its fixed ~/.dotfiles. bootstrap.sh creates the link once,
+# and every bootstrap re-asserts it because a moved root would otherwise break
+# every mise command. A machine without the worktree (the work laptop, which
+# keeps a real clone) is a no-op.
 #
-#   DOTFILES_LINK       alias to maintain (default /srv/git/github.com/smores56/dotfiles)
-#   DOTFILES_CHECKOUT   checkout it points at (default $HOME/.dotfiles)
+#   DOTFILES_LINK      link to maintain (default ~/.dotfiles)
+#   DOTFILES_CHECKOUT  worktree it points at
+#                      (default /srv/git/github.com/smores56/dotfiles/main)
 set -eu
 
-link=${DOTFILES_LINK:-/srv/git/github.com/smores56/dotfiles}
-checkout=${DOTFILES_CHECKOUT:-$HOME/.dotfiles}
+link=${DOTFILES_LINK:-$HOME/.dotfiles}
+checkout=${DOTFILES_CHECKOUT:-/srv/git/github.com/smores56/dotfiles/main}
 
 log() { printf 'dotfiles-layout: %s\n' "$*"; }
 
-[ -d "$checkout/.git" ] || { log "no checkout at $checkout; nothing to link"; exit 0; }
+[ -d "$checkout" ] || { log "no worktree at $checkout; nothing to link"; exit 0; }
 
 if [ -L "$link" ]; then
     target=$(readlink -f "$link" 2>/dev/null || printf '%s' "$link")
-    [ "$target" = "$(readlink -f "$checkout")" ] && exit 0
+    want=$(readlink -f "$checkout" 2>/dev/null || printf '%s' "$checkout")
+    [ "$target" = "$want" ] && exit 0
     log "$link points at $target, expected $checkout; leaving it alone"
     log "  ln -sfn $checkout $link"
     exit 0
@@ -37,12 +38,11 @@ parent=$(dirname "$link")
 if [ ! -d "$parent" ]; then
     if ! mkdir -p "$parent" 2>/dev/null; then
         log "$parent is missing and not creatable by $(id -un)"
-        log "  sudo install -d -o $(id -un) -g $(id -gn) /srv/git   # install-mise.sh does this"
         exit 0
     fi
 fi
 if [ ! -w "$parent" ]; then
-    log "$parent is not writable by $(id -un); install-mise.sh takes ownership with one sudo"
+    log "$parent is not writable by $(id -un)"
     exit 0
 fi
 

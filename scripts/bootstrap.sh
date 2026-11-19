@@ -1,0 +1,92 @@
+#!/bin/sh
+# bootstrap.sh: bring a fresh personal Linux machine to a dotfiles checkout.
+#
+# Served as https://bootstrap.sammohr.dev (a Cloudflare redirect to this file
+# on main), so it must run without a checkout, without mise, and without any
+# repo config:
+#
+#   1. create the ghq root (the one sudo prompt)
+#   2. install mise, the same official installer install-mise.sh uses
+#   3. clone the dotfiles with ghq's clean-bare layout
+#   4. add the default worktree and point ~/.dotfiles at it
+#   5. hand off to the checkout's install-mise.sh
+#
+# The work laptop is macOS and keeps a normal clone, so it is refused here.
+#
+# Overrides exist for the behavioural test; the defaults are the real ones.
+set -eu
+
+REMOTE=${BOOTSTRAP_REMOTE:-https://github.com/smores56/dotfiles.git}
+ROOT=${BOOTSTRAP_ROOT:-/srv/git}
+CHECKOUT=${BOOTSTRAP_CHECKOUT:-$HOME/.dotfiles}
+GHQ_VERSION=${GHQ_VERSION:-1.12.0}
+MISE=$HOME/.local/bin/mise
+
+die() { printf 'bootstrap: %s\n' "$*" >&2; exit 1; }
+log() { printf 'bootstrap: %s\n' "$*"; }
+
+[ "$(uname -s)" = Darwin ] && die "macOS keeps a normal clone; run ~/.dotfiles/scripts/install-mise.sh instead"
+
+case $REMOTE in
+    https://*) path=${REMOTE#https://} ;;
+    *) die "expected an https remote, got: $REMOTE" ;;
+esac
+path=${path%.git}
+case $path in
+    */*/*) ;;
+    *) die "expected host/owner/repo in the remote, got: $REMOTE" ;;
+esac
+repo=$ROOT/$path
+checkout_target=$repo/main
+
+# A real directory at the checkout is a pre-clean-bare machine: converting it
+# moves the running checkout, so it is a human step (docs/manual-steps.md).
+if [ -e "$CHECKOUT" ] || [ -L "$CHECKOUT" ]; then
+    [ -L "$CHECKOUT" ] || die "$CHECKOUT is a real directory; see the migration note in docs/manual-steps.md"
+    resolved=$(readlink -f "$CHECKOUT" 2>/dev/null || printf '%s' "$CHECKOUT")
+    [ "$resolved" = "$checkout_target" ] \
+        || die "$CHECKOUT points at $resolved, expected $checkout_target; resolve it by hand"
+fi
+
+if [ ! -d "$ROOT" ]; then
+    command -v sudo >/dev/null 2>&1 || die "sudo is required to create $ROOT"
+    sudo install -d -o "$(id -un)" -g "$(id -gn)" "$ROOT" || die "could not create $ROOT"
+elif [ ! -w "$ROOT" ]; then
+    command -v sudo >/dev/null 2>&1 || die "$ROOT is not writable and sudo is missing"
+    sudo chown "$USER:$(id -gn)" "$ROOT" || die "could not take ownership of $ROOT"
+fi
+
+if [ ! -x "$MISE" ]; then
+    log "installing mise"
+    curl -fsSL --proto '=https' --tlsv1.2 https://mise.run \
+        | MISE_VERSION='' MISE_MINIMUM_RELEASE_AGE=0s MISE_INSTALL_HELP=0 sh \
+        || die "the official mise installer failed"
+    [ -x "$MISE" ] || die "the official installer did not write $MISE"
+fi
+
+ghq_cmd() {
+    if command -v ghq >/dev/null 2>&1; then
+        ghq "$@"
+    else
+        MISE_LOCKED=0 "$MISE" exec "ghq@$GHQ_VERSION" -- ghq "$@"
+    fi
+}
+
+log "cloning $REMOTE"
+GHQ_ROOT="$ROOT" ghq_cmd get --clean-bare "$REMOTE" || die "ghq get failed"
+[ -d "$repo/.git" ] || die "ghq did not create $repo/.git"
+
+git -C "$repo" config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
+if [ ! -e "$repo/main" ]; then
+    git -C "$repo" worktree add "$repo/main" main || die "could not add the main worktree"
+fi
+git -C "$repo/main" fetch origin || die "could not fetch origin"
+git -C "$repo/main" branch --set-upstream-to=origin/main >/dev/null \
+    || die "could not set main's upstream"
+
+DOTFILES_LINK=$CHECKOUT DOTFILES_CHECKOUT=$repo/main \
+    sh "$repo/main/scripts/link-dotfiles-checkout.sh" \
+    || die "could not link $CHECKOUT"
+
+log "running the checkout's installer"
+exec "$CHECKOUT/scripts/install-mise.sh"

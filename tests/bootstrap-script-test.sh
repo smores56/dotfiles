@@ -69,6 +69,9 @@ run_bootstrap() {  # run_bootstrap <home> <root> <checkout>
 
 home=$tmp/home
 repos=$tmp/root
+# The real script takes its one sudo prompt to create the root; the test runs
+# after that step, with the directory already owned by the user.
+mkdir -p "$repos"
 if run_bootstrap "$home" "$repos" "$home/.dotfiles" >"$tmp/out" 2>&1; then
     ok "bootstrap exits 0 on a fresh machine"
 else
