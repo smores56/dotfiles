@@ -7,9 +7,6 @@ repos_root = "/srv/git"
 "~/.config/git/config" = { source = "identity/.config/git/config" }
 "~/.ssh/config" = { source = "identity/.ssh/config" }
 "~/.ssh/smortress.conf" = { source = "home/.ssh/smortress.conf" }
-# The ed25519-sk key file is a FIDO2 handle, not a secret (tests/check.sh
-# verifies that), so a replacement laptop is a single bootstrap.
-"~/.ssh/id_smortress" = { source = "identity/.ssh/id_smortress", mode = "copy" }
 "~/.config/fish/conf.d/85-identity.fish" = { source = "identity/.config/fish/conf.d/85-identity.fish.tera", mode = "template" }
 "~/.config/git/machine.inc" = { source = "identity/.config/git/machine.inc.tera", mode = "template" }
 "~/.config/git/work.inc" = { source = "identity/.config/git/work.inc.tera", mode = "template" }

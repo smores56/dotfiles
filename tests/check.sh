@@ -51,7 +51,7 @@ fi
 
 if python3 -c 'import tomllib' >/dev/null 2>&1; then
     has_tomllib=true
-    for cfg in "$root"/mise.toml "$root"/mise.*.toml "$root"/global/*.toml "$root"/global/*.lock \
+    for cfg in "$root"/mise.toml "$root"/mise.*.toml "$root"/mise.*.lock "$root"/global/*.toml "$root"/global/*.lock \
             "$root"/desktop/.config/aerospace/aerospace.toml "$root"/home/.config/maki/*.toml \
             "$root"/home/.config/helix/*.toml; do
         [ -f "$cfg" ] && assert "toml $(rel "$cfg")" \
@@ -137,22 +137,20 @@ $has_tomllib && assert "the global lockfiles cover every pinned tool on its plat
 
 # --- secrets and downloads
 
-# An sk- key file is a pointer, not a secret: it holds the FIDO2 credential id,
-# and the private scalar never leaves the token. ssh-keygen derives its public
-# half without a device, which no real private key allows.
+# Nothing here is a private key, stub or otherwise: the smortress key arrives
+# from sops at mode 600 per machine, so a PEM or a PAT in the tree is a leak.
 secret_pattern='BEGIN [A-Z ]*PRIVATE KEY|AGE-SECRET-KEY-[A-Z0-9]|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}'
 offenders=''
 for hit in $(grep -rIlE "$secret_pattern" "$root/home" "$root/identity" "$root/desktop" \
         "$root/work" "$root/maki" "$root/global" "$root/scripts" "$root/tests" \
         "$root/.github" 2>/dev/null); do
-    probe=$tmp/sk-probe
-    if grep -q 'BEGIN OPENSSH PRIVATE' "$hit" && cp "$hit" "$probe" && chmod 600 "$probe" \
-            && ssh-keygen -y -f "$probe" 2>/dev/null | grep -q '^sk-ssh-ed25519@openssh.com '; then
-        continue
-    fi
     offenders="$offenders $hit"
 done
 expect "no secret material in managed files" "" "$offenders"
+
+# The key is one file per machine, out of sops; nothing may ship a copy.
+assert_not "the tree carries no smortress key" \
+    sh -c "test -e '$root/identity/.ssh/id_smortress' || test -e '$root/home/.ssh/id_smortress'"
 
 assert_not "every fish plugin repo is pinned to a full commit" sh -c \
     "grep -E '^\"~/.local/share/fish-plugins/' '$root/mise.toml' | grep -vE 'ref = \"[0-9a-f]{40}\"( |,)'"

@@ -71,16 +71,26 @@ conf=$root/home/.ssh/smortress.conf
 if command -v ssh >/dev/null 2>&1; then
     resolved=$(ssh -G -F "$conf" smortress 2>/dev/null)
     identities=$(sed -n 's/^identityfile //p' <<<"$resolved")
-    # ssh -G prints the paths as written, tilde included.
+    # ssh -G prints the paths as written, tilde included, and none of ssh's own
+    # defaults: the block names one key and ssh offers that one.
     # shellcheck disable=SC2088
     sk='~/.ssh/id_smortress'
+    expect "the tailnet block offers only the sops key" "$sk" "$identities"
+    assert "the tailnet block offers nothing beyond its own keys" \
+        grep -qx 'identitiesonly yes' <<<"$resolved"
+    assert "the tailnet block resolves through MagicDNS" grep -qx 'hostname smortress' <<<"$resolved"
+    assert "the tailnet block accepts a new host key" \
+        grep -qx 'stricthostkeychecking accept-new' <<<"$resolved"
+    # A ProxyCommand here would route the tailnet name back through Cloudflare.
+    assert_not "the tailnet block needs no tunnel" grep -q '^proxycommand ' <<<"$resolved"
+
+    # The tunnel block stays until the cutover: both keys, and the wrapper.
+    legacy=$(ssh -G -F "$conf" ssh.sammohr.dev 2>/dev/null)
+    legacy_identities=$(sed -n 's/^identityfile //p' <<<"$legacy")
     # shellcheck disable=SC2088
     for key in "$sk" '~/.ssh/id_smortress-access'; do
-        assert "the ssh block offers $key" grep -qxF "$key" <<<"$identities"
+        assert "the tunnel block still offers $key" grep -qxF "$key" <<<"$legacy_identities"
     done
-    # The resident handle is the hardware key; the file key answers only when the token cannot sign.
-    expect "the ssh block tries the resident handle first" "$sk" "$(sed -n 1p <<<"$identities")"
-    assert "the ssh block offers nothing beyond its own keys" grep -qx 'identitiesonly yes' <<<"$resolved"
 else
     printf 'skip identity assertions: ssh is not installed\n'
 fi

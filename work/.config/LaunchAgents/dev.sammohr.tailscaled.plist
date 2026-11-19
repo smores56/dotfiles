@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.sammohr.tailscaled</string>
+  <!-- launchd expands nothing, so the shell resolves $HOME and keeps the socket
+       and state out of the root-only defaults (/var/run, /var/lib). -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>-c</string>
+    <string>mkdir -p "$HOME/.local/state/tailscale" &amp;&amp; exec "$HOME/.local/share/mise/shims/tailscaled" --tun=userspace-networking --socket="$HOME/.local/state/tailscale/tailscaled.sock" --statedir="$HOME/.local/state/tailscale" &gt;&gt;"$HOME/Library/Logs/tailscaled.log" 2&gt;&amp;1</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+</dict>
+</plist>

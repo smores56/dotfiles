@@ -59,10 +59,10 @@ Everything builds on the base; each environment only adds.
 
 | Environment | Adds |
 | --- | --- |
-| base | fish, helix, zellij, yazi, lazygit, gh, `sdlc`, the shared env, global mise config |
-| `identity` | personal git identity and `git get`, SSH config, the `r` and `gc` abbreviations |
+| base | fish, helix, zellij, yazi, lazygit, gh, `sdlc`, the shared env, global mise config, the YubiKey TOTP binding |
+| `identity` | personal git identity and `git get`, the tailnet `smortress` SSH route, the `r` and `gc` abbreviations |
 | `desktop` | kitty, fonts, clipboard and trash helpers, Flatpaks or casks, wallpapers |
-| `work` | work env and git identity, the github.com SSH entry, Claude work rules, macOS defaults and casks |
+| `work` | work env and git identity, the github.com SSH entry, the userspace `tailscale` and `ykman`, Claude work rules, macOS defaults and casks |
 
 fish is the interactive shell. Login shells stay the system's own (bash on
 Fedora, zsh on macOS) and only load `~/.config/shell/env.sh`, which fish
@@ -85,6 +85,10 @@ files that only their one consumer reads.
 | `GITHUB_PERSONAL_PAT` | fine-grained: Contents read/write on my repos, Issues read/write on `smores56/sdlc` | `~/.config/gh/token` on personal machines |
 | `GITHUB_WORK_PAT` | `smohr-blitzy` classic, `repo` scope, at most 366 days (fine-grained can't reach both work orgs) | `~/.config/gh/token` on the work Mac |
 | `CLOUDFLARE_ACCESS_CLIENT_ID`, `_SECRET` | Zero Trust service token for the SSH app, one-year lifetime | `~/.config/cloudflare/access.env`, for `smortress-ssh` only |
+| `SMORTRESS_SSH_KEY` | one ed25519 private key for `ssh smortress`; revoking a laptop is a tailnet change, rotating the key one sops edit | `~/.ssh/id_smortress`, mode 600 |
+
+`NEURALWATT_API_KEY`, `TINYFISH_API_KEY` and `SMORTRESS_SSH_KEY` are required:
+a cipher without one of them fails the run and leaves the files alone.
 
 Decrypting uses the YubiKey (`~/.config/sops/fido2-identity.txt`) when its
 handle is present, with no fallback; otherwise the passphrase-protected admin
@@ -124,6 +128,13 @@ A few things are set once per host, outside the repository:
 - smortress: `sudo tailscale serve --bg --set-path /wallpapers /srv/wallpapers`
 - smorespro: `noctalia msg color-scheme-set community "Rose Pine Moon"`, since
   Noctalia's GUI state overrides its config file
+- the work Mac: no admin, so `tailscaled` is an unprivileged, userspace daemon
+  from `~/Library/LaunchAgents/dev.sammohr.tailscaled.plist` (the bootstrap
+  loads it), and the one login is
+  `tailscale --socket=$HOME/.local/state/tailscale/tailscaled.sock up`
+- the work Mac also carries `ykman`: smorespro has no PC/SC stack by design, so
+  the YubiKey's TOTP code is minted there (the bootstrap installs `ykman` with
+  `uv`), and alt+o inserts the code at the prompt
 
 ## Maintenance
 
@@ -132,6 +143,26 @@ one at a time, then relock:
 
 ```sh
 mise lock --global --platform linux-x64,linux-arm64,macos-arm64
+```
+
+The work-only tools (the Go toolchain that builds `tailscale`, and `tailscale`
+itself) are pinned in `mise.work.toml` and lock at the repository root, on the
+Mac's platform alone:
+
+```sh
+MISE_ENV=work mise lock --platform macos-arm64
+```
+
+The `go:` backend builds from source, so its lock entries carry the version and
+no checksum; the toolchain it builds with is the tool that does.
+
+`ykman` is the one tool mise cannot pin: its `pyscard` dependency publishes no
+wheel for the PC/SC build a locked Python graph needs, so mise can build no
+graph for it and a locked install refuses it. `scripts/bootstrap-task.sh`
+installs it with mise's `uv` on macOS only, from the version pinned there:
+
+```sh
+uv tool install yubikey-manager==5.9.2
 ```
 
 Maki is pinned in `maki/pin.env`; bump it and re-run `scripts/install-maki.sh`.

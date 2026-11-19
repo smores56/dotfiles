@@ -40,6 +40,7 @@ gitcfg() { in_h git -C "$1" config --get "$2"; }
 url_of() { in_h git -C "$1" ls-remote --get-url origin; }
 mkrepo() { mkdir -p "$1" && git init -q "$1" && { [ -z "${2:-}" ] || git -C "$1" remote add origin "$2"; }; }
 proxy_of() { in_h ssh -F "$h/.ssh/config" -G "$1" 2>/dev/null | sed -n 's/^proxycommand //p'; }
+hostname_of() { in_h ssh -F "$h/.ssh/config" -G "$1" 2>/dev/null | sed -n 's/^hostname //p'; }
 
 # --- base environment --------------------------------------------------------
 
@@ -193,9 +194,13 @@ assert "identity apply exits 0" run_mise "$h" identity dot apply
 assert "identity links ~/.config/git/config" links_into_repo "$h/.config/git/config"
 assert "identity links ~/.ssh/config" links_into_repo "$h/.ssh/config"
 assert "identity links the shared smortress route" links_into_repo "$h/.ssh/smortress.conf"
-# The route is one file under home/, included by both ssh configs, and the
-# wrapper it names is the only place the Access token is read.
-expect "the smortress route proxies through the token wrapper" '$HOME/.local/bin/smortress-ssh %h' "$(proxy_of smortress)"
+# The route is one file under home/, included by both ssh configs. Over the
+# tailnet it is ssh's own transport; the Cloudflare tunnel that still reads the
+# Access token is a separate host until the cutover removes it.
+expect "the smortress route needs no proxy" '' "$(proxy_of smortress)"
+expect "the smortress route resolves through MagicDNS" smortress "$(hostname_of smortress)"
+expect "the tunnel route still proxies through the token wrapper" \
+    '$HOME/.local/bin/smortress-ssh %h' "$(proxy_of ssh.sammohr.dev)"
 assert "identity keeps the base links" links_into_repo "$h/.config/helix/config.toml"
 for inc in machine work; do
     assert "identity renders ~/.config/git/$inc.inc" test -f "$h/.config/git/$inc.inc"
@@ -273,7 +278,12 @@ h=$(new_home work)
 printf 'export EMPLOYER_RC_TEST=1\n' >"$h/.zshrc"
 assert "work apply exits 0" run_mise "$h" desktop,work dot apply
 assert "work links the shared smortress route" links_into_repo "$h/.ssh/smortress.conf"
-expect "the work smortress route is the same wrapper" '$HOME/.local/bin/smortress-ssh %h' "$(proxy_of smortress)"
+expect "the work smortress route goes through the userspace tailscaled" \
+    '$HOME/.local/share/mise/shims/tailscale --socket=$HOME/.local/state/tailscale/tailscaled.sock nc %h %p' \
+    "$(proxy_of smortress)"
+expect "the work smortress route still resolves through MagicDNS" smortress "$(hostname_of smortress)"
+expect "the work tunnel route still proxies through the token wrapper" \
+    '$HOME/.local/bin/smortress-ssh %h' "$(proxy_of ssh.sammohr.dev)"
 assert "work links the shared environment additions" links_into_repo "$h/.config/shell/env.d/work.sh"
 assert "work links the fish work hook" links_into_repo "$h/.config/fish/conf.d/90-work.fish"
 assert "work links the Claude work rules" grep -q 'This is a work host' "$h/.claude/work.md"

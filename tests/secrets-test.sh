@@ -18,6 +18,7 @@ printf 'TINYFISH_API_KEY=%s\n' "$FAKE_TINYFISH"
 [ -n "$FAKE_WORK_PAT" ] && printf 'GITHUB_WORK_PAT=%s\n' "$FAKE_WORK_PAT"
 [ -n "$FAKE_ACCESS_ID" ] && printf 'CLOUDFLARE_ACCESS_CLIENT_ID=%s\n' "$FAKE_ACCESS_ID"
 [ -n "$FAKE_ACCESS_SECRET" ] && printf 'CLOUDFLARE_ACCESS_CLIENT_SECRET=%s\n' "$FAKE_ACCESS_SECRET"
+[ -n "$FAKE_SMORTRESS_SSH_KEY" ] && printf 'SMORTRESS_SSH_KEY=%s\n' "$FAKE_SMORTRESS_SSH_KEY"
 exit 0
 EOF
 # The token is exported by the shell env, never handed to gh: any gh call is a failure.
@@ -50,6 +51,7 @@ run() {
         FAKE_WORK_PAT="${FAKE_WORK_PAT-ghp_work}" \
         FAKE_ACCESS_ID="${FAKE_ACCESS_ID-cf-id-test}" \
         FAKE_ACCESS_SECRET="${FAKE_ACCESS_SECRET-cf-secret-test}" \
+        FAKE_SMORTRESS_SSH_KEY="${FAKE_SMORTRESS_SSH_KEY-ssh-key-test}" \
         DOTFILES_SECRETS="$tmp/secrets.yaml" \
         sh "$root/scripts/secrets.sh" "$@" >"$tmp/out" 2>&1
 }
@@ -58,6 +60,7 @@ decrypts() { grep -c '^sops$' "$tmp/log"; }
 secrets=$home/.config/maki/secrets.env
 token=$home/.config/gh/token
 access=$home/.config/cloudflare/access.env
+ssh_key=$home/.ssh/id_smortress
 state=$home/.local/state/dotfiles/secrets.sha256
 
 assert "decrypt exits 0" run
@@ -77,6 +80,12 @@ assert "the Access token file is mode 600" test "$(mode_of "$access")" = 600
 assert "the Access token directory is private" test "$(mode_of "$home/.config/cloudflare")" = 700
 assert_not "the Access token stays out of the Maki cache" grep -q cf-secret-test "$secrets"
 assert_not "the Access token is never printed" grep -q cf-secret-test "$tmp/out"
+assert "the smortress key is written where ssh reads it" \
+    grep -qx 'ssh-key-test' "$ssh_key"
+assert "the smortress key file is mode 600" test "$(mode_of "$ssh_key")" = 600
+assert "the smortress key directory is private" test "$(mode_of "$home/.ssh")" = 700
+assert_not "the smortress key stays out of the Maki cache" grep -q ssh-key-test "$secrets"
+assert_not "the smortress key is never printed" grep -q ssh-key-test "$tmp/out"
 
 run
 assert "an unchanged file skips the second decrypt" test "$(decrypts)" -eq 1
@@ -163,6 +172,49 @@ assert "the Access token comes back with the cipher's pair" \
     test "$(decrypts)" -eq "$((before + 1))"
 assert "the restored Access token file is mode 600" \
     test "$(mode_of "$access")" = 600
+
+# --- the smortress ssh key
+# The Access cases above left the work PAT and the Access pair in the state, so
+# these runs stay on the same environment and the key marker alone decides.
+before=$(decrypts)
+run
+assert "an untouched machine does not decrypt for the key again" \
+    test "$(decrypts)" -eq "$before"
+
+chmod 644 "$ssh_key"
+run
+assert "a loosened key file is tightened without decrypting" \
+    test "$(mode_of "$ssh_key")" = 600 -a "$(decrypts)" -eq "$before"
+
+rm "$ssh_key"
+run
+assert "a deleted key file is restored without a changed file" \
+    test "$(mode_of "$ssh_key")" = 600 -a "$(decrypts)" -eq "$((before + 1))"
+
+# A state file from before the key existed carries three fields.
+sha=$(cut -d' ' -f1 "$state")
+printf '%s %s %s\n' "$sha" "$(cut -d' ' -f2 "$state")" "$(cut -d' ' -f3 "$state")" >"$state"
+before=$(decrypts)
+run
+assert "a state file without the key marker decrypts once more" \
+    test "$(decrypts)" -eq "$((before + 1))"
+
+# sops writes a multi-line dotenv value escaped on one line; ssh needs newlines.
+printf 'key1\n' >"$tmp/secrets.yaml"
+FAKE_SMORTRESS_SSH_KEY='key-line-1\nkey-line-2' run
+assert "a multi-line key value is written as real lines" \
+    test "$(tr '\n' ' ' <"$ssh_key")" = 'key-line-1 key-line-2 '
+assert "the multi-line key is mode 600" test "$(mode_of "$ssh_key")" = 600
+
+# The key is required, so no cipher may remove it, --prune included.
+printf 'key2\n' >"$tmp/secrets.yaml"
+FAKE_SMORTRESS_SSH_KEY='' assert_not "a cipher without the key fails" run
+assert "a cipher without the key leaves the key file alone" test -e "$ssh_key"
+FAKE_SMORTRESS_SSH_KEY='' assert_not "a cipher without the key fails under --prune too" run --prune
+assert "--prune never removes the required key" test -e "$ssh_key"
+run
+assert "the key comes back with the cipher's value" \
+    grep -qx 'ssh-key-test' "$ssh_key"
 MISE_ENV=
 
 rm "$home/.config/sops/keys.age"

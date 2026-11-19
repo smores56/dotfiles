@@ -25,6 +25,10 @@ done
 printf '#!/bin/sh\necho PFETCH\n' >"$h/.local/bin/pfetch"
 printf '#!/bin/sh\n' >"$h/.local/bin/gtrash"
 chmod +x "$h/.local/bin/pfetch" "$h/.local/bin/gtrash"
+# ykman lives on the one machine with PC/SC; the TOTP helper guards on it.
+mkdir -p "$h/.local/share/mise/shims"
+printf '#!/bin/sh\nprintf 12345678\n' >"$h/.local/share/mise/shims/ykman"
+chmod +x "$h/.local/share/mise/shims/ykman"
 mkdir -p "$h/.ssh"
 
 mise_in() {  # mise_in <home> <env set> <args...>
@@ -68,6 +72,12 @@ expect "done waits 10 seconds" 10000 "$(fi_ 'echo $__done_min_cmd_duration')"
 expect "done skips the interactive tools" yes \
     "$(fi_ 'string match -rq -- $__done_exclude[1] "hx foo"; and string match -rq -- $__done_exclude[1] claude; and echo yes')"
 expect "the greeting is pfetch" PFETCH "$(fi_ fish_greeting)"
+# The smortress sudo second factor is a YubiKey TOTP: a key binding mines the
+# code into the prompt rather than running it.
+expect "alt+o inserts the YubiKey TOTP code" yes \
+    "$(fi_ 'functions -q smortress-totp; and bind \eo | string match -q "*smortress-totp"; and echo yes; or echo no')"
+expect "the TOTP helper asks ykman for the smortress code" yes \
+    "$(fi_ 'functions smortress-totp | string match -q "*oath accounts code -s smortress*"; and echo yes; or echo no')"
 if [ -e "$h/.local/bin/zoxide" ]; then
     expect "zoxide jumps with c" yes "$(fi_ 'functions -q c; and echo yes')"
 fi
@@ -143,7 +153,9 @@ fi
 
 hw=$tmp/work
 mkdir -p "$hw/.local/bin" "$hw/.pyenv/shims" "$hw/.nvm/versions/node/v9.0.0/bin" \
-    "$hw/.nvm/versions/node/v24.1.0/bin"
+    "$hw/.nvm/versions/node/v24.1.0/bin" "$hw/.local/share/mise/shims"
+printf '#!/bin/sh\nprintf 12345678\n' >"$hw/.local/share/mise/shims/ykman"
+chmod +x "$hw/.local/share/mise/shims/ykman"
 ln -s "$fish_bin" "$hw/.local/bin/fish"
 zsh_bin=$(command -v zsh || true)
 [ -n "$zsh_bin" ] && ln -s "$zsh_bin" "$hw/.local/bin/zsh"
@@ -192,7 +204,9 @@ if [ -n "$zsh_bin" ]; then
     expect "a helper's exit status comes back" 3 "$(fw_ 'fails; echo $status')"
     expect "running helpers leaves PATH as it was" same \
         "$(fw_ 'set -l p "$PATH"; set-env ~/e1.env; test "$PATH" = "$p"; and echo same')"
-    expect "the work machine starts cleanly" "" "$(cat "$tmp/fish.err")"
+expect "the work machine starts cleanly" "" "$(cat "$tmp/fish.err")"
 fi
+expect "the work Mac binds the YubiKey TOTP code" yes \
+    "$(fw_ 'functions -q smortress-totp; and bind \eo | string match -q "*smortress-totp"; and echo yes; or echo no')"
 
 finish
