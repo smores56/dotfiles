@@ -23,11 +23,6 @@ from collections import namedtuple
 
 DEFAULT_REPO = "smores56/sdlc"
 BROKER_PATH = "/github-sdlc"
-# A second broker host: it proxies only `POST /repos/<owner>/<repo>/hooks`.
-HOOKS_PATH = "/github-hooks"
-# The broker refuses any other `config.url`.
-AGENT_HOOKS_URL = "https://agent-hooks.sammohr.dev/"
-DEFAULT_HOOK_EVENTS = ("push", "pull_request", "issues", "issue_comment")
 PAGE_SIZE = 100
 HASH_RE = re.compile(r"(?m)^[ \t]*Approved design sha256:([0-9a-f]{64})[ \t]*$")
 TERMINAL = ("done", "canceled")
@@ -178,12 +173,6 @@ class GhTransport:
             return gh(*command, "--body-file", "-", input=body)
         return gh(*command, "--body", body)
 
-    def create_hook(self, repo, body):
-        return gh_json(
-            "api", "repos/%s/hooks" % repo, "-X", "POST", "--input", "-",
-            input=json.dumps(body),
-            error="gh api repos/%s/hooks returned invalid JSON" % repo,
-        )
 
 
 def broker_base():
@@ -392,8 +381,6 @@ class BrokerTransport:
         ) or {}
         return posted.get("html_url") or ""
 
-    def create_hook(self, repo, body):
-        return self.json_call("POST", repo_path(repo, "/hooks"), body=body) or {}
 
 
 def transport(broker_path=BROKER_PATH):
@@ -407,47 +394,6 @@ def transport(broker_path=BROKER_PATH):
     )
 
 
-def agent_hook_url(value):
-    url = (value or "").strip()
-    if not url.startswith(AGENT_HOOKS_URL) or not url[len(AGENT_HOOKS_URL) :]:
-        raise CliError(
-            "hook --url must point into %s (got %r); the broker refuses to "
-            "register any other URL" % (AGENT_HOOKS_URL, value)
-        )
-    return url
-
-
-def hook_events(spec):
-    if spec is None:
-        return list(DEFAULT_HOOK_EVENTS)
-    events = []
-    for token in spec.split(","):
-        event = token.strip()
-        if event and event not in events:
-            events.append(event)
-    if not events:
-        raise CliError("--events needs at least one comma-separated event name")
-    return events
-
-
-def hook_secret(path):
-    if not path:
-        return None
-    try:
-        with open(path, encoding="utf-8") as handle:
-            secret = handle.read().rstrip("\r\n")
-    except OSError as exc:
-        raise CliError("cannot read --secret-file %s: %s" % (path, exc.strerror or exc))
-    if not secret:
-        raise CliError("--secret-file %s is empty" % path)
-    return secret
-
-
-def hook_payload(url, events, secret=None):
-    config = {"url": url, "content_type": "json", "insecure_ssl": "0"}
-    if secret is not None:
-        config["secret"] = secret
-    return {"name": "webhook", "active": True, "events": list(events), "config": config}
 
 
 def path_quote(value):
@@ -555,14 +501,13 @@ def repo_names(issue):
 
 
 DESIGN_HEADER_RE = re.compile(r"(?ms)^## Design[ \t]*\n(.*?)(?=^## |\Z)")
-ANNOTATION_PREFIX = "> Sam:"
 
 
 def design_section(body):
     """Canonical `## Design` content, or None.
 
-    LF line endings, no trailing whitespace, annotation lines dropped, no blank
-    edges, no final newline: edits that keep the meaning keep the hash.
+    LF line endings, no trailing whitespace, no blank edges, no final
+    newline: edits that keep the meaning keep the hash.
     """
     if not body:
         return None
@@ -571,7 +516,6 @@ def design_section(body):
     if not match:
         return None
     lines = [line.rstrip() for line in match.group(1).split("\n")]
-    lines = [line for line in lines if not line.lstrip().startswith(ANNOTATION_PREFIX)]
     while lines and not lines[0]:
         lines.pop(0)
     while lines and not lines[-1]:
@@ -698,43 +642,25 @@ def task_counts(tasks):
     return open_count, ready, blocked
 
 
-def pick(candidates, header="sdlc features", previews=None):
-    """fzf, then a numbered prompt. Returns one candidate line.
+def fzf(rows, header, preview=None):
+    """Pick one `value<TAB>label` row with fzf. Returns the value, or "".
 
-    `previews` maps each row's first tab field to its preview text, written to
-    files so no row hits the network. Only stdout is captured: fzf paints on
-    stderr, so capturing that hides the interface while it waits for keys.
+    Only stdout is captured: fzf paints its interface on the terminal itself.
     """
-    if not candidates:
-        raise CliError("nothing to pick")
     if not shutil.which("fzf"):
-        for index, candidate in enumerate(candidates, 1):
-            sys.stderr.write("  %d) %s\n" % (index, candidate))
-        sys.stderr.write("pick: ")
-        sys.stderr.flush()
-        answer = sys.stdin.readline().strip()
-        if not answer:
-            raise CliError("no selection")
-        if answer.isdigit() and 1 <= int(answer) <= len(candidates):
-            return candidates[int(answer) - 1]
-        for candidate in candidates:
-            if answer in candidate:
-                return candidate
-        raise CliError("no matching selection: %s" % answer)
-    with tempfile.TemporaryDirectory(prefix="sdlc-previews-") as tmp:
-        argv = ["fzf", "--delimiter", "\t", "--with-nth", "1..", "--header", header]
-        if previews:
-            write_previews(tmp, previews)
-            argv += ["--preview", "cat %s/{1}.md" % shlex.quote(tmp)]
-        proc = subprocess.run(
-            argv,
-            input="\n".join(candidates) + "\n",
-            stdout=subprocess.PIPE,
-            text=True,
-        )
+        raise CliError("sdlc pick needs fzf on PATH")
+    argv = ["fzf", "--delimiter", "\t", "--with-nth", "2..", "--header", header]
+    if preview:
+        argv += ["--preview", preview]
+    proc = subprocess.run(
+        argv,
+        input="\n".join(rows) + "\n",
+        stdout=subprocess.PIPE,
+        text=True,
+    )
     if proc.returncode != 0 or not proc.stdout.strip():
-        raise CliError("selection canceled")
-    return proc.stdout.splitlines()[0]
+        return ""
+    return proc.stdout.splitlines()[0].split("\t")[0]
 
 
 def summary(feature):
@@ -751,97 +677,6 @@ def path_row(issue):
     return "\t".join([str(number), title, status, clean(repo or "-")])
 
 
-def preview_text(feature):
-    number, title, status, repo = summary(feature)
-    return "#%d %s\n[%s] %s\n\n%s\n" % (
-        number,
-        title,
-        status,
-        repo or "-",
-        clean(feature.get("body") or ""),
-    )
-
-
-def excerpt(value, lines=20, chars=1600):
-    text = clean(value or "").strip("\n")
-    if not text.strip():
-        return "(none)"
-    rows = text.split("\n")
-    kept = rows[:lines]
-    clipped = len(rows) > lines
-    out = "\n".join(kept)
-    if len(out) > chars:
-        out = out[:chars].rstrip()
-        clipped = True
-    return out + "\n…" if clipped else out
-
-
-def feature_facts(feature):
-    approval = approval_state(feature)
-    return [
-        "labels: %s" % (", ".join(sorted(labels_of(feature))) or "(none)"),
-        "approval: %s (%s)"
-        % (approval.state, clean(approval.reason) or "design matches"),
-        "design sha256: %s" % ((approval.design or "-")[:12]),
-    ]
-
-
-def task_lines(feature):
-    tasks = node_list(feature.get("subIssues"))
-    open_tasks = [task for task in tasks if task.get("state") != "CLOSED"]
-    return [
-        "sub-issues: %d open of %d" % (len(open_tasks), len(tasks)),
-    ] + [
-        "  #%d [%s] %s"
-        % (
-            task["number"],
-            "open" if task.get("state") != "CLOSED" else "closed",
-            one_line(task.get("title") or ""),
-        )
-        for task in tasks[:8]
-    ]
-
-
-def action_preview(feature, action):
-    lines = [
-        "#%d %s" % (feature["number"], one_line(feature.get("title") or "")),
-        "[%s] %s" % (display_status(feature), repo_names(feature) or "-"),
-        "",
-        "## %s" % action,
-        "%s: %s." % (action.capitalize(), ACTION_HELP[action]),
-    ]
-    if action in ("complete", "cancel"):
-        lines += [
-            "",
-            "WARNING: this is terminal — #%d becomes %s and there is no reopen "
-            "flow. Confirms with y/N before writing."
-            % (feature["number"], "done" if action == "complete" else "canceled"),
-        ]
-    if action in ("show", "review"):
-        lines += ["", "### body", excerpt(feature.get("body"))]
-        comments = feature.get("comments") or []
-        if action == "show" and comments:
-            lines += [
-                "",
-                "### latest comment (%s)" % clean(comment_author(comments[-1])),
-                excerpt((comments[-1].get("body") or ""), lines=6, chars=400),
-            ]
-    elif action == "status":
-        lines += ["", "### state"] + feature_facts(feature) + task_lines(feature)
-    elif action == "next":
-        lines += ["", "### tasks"] + task_lines(feature)
-    elif action == "approve":
-        approval = approval_state(feature)
-        lines += ["", "### approval"] + feature_facts(feature) + [
-            "approved sha256: %s" % (approval.approved or "-"),
-        ]
-    return "\n".join(lines) + "\n"
-
-
-def write_previews(directory, previews):
-    for key, text in previews.items():
-        with open(os.path.join(directory, "%s.md" % key), "w") as fh:
-            fh.write(text)
 
 
 def parse_revdiff_annotations(text):
@@ -934,52 +769,6 @@ def render_review(feature_number, title, body, notes, markers=()):
     return "\n\n".join([header] + blocks) + "\n"
 
 
-def cwd_repo_name(cwd=None):
-    def run(*args):
-        return subprocess.run(
-            ["git", *args], cwd=cwd, capture_output=True, text=True
-        )
-
-    try:
-        proc = run("remote", "get-url", "origin")
-        if proc.returncode == 0 and proc.stdout.strip():
-            name = re.sub(r"\.git$", "", proc.stdout.strip().rstrip("/"))
-            name = re.split(r"[/:]", name)[-1]
-            if name:
-                return name
-        proc = run("rev-parse", "--show-toplevel")
-    except FileNotFoundError:
-        return None
-    if proc.returncode != 0:
-        return None
-    return os.path.basename(proc.stdout.strip()) or None
-
-
-def pick_action(feature=None):
-    rows = ["%s\t%s" % (action, ACTION_HELP[action]) for action in ACTIONS]
-    previews = (
-        None
-        if feature is None
-        else {action: action_preview(feature, action) for action in ACTIONS}
-    )
-    return pick(rows, header="sdlc actions", previews=previews).split("\t")[0]
-
-
-def pick_feature(repo, all_states=False, features=None):
-    if features is None:
-        features = feature_issues(repo, all_states=all_states)
-    if not features:
-        raise CliError("no active features in %s" % repo)
-    cwd = cwd_repo_name()
-    features.sort(key=lambda feature: 0 if cwd and cwd in repo_names(feature) else 1)
-    selected = pick(
-        [path_row(feature) for feature in features],
-        previews={str(f["number"]): preview_text(f) for f in features},
-    ).split("\t")[0]
-    try:
-        return int(selected)
-    except ValueError:
-        raise CliError("unexpected picker output: %r" % selected)
 
 
 def confirm(prompt):
@@ -991,9 +780,6 @@ def confirm(prompt):
 def cmd_list(args):
     repo = args.repo or registry_repo()
     features = feature_issues(repo, all_states=args.all)
-    if args.pick:
-        print(pick([path_row(feature) for feature in features]).split("\t")[0])
-        return
     if args.format == "path":
         for feature in features:
             print(path_row(feature))
@@ -1077,15 +863,12 @@ def cmd_status(args):
         print("  #%d [%s] %s%s" % (task["number"], state, one_line(task.get("title") or ""), suffix))
 
 
-def next_feature(repo, ref, do_pick):
+def next_feature(repo, ref):
     if ref is not None:
         return resolve_feature(repo, ref)
     features = feature_issues(repo, all_states=False)
     if not features:
         raise CliError("no active features in %s" % repo)
-    if do_pick:
-        chosen = pick([path_row(feature) for feature in features])
-        return fetch_issue(repo, int(chosen.split("\t")[0]))
     return fetch_issue(repo, features[0]["number"])
 
 
@@ -1097,7 +880,7 @@ def cmd_next(args):
         features = feature_issues(repo, all_states=False)
         if not features:
             raise CliError("no active features in %s" % repo)
-        number = pick_feature(repo, features=features) if args.pick else features[0]["number"]
+        number = features[0]["number"]
     feature = transport().feature_graph(repo, number)
     approval = approval_state(feature)
     if approval.state == "stale":
@@ -1140,7 +923,7 @@ def cmd_approve(args):
     if not args.yes and not sys.stdin.isatty():
         raise CliError("approve requires a TTY; pass --yes for a non-interactive approval")
     repo = registry_repo()
-    feature = next_feature(repo, args.feature, args.pick)
+    feature = next_feature(repo, args.feature)
     if "type:feature" not in labels_of(feature):
         raise CliError("#%d is not a feature (missing type:feature); refusing to approve" % feature["number"])
     digest = design_hash(feature.get("body"))
@@ -1344,73 +1127,34 @@ def cmd_review(args):
 
 def cmd_comment(args):
     repo = registry_repo()
-    ref = args.feature if args.feature is not None else str(pick_feature(repo))
-    feature = resolve_feature(repo, ref)
+    feature = resolve_feature(repo, args.feature)
     transport().comment(repo, feature["number"], editor=True)
 
 
-def cmd_hook_add(args):
-    owner, name = split_repo(args.repo, "hook repo")
-    if not owner or not name or "/" in name:
-        raise CliError("hook repo must be owner/name, got %r" % args.repo)
-    url = agent_hook_url(args.url)
-    payload = hook_payload(
-        url, hook_events(args.events), hook_secret(args.secret_file)
-    )
-    created = transport(HOOKS_PATH).create_hook(args.repo, payload)
-    if not isinstance(created, dict) or created.get("id") is None:
-        raise CliError("POST /repos/%s/hooks returned no hook id" % args.repo)
-    print("created hook %s on %s" % (created["id"], args.repo))
-    print(url)
-
-
-def cmd_ui(args):
+def cmd_pick(args):
+    """fzf over features, then over actions, then run the action's command."""
     if args.repo:
         os.environ["SDLC_REPO"] = args.repo
     repo = registry_repo()
-    features = []
-    actions = []
-    for token in args.items:
-        lowered = token.lower()
-        if lowered in ACTIONS:
-            actions.append(lowered)
-        else:
-            features.append(token)
-    if len(features) > 1:
-        raise CliError("expected at most one feature, got %s" % ", ".join(features))
-    if len(actions) > 1:
-        raise CliError("expected at most one action, got %s" % ", ".join(actions))
-
-    if features:
-        ref = features[0]
-        # Fetch only when the action picker will show previews.
-        feature = None if actions else resolve_feature(repo, ref)
-    else:
-        pool = feature_issues(repo, all_states=args.all)
-        number = pick_feature(repo, features=pool)
-        ref = str(number)
-        feature = next((item for item in pool if item["number"] == number), None)
-    action = actions[0] if actions else pick_action(feature)
-    command = argparse.Namespace(feature=ref, dry_run=False, pick=False, yes=False)
-    if action in ("complete", "cancel"):
-        if not confirm("%s #%s" % (action, ref)):
-            print("not %s" % ("completed" if action == "complete" else "canceled"))
-            return
-        cmd_feature_transition("done" if action == "complete" else "canceled")(command)
+    features = feature_issues(repo, all_states=args.all)
+    if not features:
+        raise CliError("no features in %s" % repo)
+    rows = []
+    for feature in features:
+        number, title, status, names = summary(feature)
+        rows.append("%d\t%s [%s] %s" % (number, title, status, names or "-"))
+    number = fzf(rows, "sdlc features", "sdlc show {1}")
+    if not number:
         return
-    commands = {
-        "show": cmd_show,
-        "status": cmd_status,
-        "review": cmd_review,
-        "comment": cmd_comment,
-        "next": cmd_next,
-        "approve": cmd_approve,
-    }
-    if action not in commands:
-        raise CliError("unknown action %r" % action)
-    commands[action](command)
-
-
+    action = fzf(
+        ["%s\t%s" % (name, ACTION_HELP[name]) for name in ACTIONS], "sdlc actions"
+    )
+    if not action:
+        return
+    if action in ("complete", "cancel") and not confirm("%s #%s" % (action, number)):
+        print("not %s" % ("completed" if action == "complete" else "canceled"))
+        return
+    raise SystemExit(main([action, number]))
 def feature_arg(parser, required=True, help_text="issue number or title substring"):
     parser.add_argument("feature", nargs=None if required else "?", help=help_text)
 
@@ -1426,7 +1170,6 @@ def build_parser():
     p.add_argument("--all", action="store_true", help="include closed, done, and canceled")
     p.add_argument("--repo", help="registry repo (default $SDLC_REPO)")
     p.add_argument("--format", choices=("human", "path", "json"), default="human")
-    p.add_argument("--pick", action="store_true", help="pick one feature and print its number")
     p.set_defaults(fn=cmd_list)
 
     p = sub.add_parser("show", help="print a feature body and comments")
@@ -1439,13 +1182,11 @@ def build_parser():
 
     p = sub.add_parser("next", help="print the next ready task")
     feature_arg(p, required=False)
-    p.add_argument("--pick", action="store_true", help="pick an active feature")
     p.set_defaults(fn=cmd_next)
 
     p = sub.add_parser("approve", help="record human approval of the design")
     feature_arg(p, required=False)
     p.add_argument("--yes", action="store_true", help="skip the TTY confirmation")
-    p.add_argument("--pick", action="store_true", help="pick an active feature")
     p.set_defaults(fn=cmd_approve)
 
     p = sub.add_parser("new", help="create a feature issue")
@@ -1478,11 +1219,10 @@ def build_parser():
     feature_arg(p)
     p.set_defaults(fn=cmd_feature_transition("canceled"))
 
-    p = sub.add_parser("ui", help="pick a feature and an action")
-    p.add_argument("items", nargs="*", help="action and/or feature")
+    p = sub.add_parser("pick", help="pick a feature and an action in fzf")
     p.add_argument("--all", action="store_true", help="include terminal features")
     p.add_argument("--repo", help="registry repo (default $SDLC_REPO)")
-    p.set_defaults(fn=cmd_ui)
+    p.set_defaults(fn=cmd_pick)
 
     p = sub.add_parser("review", help="review a feature body in revdiff and post the notes")
     feature_arg(p)
@@ -1490,49 +1230,15 @@ def build_parser():
     p.set_defaults(fn=cmd_review)
 
     p = sub.add_parser("comment", help="comment on a feature in $EDITOR")
-    feature_arg(p, required=False)
+    feature_arg(p)
     p.set_defaults(fn=cmd_comment)
-
-    hook = sub.add_parser(
-        "hook",
-        help="register a GitHub repository webhook",
-        description=(
-            "Register a repo webhook with the agent hook receiver. Creation is "
-            "the only operation: the broker's github-hooks host proxies POST "
-            "/repos/OWNER/REPO/hooks alone and refuses list, edit and delete."
-        ),
-    )
-    hook_sub = hook.add_subparsers(dest="hook_command", required=True)
-    p = hook_sub.add_parser(
-        "add",
-        help="register a webhook pointing at the agent receiver",
-        description=(
-            "--url must sit under %s; the broker refuses any other URL, so the "
-            "CLI rejects it before sending. There is no list or delete: the "
-            "broker does not proxy them." % AGENT_HOOKS_URL
-        ),
-    )
-    p.add_argument("repo", help="owner/name of the repo to register the hook on")
-    p.add_argument(
-        "--url", required=True, help="capability URL under %s" % AGENT_HOOKS_URL
-    )
-    p.add_argument(
-        "--events",
-        help="comma-separated event names (default: %s)"
-        % ",".join(DEFAULT_HOOK_EVENTS),
-    )
-    p.add_argument(
-        "--secret-file",
-        help="file whose contents become the webhook secret (sent, never printed)",
-    )
-    p.set_defaults(fn=cmd_hook_add)
 
     return parser
 
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    args = build_parser().parse_args(argv or ["ui"])
+    args = build_parser().parse_args(argv or ["--help"])
     try:
         args.fn(args)
     except CliError as exc:

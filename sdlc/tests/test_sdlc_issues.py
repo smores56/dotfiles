@@ -41,10 +41,6 @@ elif args[:2] in (["issue", "edit"], ["issue", "comment"], ["issue", "close"]):
         with open(os.path.join(state, "last-comment.md"), "w") as fh:
             fh.write(sys.stdin.read())
     sys.stdout.write("")
-elif args[:2] == ["api", "repos/test/repo/hooks"]:
-    with open(os.path.join(state, "hook-post.json"), "w") as fh:
-        fh.write(sys.stdin.read())
-    sys.stdout.write(read("created-hook.json"))
 elif args[:2] == ["api", "graphql"]:
     number = None
     for arg in args:
@@ -118,18 +114,6 @@ header = args[args.index("--header") + 1]
 name = header.replace(" ", "-")
 with open(os.path.join(state, "rows-" + name + ".txt"), "w") as fh:
     fh.write("\\n".join(rows))
-if "--preview" in args:
-    # Snapshot the precomputed previews: the CLI deletes its temp dir on exit,
-    # so this is the only way a test can inspect them.
-    command = args[args.index("--preview") + 1]
-    preview_dir = os.path.dirname(shlex.split(command)[1])
-    snap = os.path.join(state, "previews-" + name)
-    os.makedirs(snap, exist_ok=True)
-    for entry in os.listdir(preview_dir):
-        with open(os.path.join(preview_dir, entry)) as fh:
-            text = fh.read()
-        with open(os.path.join(snap, entry), "w") as fh:
-            fh.write(text)
 picks = {"sdlc features": "fzf-feature.txt", "sdlc actions": "fzf-action.txt"}
 with open(os.path.join(state, picks[header])) as fh:
     want = fh.read().strip()
@@ -235,14 +219,14 @@ class DesignHashTest(unittest.TestCase):
         noisy = noisy.replace("## Plan", "\n\n## Plan") + "\r\n\r\n"
         self.assertEqual(sdlc_issues.design_hash(noisy), DESIGN_SHA)
 
-    def test_drops_sam_annotation_lines(self):
+    def test_annotation_lines_are_hashed_like_any_other_line(self):
         for indent in ("", "  "):
             with self.subTest(indent=indent):
                 annotated = DESIGN.replace(
                     "Use GitHub issues.",
                     "%s> Sam: Is a label enough?\nUse GitHub issues." % indent,
                 )
-                self.assertEqual(sdlc_issues.design_hash(annotated), DESIGN_SHA)
+                self.assertNotEqual(sdlc_issues.design_hash(annotated), DESIGN_SHA)
 
     def test_stops_at_next_h2(self):
         changed_plan = DESIGN.replace("- [ ] T1: Build", "- [ ] T1: Different")
@@ -403,26 +387,6 @@ class ListTest(GhTest):
         for call in self.calls():
             self.assertIn("--repo", call)
             self.assertEqual(call[call.index("--repo") + 1], "test/repo")
-
-    def test_pick_prefers_fzf_and_prints_the_number(self):
-        self.script(
-            "fzf",
-            "#!%s\nimport sys\nprint(sys.stdin.read().splitlines()[1])\n" % sys.executable,
-        )
-        out = self.run_cli("list", "--all", "--pick", path="")
-        self.assertEqual(out.returncode, 0, out.stderr)
-        self.assertEqual(out.stdout.strip(), "2")
-
-    def test_pick_falls_back_to_a_numbered_prompt(self):
-        out = self.run_cli("list", "--all", "--pick", stdin="3\n", path="")
-        self.assertEqual(out.returncode, 0, out.stderr)
-        self.assertEqual(out.stdout.strip(), "3")
-
-    def test_pick_keeps_the_fzf_ui_on_stderr(self):
-        self.fakes()
-        out = self.run_cli("list", "--all", "--pick", path="")
-        self.assertEqual(out.returncode, 0, out.stderr)
-        self.assertIn("fzf draws its ui here", out.stderr)
 
 
 class ShowTest(GhTest):
@@ -891,134 +855,77 @@ class ReviewCliTest(GhTest):
         self.assertEqual(self.calls_for("issue", "comment"), [])
 
 
-class UiCliTest(GhTest):
+class PickCliTest(GhTest):
     def setUp(self):
         super().setUp()
         self.serve_feature(todo_feature())
         self.fakes()
 
-    def test_no_command_is_the_picker(self):
-        out = self.run_cli()
-        self.assertNotIn("required", out.stderr)
-        calls = self.fzf_calls()
-        self.assertTrue(any("sdlc features" in call for call in calls[:1]))
+    def test_picks_the_feature_then_the_action(self):
+        out = self.run_cli("pick")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertIn("Use GitHub issues.", out.stdout)
+        headers = [call[call.index("--header") + 1] for call in self.fzf_calls()]
+        self.assertEqual(headers, ["sdlc features", "sdlc actions"])
 
-    def test_picks_the_feature_before_the_action(self):
-        self.run_cli("ui")
-        calls = self.fzf_calls()
-        self.assertGreaterEqual(len(calls), 2)
-        self.assertTrue(any("sdlc features" in call for call in calls[:1]))
-        self.assertFalse(any("sdlc features" in call for call in calls[1:2]))
+    def test_feature_rows_carry_the_number_and_a_live_preview(self):
+        self.run_cli("pick")
+        args = self.fzf_calls()[0]
+        self.assertEqual(args[args.index("--with-nth") + 1], "2..")
+        self.assertEqual(args[args.index("--preview") + 1], "sdlc show {1}")
+        with open(os.path.join(self.state, "rows-sdlc-features.txt")) as fh:
+            self.assertEqual(
+                fh.read().splitlines(),
+                ["1\tReduce bespoke tooling [todo] nix-config"],
+            )
 
-    def test_approve_stays_behind_the_tty_gate(self):
-        out = self.run_cli("ui", "1", "approve")
+    def test_all_reaches_terminal_features(self):
+        self.serve_list(
+            [
+                todo_feature(),
+                issue(
+                    2,
+                    "Old done thing",
+                    DESIGN,
+                    ["type:feature", "repo:sdlc", "status:done"],
+                    state="CLOSED",
+                ),
+            ]
+        )
+        self.run_cli("pick", "--all")
+        with open(os.path.join(self.state, "rows-sdlc-features.txt")) as fh:
+            self.assertIn("2\tOld done thing [done] sdlc", fh.read())
+
+    def test_canceling_the_feature_pick_runs_nothing(self):
+        self.serve("fzf-feature.txt", "no-such-number\n")
+        out = self.run_cli("pick")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertEqual(len(self.fzf_calls()), 1)
+        self.assertEqual(self.calls_for("issue", "view"), [])
+
+    def test_approve_from_the_picker_stays_behind_the_tty_gate(self):
+        self.serve("fzf-action.txt", "approve\n")
+        out = self.run_cli("pick")
         self.assertNotEqual(out.returncode, 0)
         self.assertIn("TTY", out.stderr + out.stdout)
         self.assertEqual(self.calls_for("issue", "edit"), [])
 
-    def test_action_and_feature_dispatch_without_a_picker(self):
-        out = self.run_cli("ui", "show", "1")
-        self.assertEqual(out.returncode, 0, out.stderr)
-        self.assertIn("Use GitHub issues.", out.stdout)
-        self.assertEqual(self.fzf_calls(), [])
-        # Only cmd_show's own fetch: no preview cost when the action is explicit.
-        self.assertEqual([call[:2] for call in self.calls()], [["issue", "view"]])
-
-    def test_feature_arg_opens_the_action_picker(self):
-        out = self.run_cli("ui", "1")
-        self.assertEqual(out.returncode, 0, out.stderr)
-        self.assertIn("Use GitHub issues.", out.stdout)
-        self.assertTrue(self.fzf_calls())
-
-    def test_action_picker_previews_every_action_locally(self):
-        out = self.run_cli("ui", "1")
-        self.assertEqual(out.returncode, 0, out.stderr)
-        snap = os.path.join(self.state, "previews-sdlc-actions")
-        args = [c for c in self.fzf_calls() if "sdlc actions" in c][0]
-        # The preview is a local cat over precomputed files: never gh or sdlc.
-        preview = args[args.index("--preview") + 1]
-        self.assertTrue(preview.startswith("cat "))
-        self.assertIn("{1}.md", preview)
-        self.assertNotIn("gh ", preview)
-        self.assertNotIn("sdlc status", preview)
-        previews = {}
-        for action in sdlc_issues.ACTIONS:
-            with open(os.path.join(snap, "%s.md" % action)) as fh:
-                previews[action] = fh.read()
-            self.assertIn("#1 Reduce bespoke tooling", previews[action])
-            self.assertIn("[todo] nix-config", previews[action])
-        self.assertIn("## show", previews["show"])
-        self.assertIn("Use GitHub issues.", previews["show"])
-        self.assertIn("## review", previews["review"])
-        self.assertIn("revdiff", previews["review"])
-        self.assertIn("type:feature", previews["status"])
-        self.assertIn("approval:", previews["approve"])
-        for action in ("complete", "cancel"):
-            self.assertIn("WARNING", previews[action])
-            self.assertIn("y/N", previews[action])
-            self.assertIn(action, previews[action])
-
-    def test_action_picker_adds_no_gh_calls_after_picking_a_feature(self):
+    def test_complete_from_the_picker_declines_by_default(self):
         self.serve("fzf-action.txt", "complete\n")
-        out = self.run_cli("ui", stdin="n\n")
+        out = self.run_cli("pick", stdin="n\n")
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertIn("not completed", out.stdout)
-        self.assertTrue(any("sdlc actions" in call for call in self.fzf_calls()))
-        self.assertEqual([call[:2] for call in self.calls()], [["issue", "list"]])
+        self.assertEqual(self.calls_for("issue", "close"), [])
 
-    def test_feature_arg_costs_one_fetch_before_the_action_picker(self):
-        self.serve("fzf-action.txt", "complete\n")
-        out = self.run_cli("ui", "1", stdin="n\n")
-        self.assertEqual(out.returncode, 0, out.stderr)
-        self.assertIn("not completed", out.stdout)
-        self.assertEqual([call[:2] for call in self.calls()], [["issue", "view"]])
-
-    def test_action_arg_opens_the_feature_picker(self):
-        out = self.run_cli("ui", "show")
-        self.assertEqual(out.returncode, 0, out.stderr)
-        self.assertIn("Use GitHub issues.", out.stdout)
-        self.assertTrue(any("sdlc features" in call for call in self.fzf_calls()))
-
-    def test_feature_picker_previews_each_feature_from_files(self):
-        out = self.run_cli("ui", "show")
-        self.assertEqual(out.returncode, 0, out.stderr)
-        args = [c for c in self.fzf_calls() if "sdlc features" in c][0]
-        self.assertEqual(args[args.index("--with-nth") + 1], "1..")
-        self.assertEqual(args[args.index("--delimiter") + 1], "\t")
-        self.assertIn("{1}.md", args[args.index("--preview") + 1])
-        with open(os.path.join(self.state, "previews-sdlc-features", "1.md")) as fh:
-            self.assertIn("Use GitHub issues.", fh.read())
-
-    def test_action_picker_passes_a_preview_once_a_feature_is_known(self):
-        self.run_cli("ui", "1")
-        args = [c for c in self.fzf_calls() if "sdlc actions" in c][0]
-        self.assertIn("--preview", args)
-
-    def test_feature_picker_keeps_the_fzf_ui_on_stderr(self):
-        out = self.run_cli("ui", "show")
+    def test_pick_keeps_the_fzf_ui_on_stderr(self):
+        out = self.run_cli("pick")
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertIn("fzf draws its ui here", out.stderr)
 
-    def test_complete_declines_by_default(self):
-        out = self.run_cli("ui", "1", "complete", stdin="n\n")
+    def test_bare_sdlc_prints_usage(self):
+        out = self.run_cli()
         self.assertEqual(out.returncode, 0, out.stderr)
-        self.assertEqual(self.calls_for("issue", "close"), [])
-
-    def test_complete_runs_after_yes(self):
-        out = self.run_cli("ui", "1", "complete", stdin="y\n")
-        self.assertEqual(out.returncode, 0, out.stderr)
-        self.assertEqual(len(self.calls_for("issue", "close")), 1)
-
-    def test_cancel_runs_after_yes(self):
-        out = self.run_cli("ui", "1", "cancel", stdin="y\n")
-        self.assertEqual(out.returncode, 0, out.stderr)
-        edit = self.calls_for("issue", "edit")[0]
-        self.assertEqual(edit[edit.index("--add-label") + 1], "status:canceled")
-
-    def test_rejects_two_feature_tokens(self):
-        out = self.run_cli("ui", "1", "2")
-        self.assertNotEqual(out.returncode, 0)
-        self.assertIn("one feature", out.stderr)
+        self.assertIn("usage: sdlc", out.stdout)
 
 
 class CommentCliTest(GhTest):
@@ -1033,60 +940,10 @@ class CommentCliTest(GhTest):
         call = self.calls_for("issue", "comment")[0]
         self.assertIn("--editor", call)
 
-    def test_comment_without_a_feature_uses_the_picker(self):
+    def test_comment_requires_a_feature(self):
         out = self.run_cli("comment")
-        self.assertEqual(out.returncode, 0, out.stderr)
-        self.assertTrue(any("sdlc features" in call for call in self.fzf_calls()))
-
-
-class PickerPreviewsTest(unittest.TestCase):
-    def test_preview_reads_precomputed_files_instead_of_github(self):
-        features = [
-            issue(1, "One", DESIGN, ["type:feature", "repo:nix-config", "status:todo"]),
-            issue(
-                2,
-                "Two",
-                "## Design\n\nSecond.\n",
-                ["type:feature", "repo:sdlc", "status:todo"],
-            ),
-        ]
-        with tempfile.TemporaryDirectory() as tmp:
-            sdlc_issues.write_previews(
-                tmp, {str(f["number"]): sdlc_issues.preview_text(f) for f in features}
-            )
-            with open(os.path.join(tmp, "1.md")) as fh:
-                preview = fh.read()
-            self.assertIn("#1 One", preview)
-            self.assertIn("Use GitHub issues.", preview)
-            self.assertTrue(os.path.exists(os.path.join(tmp, "2.md")))
-
-
-class ActionPreviewTest(unittest.TestCase):
-    def test_previews_are_action_specific_and_truncate_long_bodies(self):
-        feature = issue(
-            7,
-            "Long one",
-            "line\n" * 200,
-            ["type:feature", "repo:nix-config", "status:todo"],
-        )
-        show = sdlc_issues.action_preview(feature, "show")
-        self.assertIn("## show", show)
-        self.assertIn("…", show)
-        self.assertLess(len(show.splitlines()), 60)
-        status = sdlc_issues.action_preview(feature, "status")
-        self.assertNotIn("…", status)
-        self.assertIn("approval:", status)
-
-
-class RepoNameTest(unittest.TestCase):
-    def test_uses_the_origin_remote(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            subprocess.run(["git", "init", "-q", tmp], check=True)
-            subprocess.run(
-                ["git", "-C", tmp, "remote", "add", "origin", "git@github.com:acme/widget.git"],
-                check=True,
-            )
-            self.assertEqual(sdlc_issues.cwd_repo_name(tmp), "widget")
+        self.assertNotEqual(out.returncode, 0)
+        self.assertIn("required", out.stderr)
 
 
 class CleanTest(unittest.TestCase):
@@ -1099,29 +956,6 @@ class CleanTest(unittest.TestCase):
     def test_path_row_cleans_the_title(self):
         row = sdlc_issues.path_row(issue(1, "bad\x1b[31mtitle", labels=["repo:nix-config"]))
         self.assertNotIn("\x1b", row)
-
-
-class HookGhTest(GhTest):
-    def test_hook_add_posts_through_gh_api(self):
-        self.serve(
-            "created-hook.json",
-            {"id": 99, "config": {"url": "https://agent-hooks.sammohr.dev/hook/cap"}},
-        )
-        out = self.run_cli(
-            "hook", "add", "test/repo", "--url", "https://agent-hooks.sammohr.dev/hook/cap"
-        )
-        self.assertEqual(out.returncode, 0, out.stderr)
-        self.assertIn("99", out.stdout)
-        call = self.calls_for("api", "repos/test/repo/hooks")[0]
-        self.assertEqual(call[call.index("-X") + 1], "POST")
-        self.assertEqual(call[call.index("--input") + 1], "-")
-        with open(os.path.join(self.state, "hook-post.json")) as fh:
-            body = json.load(fh)
-        self.assertEqual(body["config"]["url"], "https://agent-hooks.sammohr.dev/hook/cap")
-        self.assertEqual(body["config"]["insecure_ssl"], "0")
-        self.assertEqual(
-            body["events"], ["push", "pull_request", "issues", "issue_comment"]
-        )
 
 
 class EntryPointTest(unittest.TestCase):

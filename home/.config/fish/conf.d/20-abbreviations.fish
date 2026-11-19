@@ -9,7 +9,7 @@ abbr -a l eza --icons --group-directories-first -lh
 abbr -a m mkdir -p
 abbr -a t zellij a -c main
 abbr -a a maki
-abbr -a s sdlc
+abbr -a s 'sdlc pick'
 # pull.rebase is on, so --no-rebase keeps this a fast-forward or nothing.
 abbr -a d 'git -C ~/.dotfiles pull --ff-only --no-rebase --autostash && mise -C ~/.dotfiles bootstrap --prune-dotfiles'
 abbr -a gw git worktree

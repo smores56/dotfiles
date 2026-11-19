@@ -11,20 +11,22 @@ Elsewhere, `uv tool install .` (or `pipx install .`) builds the same console
 script from `pyproject.toml`.
 
 ```text
-sdlc list [--all] [--repo OWNER/REPO] [--format human|path|json] [--pick]
+sdlc list [--all] [--repo OWNER/REPO] [--format human|path|json]
 sdlc show FEATURE                   # body + comment thread
 sdlc status FEATURE                 # design hash, approval, task counts
-sdlc next [FEATURE] [--pick]        # next ready task, or the blocker
+sdlc next [FEATURE]                 # next ready task, or the blocker
 sdlc approve FEATURE [--yes]        # human gate: label + hash comment
 sdlc new SLUG --repo OWNER/REPO     # create the feature issue
 sdlc task add FEATURE TITLE [--needs T1,T2|10,12]
 sdlc task start|done|cancel ISSUE
 sdlc complete|cancel FEATURE
-sdlc ui [ACTION] [FEATURE]          # picker (the default); uses fzf when present
+sdlc pick [--all] [--repo OWNER/REPO]   # fzf: pick a feature, then an action
 sdlc review FEATURE [--dry-run]     # revdiff review -> issue comment
-sdlc comment [FEATURE]              # comment in $EDITOR
-sdlc hook add OWNER/REPO --url URL [--events a,b] [--secret-file PATH]
+sdlc comment FEATURE                # comment in $EDITOR
 ```
+
+`sdlc pick` shells out to `fzf`: one list of features with `sdlc show` as the
+preview, then the action list. It needs a terminal, so agents never call it.
 
 ## Transports
 
@@ -37,14 +39,8 @@ sdlc hook add OWNER/REPO --url URL [--events a,b] [--secret-file PATH]
 
 REST issue reads carry no comments, sub-issues or blockers, so the broker
 transport fetches those from their own endpoints, and sub-issue and dependency
-writes resolve issue numbers to database ids first. `status`, `next`,
-`complete` and `ui` use one GraphQL call because `blockedBy` has no bulk REST
-read.
-
-`sdlc hook add` posts through a second broker host, `${BROKER_URL}/github-hooks`,
-which proxies `POST /repos/OWNER/REPO/hooks` and nothing else, so there is no
-list or delete. `--url` must sit under `https://agent-hooks.sammohr.dev/`;
-`--secret-file` is sent as `config.secret` and never printed.
+writes resolve issue numbers to database ids first. `status`, `next` and
+`complete` use one GraphQL call because `blockedBy` has no bulk REST read.
 
 ## Agents
 

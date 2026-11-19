@@ -87,7 +87,7 @@ expect "l lists long, directories first" 'eza --icons --group-directories-first 
 expect "m makes parents" 'mkdir -p' "$(exp_ m)"
 expect "t attaches the main zellij session" 'zellij a -c main' "$(exp_ t)"
 expect "a starts maki" maki "$(exp_ a)"
-expect "s opens sdlc" sdlc "$(exp_ s)"
+expect "s opens the sdlc picker" 'sdlc pick' "$(exp_ s)"
 expect "d pulls and bootstraps the dotfiles" \
     'git -C ~/.dotfiles pull --ff-only --no-rebase --autostash && mise -C ~/.dotfiles bootstrap --prune-dotfiles' "$(exp_ d)"
 expect "gw is git worktree" 'git worktree' "$(exp_ gw)"
