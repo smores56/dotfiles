@@ -1,4 +1,4 @@
 # Work host
-- This is a work host: work checkouts live flat in `/Users/sam/Blitzy` (`$BLITZY_REPOS_DIR`), cloned by hand with `git clone`; ghq is not installed here, and branches keep the employer shapes `{ticket}-<slug>` (or `{type}/<slug>` unticketed)
+- This is a work host: work checkouts live flat in `/Users/sam/Blitzy` (`$BLITZY_REPOS_DIR`), cloned by hand with `git clone`; `git get` does not exist here, and branches keep the employer shapes `{ticket}-<slug>` (or `{type}/<slug>` unticketed)
 - The work tooling's shell functions and aliases come from `~/.zshrc`, which this host's interactive zsh loads; if your shell didn't (e.g. a non-interactive or other shell), run them as `zsh -ic '<function> && <command>'` so the env a function exports reaches the command
 - This machine holds work GitHub access only: personal repositories and the personal `sdlc` registry are not reachable here, so personal SDLC work happens on personal machines; on this host every feature runs the sdlc phases in the conversation, as in `pr`-flow repos, and is never filed in or resumed from the registry

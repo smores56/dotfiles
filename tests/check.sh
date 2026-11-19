@@ -56,8 +56,7 @@ done
 # --- zsh
 
 if command -v zsh >/dev/null 2>&1; then
-    for zsh_file in "$root"/home/.zshenv "$root"/home/.config/zsh/.z* \
-            "$root"/home/.config/zsh/conf.d/*.zsh; do
+    for zsh_file in "$root"/home/.zshenv "$root"/home/.zprofile; do
         [ -f "$zsh_file" ] || continue
         if zsh -n "$zsh_file" 2>"$tmp/err"; then
             ok "syntax $(rel "$zsh_file") (zsh)"
@@ -67,7 +66,7 @@ if command -v zsh >/dev/null 2>&1; then
         fi
     done
 else
-    skip "syntax home/.config/zsh (zsh not installed)"
+    skip "syntax home/.zshenv (zsh not installed)"
 fi
 
 # --- fish
@@ -104,7 +103,7 @@ toml() {
 
 for cfg in "$root"/mise.toml "$root"/mise.*.toml "$root"/global/*.toml "$root"/global/*.lock \
         "$root"/desktop/.aerospace.toml "$root"/home/.config/maki/*.toml \
-        "$root"/home/.config/helix/*.toml "$root"/home/.config/television/cable/*.toml; do
+        "$root"/home/.config/helix/*.toml; do
     [ -f "$cfg" ] && toml "$cfg"
 done
 
@@ -118,18 +117,25 @@ else
     ok "every flatpak id looks like a reverse-DNS app id"
 fi
 
-kitty_conf="$root/desktop/.config/kitty/linux.conf"
-if [ -f "$kitty_conf" ] && grep -qxF 'shell ${HOME}/.local/bin/zsh' "$kitty_conf"; then
-    ok "kitty on Linux starts the mise zsh, not bash"
+for kitty_conf in "$root"/desktop/.config/kitty/linux.conf "$root"/desktop/.config/kitty/macos.conf; do
+    if grep -qxF 'shell ${HOME}/.local/share/mise/shims/fish' "$kitty_conf"; then
+        ok "kitty starts fish through its mise shim ($(rel "$kitty_conf"))"
+    else
+        no "kitty must start fish through its mise shim ($(rel "$kitty_conf"))"
+    fi
+done
+
+if grep -qx 'default_shell "fish"' "$root/home/.config/zellij/config.kdl"; then
+    ok "zellij starts fish"
 else
-    no "kitty must start the mise zsh directly: it skips ~/.bash_profile"
+    no "zellij must start fish"
 fi
 
-if grep -q '"~/.bash_profile/zsh"' "$root/mise.desktop.toml" \
-        && grep -q 'BASH_EXECUTION_STRING' "$root/mise.desktop.toml"; then
-    ok "the bash_profile block hands interactive logins to zsh only"
+if [ ! -e "$root/home/.config/zsh" ] && ! grep -rqE 'zim|zsh-plugins|conda:zsh|ZDOTDIR' \
+        "$root/mise.toml" "$root"/mise.*.toml "$root/global/config.toml" "$root/scripts" 2>/dev/null; then
+    ok "zsh has no interactive config: no ZDOTDIR, zim, plugins, or conda zsh"
 else
-    no "the bash_profile block must exec zsh only without BASH_EXECUTION_STRING"
+    no "zsh must stay at the two env one-liners (no ZDOTDIR, zim, plugins, or conda zsh)"
 fi
 
 if grep -qE '^MAKI_VERSION=v[0-9]+\.[0-9]+\.[0-9]+$' "$root/maki/pin.env" \
@@ -238,32 +244,6 @@ else
     ok "no secret material in managed files"
 fi
 
-if grep -rE 'curl|wget' "$root/home/.zshenv" "$root/home/.config/zsh" >/dev/null 2>&1; then
-    no "zsh startup downloads at shell start"
-    grep -rnE 'curl|wget' "$root/home/.zshenv" "$root/home/.config/zsh" | sed 's/^/     /' >&2
-else
-    ok "no downloader in zsh startup"
-fi
-
-if grep -qE '^zstyle .:zim. disable-version-check yes$' "$root/home/.config/zsh/.zshrc" \
-        && ! grep -q 'zimfw' "$root/home/.config/zsh/.zshrc"; then
-    ok "zsh startup never runs zimfw or its version check"
-else
-    no "zsh startup must only source zim's init.zsh, with the version check disabled"
-fi
-
-if grep -vE '^\s*(#|$|_p=|unset |--)' "$root/home/.config/zsh/.zimrc" | grep -qvE '^zmodule \$_p/'; then
-    no "every zim module is an external path cloned by [bootstrap.repos]"
-else
-    ok "every zim module is an external path cloned by [bootstrap.repos]"
-fi
-
-if grep -E '^"~/.local/share/zsh-plugins/' "$root/mise.toml" | grep -qvE 'ref = "[0-9a-f]{40}"( |,)'; then
-    no "every zsh plugin repo is pinned to a full commit"
-else
-    ok "every zsh plugin repo is pinned to a full commit"
-fi
-
 if grep -E '^"~/.local/share/fish-plugins/' "$root/mise.toml" | grep -qvE 'ref = "[0-9a-f]{40}"( |,)'; then
     no "every fish plugin repo is pinned to a full commit"
 else
@@ -278,11 +258,11 @@ fi
 
 # --- cross-file consistency
 
-if grep -rqE 'ghq' "$root/global" "$root/scripts" "$root/identity" \
-        "$root/mise.toml" "$root"/mise.*.toml 2>/dev/null; then
+if grep -rqE 'ghq' "$root/global" "$root/scripts" "$root/identity" "$root/home/.config" \
+        "$root/work" "$root/desktop" "$root/mise.toml" "$root"/mise.*.toml 2>/dev/null; then
     no "nothing pins, calls, or configures ghq; git get replaced it"
-    grep -rnE 'ghq' "$root/global" "$root/scripts" "$root/identity" \
-        "$root/mise.toml" "$root"/mise.*.toml 2>/dev/null | sed 's/^/     /' >&2
+    grep -rnE 'ghq' "$root/global" "$root/scripts" "$root/identity" "$root/home/.config" \
+        "$root/work" "$root/desktop" "$root/mise.toml" "$root"/mise.*.toml 2>/dev/null | sed 's/^/     /' >&2
 else
     ok "nothing pins, calls, or configures ghq; git get replaced it"
 fi
@@ -312,12 +292,15 @@ else
     no "home/.local/bin must not carry repos or worktrees"
 fi
 
-if grep -qF 'ghq list -p' "$root/home/.config/television/cable/repos.toml" \
-        && grep -qF 'git worktree list --porcelain' \
-            "$root/home/.config/television/cable/worktrees.toml"; then
-    ok "the pickers read ghq and git"
+agent_docs_ok=true
+for doc in "$root/home/.claude/CLAUDE.md" "$root/home/.config/maki/AGENTS.md"; do
+    grep -qF '`git get <owner/repo>`' "$doc" || agent_docs_ok=false
+    ! grep -qE 'ghq|clone-checkout' "$doc" || agent_docs_ok=false
+done
+if $agent_docs_ok; then
+    ok "agents are told to clone with git get, and never about ghq"
 else
-    no "the pickers must read ghq list and git worktree list"
+    no "CLAUDE.md and maki's AGENTS.md must describe git get and must not mention ghq or clone-checkout"
 fi
 
 if grep -q 'SDLC_REPO=smores56/sdlc' "$root/home/.config/shell/env.sh" \
@@ -427,27 +410,11 @@ if command -v git >/dev/null 2>&1 && command -v bash >/dev/null 2>&1; then
         no "behavioral tests (tests/git-get-test.sh)"
         sed 's/^/     /' "$tmp/git-get.log" >&2
     fi
-    if bash "$root/tests/picker-cables-test.sh" >"$tmp/picker-cables.log" 2>&1; then
-        ok "behavioral tests (tests/picker-cables-test.sh)"
-    else
-        no "behavioral tests (tests/picker-cables-test.sh)"
-        sed 's/^/     /' "$tmp/picker-cables.log" >&2
-    fi
     if bash "$root/tests/dotfiles-layout-test.sh" >"$tmp/layout.log" 2>&1; then
         ok "behavioral tests (tests/dotfiles-layout-test.sh)"
     else
         no "behavioral tests (tests/dotfiles-layout-test.sh)"
         sed 's/^/     /' "$tmp/layout.log" >&2
-    fi
-    if bash "$root/tests/shell-test.sh" >"$tmp/shell.log" 2>&1; then
-        if grep -q '^skip shell tests' "$tmp/shell.log"; then
-            skip "behavioral tests (tests/shell-test.sh: mise or zsh not installed)"
-        else
-            ok "behavioral tests (tests/shell-test.sh)"
-        fi
-    else
-        no "behavioral tests (tests/shell-test.sh)"
-        sed 's/^/     /' "$tmp/shell.log" >&2
     fi
     if bash "$root/tests/fish-test.sh" >"$tmp/fish.log" 2>&1; then
         if grep -q '^skip fish tests' "$tmp/fish.log"; then

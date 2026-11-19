@@ -69,15 +69,15 @@ fi
 
 for target in \
     .zshenv \
+    .zprofile \
     .config/shell/env.sh \
-    .config/zsh/.zshenv \
-    .config/zsh/.zprofile \
+    .config/fish/config.fish \
+    .config/fish/conf.d/20-abbreviations.fish \
     .config/helix/config.toml \
     .config/helix/languages.toml \
     .config/zellij/config.kdl \
     .config/zellij/themes/ansi.kdl \
     .config/yazi/yazi.toml \
-    .config/television/cable/repos.toml \
     .config/gh/config.yml \
     .local/bin/smortress-ssh \
     .local/bin/sops-age-key \
@@ -140,8 +140,8 @@ if [ -n "$zsh_bin" ]; then
         test "$(printf '%s\n' "$login_out" | sed -n 1p)" = "$h/.local/bin"
     assert "login zsh keeps mise shims second after the system profile" \
         test "$(printf '%s\n' "$login_out" | sed -n 2p)" = "$h/.local/share/mise/shims"
-    zdot=$(env -i HOME="$h" PATH=/usr/bin:/bin "$zsh_bin" -c 'print -r -- $ZDOTDIR' 2>/dev/null)
-    assert "the home zshenv sets ZDOTDIR to the XDG zsh directory" test "$zdot" = "$h/.config/zsh"
+    zdot=$(env -i HOME="$h" PATH=/usr/bin:/bin "$zsh_bin" -c 'print -r -- ${ZDOTDIR-unset}' 2>/dev/null)
+    assert "zsh keeps its default ZDOTDIR" test "$zdot" = unset
     printf 'tok-test\n' >"$h/.config/github-token"
     assert "every zsh exports GH_TOKEN from the token file" \
         test "$(env -i HOME="$h" PATH=/usr/bin:/bin "$zsh_bin" -c 'print -r -- $GH_TOKEN' 2>&1)" = tok-test
@@ -279,10 +279,9 @@ else
         links_into_repo "$h/.local/share/fonts/GoogleSansCode-MONO-VF.ttf"
     assert "desktop links Google Sans Code Italic on Linux" \
         links_into_repo "$h/.local/share/fonts/GoogleSansCode-Italic-MONO-VF.ttf"
-    assert "desktop appends the zsh hand-off to ~/.bash_profile" \
-        grep -q 'exec "$HOME/.local/bin/zsh" -l' "$h/.bash_profile"
-    assert "the hand-off leaves bash -ilc alone" \
-        grep -q 'BASH_EXECUTION_STRING' "$h/.bash_profile"
+    assert_not "desktop no longer hands bash logins to zsh" grep -q 'local/bin/zsh' "$h/.bash_profile"
+    assert "desktop links the Linux-only fish abbreviations" \
+        links_into_repo "$h/.config/fish/conf.d/80-desktop.fish"
     assert_not "desktop skips AeroSpace on Linux" test -e "$h/.aerospace.toml"
     assert_not "desktop skips the macOS font copies on Linux" \
         test -e "$h/Library/Fonts/GoogleSansCode-MONO-VF.ttf"
@@ -298,7 +297,7 @@ assert "work links the shared smortress route" links_into_repo "$h/.ssh/smortres
 assert "the work smortress route is the same wrapper" \
     bash -c "env -i HOME='$h' PATH=/usr/bin:/bin ssh -F '$h/.ssh/config' -G smortress 2>/dev/null | grep -qxF 'proxycommand \$HOME/.local/bin/smortress-ssh %h'"
 assert "work links the shared environment additions" links_into_repo "$h/.config/shell/env.d/work.sh"
-assert "work links the interactive work hook" links_into_repo "$h/.config/zsh/conf.d/90-work.zsh"
+assert "work links the fish work hook" links_into_repo "$h/.config/fish/conf.d/90-work.fish"
 assert "work links the Claude work rules" grep -q 'This is a work host' "$h/.claude/work.md"
 assert "work leaves the employer's ~/.zshrc a plain file" test ! -L "$h/.zshrc"
 if [ -n "$zsh_bin" ]; then

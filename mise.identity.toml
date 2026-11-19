@@ -18,7 +18,6 @@ repos_root = "/srv/git"
 # it is what makes a replacement laptop a single bootstrap, and it is why this
 # file is safe to commit while the file key beside it never is.
 "~/.ssh/id_smortress" = { source = "identity/.ssh/id_smortress", mode = "copy" }
-"~/.config/zsh/conf.d/85-identity.zsh" = { source = "identity/.config/zsh/conf.d/85-identity.zsh" }
 "~/.config/fish/conf.d/85-identity.fish" = { source = "identity/.config/fish/conf.d/85-identity.fish.tera", mode = "template" }
 "~/.config/git/machine.inc" = { source = "identity/.config/git/machine.inc.tera", mode = "template" }
 "~/.config/git/work.inc" = { source = "identity/.config/git/work.inc.tera", mode = "template" }

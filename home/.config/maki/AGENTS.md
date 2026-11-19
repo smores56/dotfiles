@@ -1,20 +1,11 @@
 # Workflow
 - Start from the problem, not a solution — state what's wrong or needed; a suspected approach is context, not the goal
 - First move on any request: classify aloud — quick fix, investigation, or feature — and act. Features run the `sdlc` skill (research → brainstorm → [grill] → plan → human approval → build → review & fix); quick fixes skip the funnel; investigations are read-only. In `pr`-flow work repos the skill's phases run in the conversation, without the personal registry
-- Resuming: the issues-only registry (`smores56/sdlc`, `$SDLC_REPO`) is driven by `s` (`sdlc ui`): the human picks a feature then an action, including a review of the body in revdiff. Agents call the CLI literally (`sdlc list`, `sdlc show <n>`, `sdlc status <n>`, `sdlc next <n>`, `sdlc review <n>`) because the picker needs an interactive shell. Never resume from conversation memory
-- On a ghq machine, ordinary repos are clean-bare clones under `/srv/git/<host>/<owner>/<repo>/.git`: `gc <owner/repo>` (the zsh abbreviation for `scripts/clone-checkout.sh`) runs the checkout recipe below in one step — never plain `git clone` there, never `ghq get -u`, and only fall back to the manual form when `gc` refuses an existing path:
-  ```
-  ghq get --clean-bare <owner/repo>
-  repo="$(ghq root)/github.com/<owner>/<repo>"
-  b=$(git -C "$repo" symbolic-ref --short HEAD)
-  git -C "$repo" config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
-  git -C "$repo" worktree add "$repo/$b" "$b"
-  git -C "$repo/$b" fetch origin
-  git -C "$repo/$b" branch --set-upstream-to="origin/$b"
-  ```
+- Resuming: the issues-only registry (`smores56/sdlc`, `$SDLC_REPO`) is driven by `s` (`sdlc`, which opens the `sdlc ui` picker): the human picks a feature then an action, including a review of the body in revdiff. Agents call the CLI literally (`sdlc list`, `sdlc show <n>`, `sdlc status <n>`, `sdlc next <n>`, `sdlc review <n>`) because the picker needs an interactive shell. Never resume from conversation memory
+- On personal machines, ordinary repos are clean-bare clones under `/srv/git/<host>/<owner>/<repo>/.git`, and `git get <owner/repo>` (a git alias; fish abbreviates it `gc`) is the only way to make one: it clones bare with origin's branches as remote-tracking refs and checks the default branch out at `<repo>/<default-branch>`, tracking origin. Never plain `git clone` there; `git get` refuses a repo that is already cloned, which needs no further setup
 - Every checkout is a worktree beside the bare gitdir: `<repo>/<default-branch>` (main in these repos) and `<repo>/<slug>` for task work; create one with `git -C <repo> worktree add <repo>/<slug> -b <branch> origin/main` after `git fetch` and use the path you named — no JSON
 - Branches have these shapes: `smores/<slug>` in personal repos, `{ticket}-<slug>` for ticketed work and `{type}/<slug>` for unticketed work in employer repos; never hand-build another shape
-- Sync with `git fetch` in any worktree; `ghq get -u` refuses to update a branch that is checked out, so it is never used
+- Sync with `git fetch` in any worktree
 - Run `research` before any non-trivial design; run `review` before merging non-trivial changes
 - Behavior-changing work in testable code starts red: run the `test-driven-development` skill (failing test → minimal fix → refactor). Config or verification-only changes skip the loop — verify with the repo's checks instead
 - Before a non-trivial decision stands, spawn a fresh read-only subagent to argue against it
@@ -27,7 +18,7 @@
 
 # Memory
 - There is no memory service. Durable facts, preferences, and decisions belong in the repository's own docs, issues, or commit messages
-- Sessions on this machine are local files under `~/.local/state/maki/sessions`; the `maki-session-search` helper lists and resumes them. That is task state, not project memory
+- Sessions on this machine are local files under `~/.local/state/maki/sessions`; resume one with `maki --session <id>`. That is task state, not project memory
 - Never write secrets, tokens, or transient task state into a repository
 
 # Tools

@@ -6,7 +6,6 @@
 "~/.config/systemd/user" = { source = "desktop/.config/systemd/user", mode = "symlink-each", variants = [{ os = "linux" }] }
 "~/.config/kitty" = { source = "desktop/.config/kitty", mode = "symlink-each" }
 # gtrash and nym-vpnc abbreviations; neither tool exists on the work Mac.
-"~/.config/zsh/conf.d/80-desktop.zsh" = { source = "desktop/.config/zsh/conf.d/80-desktop.zsh", variants = [{ os = "linux" }] }
 "~/.config/fish/conf.d/80-desktop.fish" = { source = "desktop/.config/fish/conf.d/80-desktop.fish", variants = [{ os = "linux" }] }
 "~/.config/mimeapps.list" = { source = "desktop/.config/mimeapps.list", mode = "copy", variants = [{ os = "linux" }] }
 # niri owns the session and Noctalia the shell surfaces. mise deploys both
@@ -22,18 +21,6 @@
 "~/Library/Fonts/GoogleSansCode-Italic-MONO-VF.ttf" = { source = "desktop/fonts/GoogleSansCode-Italic-MONO-VF.ttf", mode = "copy", variants = [{ os = "macos" }] }
 "~/.local/share/fonts/GoogleSansCode-MONO-VF.ttf" = { source = "desktop/fonts/GoogleSansCode-MONO-VF.ttf", variants = [{ os = "linux" }] }
 "~/.local/share/fonts/GoogleSansCode-Italic-MONO-VF.ttf" = { source = "desktop/fonts/GoogleSansCode-Italic-MONO-VF.ttf", variants = [{ os = "linux" }] }
-
-# Fedora ships bash as the login shell and no zsh; the mise zsh is linked to
-# ~/.local/bin/zsh by the bootstrap task. Hand over only an interactive TTY
-# login: BASH_EXECUTION_STRING stays set for `bash -ilc`, which editors use to
-# resolve their environment, so that bash keeps running. macOS has no such
-# link and its login shell is already /bin/zsh, so the block is inert there.
-"~/.bash_profile/zsh" = { block = '''
-if [ -x "$HOME/.local/bin/zsh" ] && [ -z "${BASH_EXECUTION_STRING-}" ] \
-        && [ -t 0 ] && [ -t 1 ]; then
-    exec "$HOME/.local/bin/zsh" -l
-fi
-''' }
 
 [bootstrap.packages]
 # Most Linux GUI apps are user Flatpaks from Flathub; mise does not configure

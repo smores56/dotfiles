@@ -15,7 +15,7 @@ configuration manager.
 ## Bootstrap
 
 The checkout is mise's default dotfiles root, `~/.dotfiles`, a symlink to the
-`main` worktree of the clean-bare dotfiles repository under the ghq root.
+`main` worktree of the clean-bare dotfiles repository under `/srv/git`.
 
 On a fresh personal Linux machine, one command installs mise and applies the
 machine's inferred set:
@@ -25,11 +25,11 @@ curl -fsSL https://bootstrap.sammohr.dev | sh
 ```
 
 `scripts/bootstrap.sh` runs it: one sudo prompt creates `/srv/git`, then it
-installs mise, clones `smores56/dotfiles` with ghq's clean-bare layout, adds the
+installs mise, clones `smores56/dotfiles` clean-bare (the layout `git get` makes), adds the
 `main` worktree, links `~/.dotfiles`, and runs `install-mise.sh`.
 `bootstrap.sammohr.dev` is a Cloudflare redirect to that script on `main`, with
 an Access bypass scoped to the hostname alone. The work laptop clones
-`~/.dotfiles` by hand and runs its `scripts/install-mise.sh`; it has no ghq.
+`~/.dotfiles` by hand and runs its `scripts/install-mise.sh`; it has no `git get`.
 
 The script bootstraps with `--from … --from-dir ~/.dotfiles --config-dir
 global`; that last flag is what links `~/.config/mise` to `global/`. A bare
@@ -58,10 +58,10 @@ Environments are additive; an environment only adds files and hooks.
 
 | Environment | Adds |
 | --- | --- |
-| base | zsh, helix, zellij, yazi, lazygit, television, gh, `sdlc`, global mise files |
-| `identity` | git identity templates, `~/.ssh/config` |
-| `desktop` | kitty, fonts, clipboard and trash helpers, Flatpaks or casks, wallpapers, systemd units, the bash-to-zsh login hook |
-| `work` | work zsh hooks, work git identity, the github.com SSH entry, Claude work rules, macOS defaults, work casks |
+| base | fish, the shared env, helix, zellij, yazi, lazygit, gh, `sdlc`, global mise files |
+| `identity` | git identity templates with `git get`, `~/.ssh/config`, the `r`, `gc` and `sm` abbreviations |
+| `desktop` | kitty, fonts, clipboard and trash helpers, Flatpaks or casks, wallpapers, systemd units |
+| `work` | work env and fish hooks, work git identity, the github.com SSH entry, Claude work rules, macOS defaults, work casks |
 
 `install-mise.sh` saves the set in `~/.config/mise/miserc.local.toml`, so no
 shell file exports `MISE_ENV`.
@@ -78,8 +78,7 @@ shell file exports `MISE_ENV`.
 
 `install-mise.sh` runs the official installer for the latest stable mise, which
 verifies the release checksum and needs `tar` plus `gzip` (or `zstd`).
-`zim-build.sh` uses `curl` once for the pinned `zimfw.zsh`. `fc-cache` and
-`notify-send` are optional: the pieces that use them degrade without the
+`fc-cache` and `notify-send` are optional: the pieces that use them degrade without the
 binary.
 
 The host has no rpm-ostree layer: every host package
@@ -106,26 +105,25 @@ mise dot diff                    # what a dotfile apply would change
 mise dot apply                   # deploy the checkout's dotfiles
 mise bootstrap                   # tools, repos, dotfiles, and the bootstrap task
 
-ghq get --clean-bare owner/project   # then the checkout recipe in AGENTS.md
-repo="$(ghq root)/github.com/owner/project"
+git get owner/project            # or gc: clean-bare clone, default branch beside it
+repo=/srv/git/github.com/owner/project
 git -C "$repo" worktree add "$repo/<slug>" -b smores/<slug> origin/main
-gw list
+d                                # pull the dotfiles and bootstrap
 ```
 
 Checkouts are worktrees of a clean-bare clone: the default branch at
 `<repo>/main`, task work at `<repo>/<slug>`. `~/.dotfiles` is the `main`
 worktree of the dotfiles repository. Personal branches are `smores/<slug>`;
-employer branches are `{ticket}-<slug>` or `{type}/<slug>`. The full clone
-recipe is in `home/.config/maki/AGENTS.md`. `tv repos` picks a checkout and
-`tv worktrees` a worktree of the current repository.
+employer branches are `{ticket}-<slug>` or `{type}/<slug>`. `r` picks any
+worktree of any checkout and `w` a worktree of the current one.
 
 Personal checkouts live under `/srv/git` on smortress and smorespro; the work Mac keeps work repositories flat in `~/Blitzy` and only
 the `dotfiles` clone in `~/.dotfiles`.
 
 Every dotfile target is absolute or starts with `~/`, and application
 directories deploy in `symlink-each` mode. Files that tools rewrite in place
-stay local: zsh-abbr's abbreviation file, zimfw's state and completion dump.
-`~/.bash_profile` on Fedora is a managed block, not a whole-file entry.
+stay local: fish's `fish_variables` and history. `~/.bashrc` and
+`~/.bash_profile` get a managed block, not a whole-file entry.
 Deployment keeps no history: `mise dot unapply` removes what mise created, and
 a re-apply restores it. Without
 `--force-dotfiles`, mise refuses to replace an existing file and bootstrap
@@ -133,19 +131,24 @@ never passes that flag: resolve a conflict by hand.
 
 ## Shell
 
-zsh is the only interactive shell, built from pinned upstream plugins under
-zimfw with the pure prompt. `~/.zshenv` sets `ZDOTDIR=~/.config/zsh`; the
-config sources `conf.d/*.zsh`, zimfw, atuin, and `mise activate zsh`. zimfw
-never touches the network at shell start: the bootstrap task downloads the
-pinned zimfw release and every module is cloned by `[bootstrap.repos]` at a
-commit.
+fish is the interactive shell: kitty and zellij start it through its mise shim.
+The login shells stay the platform's own, bash on Fedora and `/bin/zsh` on
+macOS (smoreswork sets it with `chsh` through `[bootstrap.user] login_shell`),
+and get no config beyond one line each that sources the shared environment.
 
-On Linux the zsh binary comes from the mise `conda:zsh` tool; a bootstrap task
-links the real binary to `~/.local/bin/zsh`, and a managed block in the stock
-`~/.bash_profile` hands an interactive TTY login to it. `bash -ilc` keeps
-running bash, so editors resolving their environment are never hijacked. macOS
-uses `/bin/zsh`, already in `/etc/shells`; smoreswork sets it with `chsh`
-through `[bootstrap.user] login_shell`.
+`~/.config/shell/env.sh` is that environment, in POSIX sh: PATH (`~/.local/bin`,
+then the mise shims), the editor and pager, `GH_TOKEN`, and the env-specific
+drop-ins in `env.d/`. `~/.zshenv` and `~/.zprofile` source it for every zsh,
+agents' `zsh -c` included; `~/.bashrc` and `~/.bash_profile` for bash; fish
+imports what it exports in `conf.d/00-env.fish`.
+
+fish loads the pure prompt (with async-prompt) and `done` from pinned clones
+under `~/.local/share/fish-plugins`, starts zoxide as `c`, and greets with
+pfetch. Abbreviations live in `conf.d/20-abbreviations.fish` and the lane
+files after it; the pickers pipe an fzf pick into `read`, so a cancelled pick
+runs nothing. On smoreswork, `90-work.fish` adds pyenv, nvm and gcloud
+statically and wraps every blitzy-dev helper so it runs in zsh and hands its
+exported variables back to fish.
 
 ## Identity and secrets
 
@@ -158,7 +161,7 @@ the base `.gitconfig` carries the shared git settings.
 smoreswork does not apply the `identity` environment. Its git identity is work
 everywhere, and `$SDLC_REPO` points at `smohr-blitzy/sdlc`.
 
-Every machine holds one GitHub token, which every zsh exports as `GH_TOKEN`:
+Every machine holds one GitHub token, which the shared env exports as `GH_TOKEN`:
 `gh` reads it, and git's credential helper (`gh auth git-credential`) hands it
 to every https remote. `identity/.gitconfig` rewrites `git@github.com:` and
 `ssh://git@github.com/` remotes to https, so old ssh clones use it too. The
@@ -171,8 +174,8 @@ Every machine keeps only these secrets:
 | Path | Format | Used by |
 | --- | --- | --- |
 | `sops.yaml` | SOPS ciphertext with `NEURALWATT_API_KEY`, `TINYFISH_API_KEY`, `GITHUB_PERSONAL_PAT`, `GITHUB_WORK_PAT`, `CLOUDFLARE_ACCESS_CLIENT_ID` and `CLOUDFLARE_ACCESS_CLIENT_SECRET` | `scripts/secrets.sh` at bootstrap |
-| `~/.config/secrets.env` | derived cache, mode 600, `NAME=value` lines | the zsh `maki` launcher, for the Maki process only |
-| `~/.config/github-token` | derived, mode 600, the machine's one token | `.zshenv`, exported as `GH_TOKEN` for `gh`, git, and `sdlc` |
+| `~/.config/secrets.env` | derived cache, mode 600, `NAME=value` lines | the `~/.local/bin/maki` wrapper, for the Maki process only |
+| `~/.config/github-token` | derived, mode 600, the machine's one token | `~/.config/shell/env.sh`, exported as `GH_TOKEN` for `gh`, git, and `sdlc` |
 | `~/.config/cloudflare/access.env` | derived, mode 600, `NAME=value` lines | `~/.local/bin/smortress-ssh`, for the Access route to smortress only |
 | `~/.config/sops/keys.age` | passphrase-wrapped age identity | `~/.local/bin/sops-age-key` through `SOPS_AGE_KEY_CMD` |
 | `~/.config/sops/fido2-identity.txt` | YubiKey age handle, mode 600, usable only with the token | `~/.local/bin/sops-age-key`, which prefers it when present |
@@ -184,7 +187,7 @@ token file: `GITHUB_WORK_PAT` where `MISE_ENV` includes `work`,
 service token to `~/.config/cloudflare/access.env`, which stays out of the
 provider cache: only `smortress-ssh` reads it, and only into cloudflared's
 environment.
-Bootstrap needs no GitHub auth: the repository, zim modules, tool downloads,
+Bootstrap needs no GitHub auth: the repository, fish plugins, tool downloads,
 and `sdlc` source are all in the checkout. `sdlc` is a stdlib script linked by
 the base environment, so no private repository is cloned.
 
@@ -224,16 +227,15 @@ repositories that use them, not to the host.
 ## Maki
 
 ```sh
-scripts/install-maki.sh      # downloads, verifies, installs ~/.local/bin/maki
-maki                         # or the `a` abbreviation
-maki-session-search list     # local session history
-ms                           # resumes a session
+scripts/install-maki.sh      # downloads, verifies, installs ~/.local/libexec/maki
+maki                         # the key wrapper in ~/.local/bin, or the `a` abbreviation
+maki --session <id>          # resumes a session
 ```
 
 The version, target, and sha256 are in `maki/pin.env`; the installer fails
 closed if the download does not match both the pin and the release's published
 `sha256sums.txt`. A Maki update is a pin bump followed by a re-run; never copy a
-release into `~/.local/bin` by hand. Maki talks directly to Neuralwatt and
+release into `~/.local/libexec` by hand. Maki talks directly to Neuralwatt and
 reaches TinyFish search through its MCP server. The other tools that server ships stay blocked by a guard in
 `init.lua`.
 
@@ -246,11 +248,12 @@ tests/check.sh --shellcheck   # also shellcheck every script
 
 `tests/bootstrap-test.sh` applies the environments into throwaway HOMEs and
 checks symlinks, templates, modes, rendered identity, and conflicts.
-`tests/shell-test.sh` starts an interactive zsh and checks the plugins,
-abbreviations, prompt, and that the Maki keys stay out of the parent shell.
+`tests/fish-test.sh` starts a real fish and checks the env import, plugins,
+every abbreviation, and the pickers and work bridge against fixtures.
+`tests/git-get-test.sh` runs the rendered `git get` against a fixture remote,
+`tests/maki-test.sh` checks that the Maki keys reach only Maki, and
 `tests/bootstrap-script-test.sh` exercises the one-command bootstrap against a
-fixture remote, and `tests/picker-cables-test.sh` runs both picker cables
-against a clean-bare fixture. `tests/secrets-test.sh`, `tests/detect-envs-test.sh`,
+fixture remote. `tests/secrets-test.sh`, `tests/detect-envs-test.sh`,
 `tests/smortress-ssh-test.sh`, and `tests/wallpapers-test.sh` cover the SOPS
 cache, machine-set inference, the Access token wrapper, and the wallpaper
 sync. CI runs the same suite and a real Fedora apply lane.

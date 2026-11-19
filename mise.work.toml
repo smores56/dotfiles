@@ -1,7 +1,6 @@
 # smoreswork only.
 [dotfiles]
 "~/.config/shell/env.d/work.sh" = { source = "work/.config/shell/env.d/work.sh" }
-"~/.config/zsh/conf.d/90-work.zsh" = { source = "work/.config/zsh/conf.d/90-work.zsh" }
 "~/.config/fish/conf.d/90-work.fish" = { source = "work/.config/fish/conf.d/90-work.fish" }
 "~/.claude/work.md" = { source = "work/.claude/work.md" }
 "~/.gitconfig" = { source = "identity/.gitconfig" }

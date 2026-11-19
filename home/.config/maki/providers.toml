@@ -1,5 +1,5 @@
 # Custom providers for Maki. The key comes from the environment
-# (NEURALWATT_API_KEY, passed by the zsh `maki` launcher), never from this
+# (NEURALWATT_API_KEY, passed by the ~/.local/bin/maki wrapper), never from this
 # file.
 #
 # Maki's always_thinking="max" picks the effort level, so every

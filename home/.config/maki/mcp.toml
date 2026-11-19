@@ -1,5 +1,5 @@
-# TinyFish search over MCP. The bearer key is TINYFISH_API_KEY, which the zsh
-# `maki` launcher passes from ~/.config/secrets.env; an unset key fails this
+# TinyFish search over MCP. The bearer key is TINYFISH_API_KEY, which the
+# ~/.local/bin/maki wrapper passes from ~/.config/secrets.env; an unset key fails this
 # server by name. The init.lua guard allows only its `search` tool.
 [mcp.tinyfish]
 url = "https://agent.tinyfish.ai/mcp"

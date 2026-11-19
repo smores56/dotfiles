@@ -68,7 +68,7 @@ link() { [ -L "$1" ] || fail "$1 is not a link into the checkout"; }
 present() { [ -f "$1" ] || fail "$1 is missing"; }
 absent() { [ ! -e "$1" ] || fail "$1 should not exist"; }
 
-link "$HOME/.config/zsh/.zshrc"
+link "$HOME/.config/fish/config.fish"
 link "$HOME/.config/helix/config.toml"
 link "$HOME/.config/kitty/kitty.conf"
 present "$HOME/.config/mimeapps.list"
@@ -90,15 +90,11 @@ esac
 
 case $(uname -s) in
     Linux)
-        [ -x "$HOME/.local/bin/zsh" ] || fail "the Linux zsh link is missing"
         link "$HOME/.terminfo/78/xterm-kitty"
-        # The conda zsh must read the entry through ~/.terminfo even when a
-        # TERMINFO directory (zellij exports one) cannot resolve it.
-        TERMINFO=/usr/lib64/kitty/terminfo TERM=xterm-kitty "$HOME/.local/bin/zsh" -f -c \
-            'zmodload zsh/terminfo && (( $+terminfo[setaf] )) && (( $+terminfo[smkx] ))' \
-            || fail "zsh cannot read the kitty terminfo entry"
-        grep -q 'mise:zsh' "$HOME/.bash_profile" \
-            || fail "the bash_profile hand-off block is missing"
+        grep -q 'shell/env.sh' "$HOME/.bash_profile" \
+            || fail "a bash login does not read the shared env"
+        grep -q 'shell/env.sh' "$HOME/.bashrc" \
+            || fail "an interactive bash does not read the shared env"
         link "$HOME/.local/share/fonts/GoogleSansCode-MONO-VF.ttf"
         absent "$HOME/Library/Fonts/GoogleSansCode-MONO-VF.ttf"
         ;;
@@ -109,24 +105,10 @@ case $(uname -s) in
         ;;
 esac
 
-zsh_bin=$HOME/.local/bin/zsh
-[ -x "$zsh_bin" ] || zsh_bin=/bin/zsh
-TERM=xterm-256color "$zsh_bin" -i -c \
-    '(( $+functions[prompt_pure_setup] )) && (( $+functions[abbr] )) && (( $+functions[maki] ))' \
-    || fail "the interactive zsh does not load zimfw and the plugin set"
-
-# The conda zsh launcher exports CONDA_* and prepends the conda prefix for
-# every child; the link must point at the real binary. Inspect the deployed
-# shell with the caller's own conda variables removed, so the assertion tests
-# that link instead of the environment this script was run from. pure exports
-# CONDA_CHANGEPS1=no to hide conda's prompt by design, so only the variables
-# that mark an activated prefix count.
-# shellcheck disable=SC2016 # zsh expands these, not the calling shell
-conda_env=$(env -u CONDA_PREFIX -u CONDA_DEFAULT_ENV -u CONDA_SHLVL \
-    -u CONDA_PROMPT_MODIFIER -u CONDA_PYTHON_EXE TERM=xterm-256color \
-    "$zsh_bin" -i -c 'print -r -- "${CONDA_PREFIX}${CONDA_DEFAULT_ENV}${CONDA_SHLVL}"')
-[ -z "$conda_env" ] || fail "the zsh link leaked a conda prefix: $conda_env"
-case $(readlink "$zsh_bin" 2>/dev/null || printf '%s' "$zsh_bin") in
-    */.mise-bins/*) fail "$zsh_bin points at mise's conda launcher, not the binary" ;;
-esac
+# kitty and zellij start fish through its shim, from the lockfile.
+fish=$HOME/.local/share/mise/shims/fish
+TERM=xterm-256color "$fish" -i -c \
+    'string match -q "*/fish-plugins/pure/*" (functions --details fish_prompt)
+     and functions -q __async_prompt_fire; and abbr -q e; and set -q __done_version' </dev/null \
+    || fail "the interactive fish does not load pure, async-prompt, done, and the abbreviations"
 printf 'apply-lane: %s passed\n' "$env_set"

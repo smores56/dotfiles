@@ -96,7 +96,7 @@ install -m 600 /media/<usb>/sops-backup/keys.age ~/.config/sops/keys.age
 ```
 
 Run the one-command bootstrap. It takes one sudo prompt to create `/srv/git`,
-installs mise, clones the dotfiles with ghq's clean-bare layout, adds the
+installs mise, clones the dotfiles clean-bare (the layout `git get` makes), adds the
 `main` worktree, links `~/.dotfiles`, and runs the checkout's
 `scripts/install-mise.sh`:
 
@@ -138,7 +138,7 @@ pointing at the directory that is about to be deleted.
 A bare clone also carries only tracked files, and the machine set lives in an
 ignored local file (`global/miserc.local.toml`, written by `--save-env` in the
 old checkout). Restore it first, or the apply below runs only the base
-environment: `machine.inc` keeps its old content, `ghq.root` is never set, and
+environment: `machine.inc` keeps its old content, `git get` is never defined, and
 the new tools stay uninstalled.
 
 ```sh
@@ -156,19 +156,17 @@ mise -C ~/.dotfiles dot apply --yes --prune
 mise -C ~/.dotfiles dot diff
 ```
 
-`mise -C ~/.dotfiles ls --missing` should be empty, `git config ghq.root` (no
-`--global`, which ignores includes) should print `/srv/git`, `ghq root` should
-print it too, and `~/.config/git/machine.inc` should contain the `[ghq]`
-section. Then remove `~/.dotfiles.old`.
+`mise -C ~/.dotfiles ls --missing` should be empty and `git config alias.get`
+(no `--global`, which ignores includes) should print the alias, cloning under
+`/srv/git`. Then remove `~/.dotfiles.old`.
 
 Other repositories were also left as normal clones by the old `repos get`.
-`ghq get --clean-bare` is a no-op on an existing path, so remove each old
-checkout first (commit anything you need), then clone and run the recipe in
-`home/.config/maki/AGENTS.md`:
+`git get` refuses an existing path, so remove each old checkout first (commit
+anything you need), then clone it again:
 
 ```sh
 rm -rf /srv/git/github.com/<owner>/<repo>
-ghq get --clean-bare <owner>/<repo>
+git get <owner>/<repo>
 ```
 
 ## 4. Tailscale
@@ -198,10 +196,15 @@ scripts/install-maki.sh
 maki --version
 ```
 
+The binary goes to `~/.local/libexec/maki`, off PATH; `~/.local/bin/maki` is
+the dotfiles wrapper that hands it the provider keys. On a machine that still
+has a binary at `~/.local/bin/maki` from before, the installer removes it, and
+`mise -C ~/.dotfiles dot apply` then links the wrapper there.
+
 The Maki installer verifies the downloaded tarball against `maki/pin.env` and
 the release's published `sha256sums.txt`. A mismatch aborts and installs
 nothing. An update is a pin bump in `maki/pin.env` followed by a re-run; never
-copy a release into `~/.local/bin` by hand.
+copy a release into `~/.local/libexec` by hand.
 
 `sdlc` is `sdlc/sdlc_issues.py` in this checkout, linked to `~/.local/bin/sdlc`
 by the base environment. There is no private clone or install step: update
@@ -213,16 +216,17 @@ so it starts working after step 6 authenticates the personal PAT.
 The local agent's provider keys and the GitHub tokens live encrypted in
 `sops.yaml`. The bootstrap task decrypts that file once into
 `~/.config/secrets.env` (mode 600) when the admin age identity is present and
-the ciphertext changed; the zsh `maki` launcher reads only that cache. The
-machine's GitHub token goes to `~/.config/github-token` (mode 600), which
-every zsh exports as `GH_TOKEN` for `gh`, git, and the `sdlc` CLI.
+the ciphertext changed; the `~/.local/bin/maki` wrapper reads only that cache.
+The machine's GitHub token goes to `~/.config/github-token` (mode 600), which
+the shared env (`~/.config/shell/env.sh`) exports as `GH_TOKEN` for `gh`, git,
+and the `sdlc` CLI.
 
 Verify without printing a key:
 
 ```sh
 test -s ~/.config/secrets.env && echo keys-present
 test "$(stat -c %a ~/.config/secrets.env)" = 600 && echo secrets-mode-ok
-zsh -ic 'type -q maki && echo maki-launcher-ok'
+head -1 "$(command -v maki)" | grep -q '^#!/bin/sh' && echo maki-wrapper-ok
 test "$(stat -c %a ~/.config/github-token)" = 600 && echo token-mode-ok
 gh auth status
 sdlc list
@@ -405,21 +409,17 @@ ssh smortress true && echo tunnel-ssh-ok
 
 ## 8. Login shell
 
-Linux keeps bash as the login shell and uses the mise zsh for interactive
-shells. No `/etc/shells` change and no `chsh` are needed:
+Linux keeps bash as the login shell; kitty and zellij start fish through its
+mise shim. No `/etc/shells` change and no `chsh` are needed:
 
 ```sh
-readlink -f ~/.local/bin/zsh        # a binary under ~/.local/share/mise
-zsh -ic 'echo $ZSH_VERSION'         # 5.9.x, with zimfw loaded
-echo "$SHELL"                       # still bash
-# pure exports CONDA_CHANGEPS1=no (it hides conda's prompt), so only an
-# activated prefix is a leak:
-env | grep -E '^CONDA_(PREFIX|DEFAULT_ENV|SHLVL)=' || true
+echo "$SHELL"                                 # still bash
+bash -lc 'echo $PAGER'                        # bat: bash reads the shared env
+~/.local/share/mise/shims/fish --version      # fish, version 4.x
 ```
 
-Open a new terminal and confirm the interactive shell is zsh. The login hook
-skips any shell with a command string, so `bash -ilc 'echo $BASH_VERSION'`
-must stay in bash. If the zsh link is missing, login falls back to bash.
+Open a new kitty window and confirm the prompt is pure (a ❯ on its own line)
+and that `e` expands to `hx`.
 
 ## 9. Verify the machine
 

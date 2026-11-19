@@ -10,13 +10,10 @@
 # deno) belong in the repositories that use them.
 [settings]
 locked = true
-# The conda backend that provides zsh on Linux is experimental.
+# mise's bootstrap and dotfiles features are experimental.
 experimental = true
 
 [tools]
-# The Fedora images ship no zsh. bootstrap-task.sh links the real binary to
-# ~/.local/bin/zsh, never mise's launcher, which leaks CONDA_* into children.
-"conda:zsh" = { version = "5.9.2", os = ["linux"] }
 # python runs the sdlc CLI and the repository checks.
 python = "3.14.10"
 gh = "2.104.0"
@@ -38,13 +35,11 @@ shellcheck = "0.11.0"
 # fish's greeting.
 "github:Gobidev/pfetch-rs" = "3.1.1"
 "aqua:junegunn/fzf" = "0.75.0"
-"aqua:atuinsh/atuin" = "18.24.8"
 "aqua:helix-editor/helix" = "25.07.1"
 "aqua:jesseduffield/lazygit" = "0.66.3"
 "aqua:zellij-org/zellij" = "0.46.0"
 "aqua:sxyazi/yazi" = "26.9.1"
 "aqua:ajeetdsouza/zoxide" = "0.10.0"
-"aqua:alexpasmantier/television" = "0.15.9"
 "aqua:dandavison/delta" = "0.20.1"
 # sops decrypts the repos' secret files; age unwraps the passphrase-protected
 # identity through ~/.local/bin/sops-age-key.
