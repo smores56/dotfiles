@@ -69,6 +69,7 @@ fi
 
 for target in \
     .zshenv \
+    .config/shell/env.sh \
     .config/zsh/.zshenv \
     .config/zsh/.zprofile \
     .config/helix/config.toml \
@@ -148,9 +149,26 @@ if [ -n "$zsh_bin" ]; then
     rm "$h/.config/github-token"
     assert "zsh starts cleanly without a token file" \
         test "$(env -i HOME="$h" PATH=/usr/bin:/bin "$zsh_bin" -c 'print -r -- ${GH_TOKEN-unset}' 2>&1)" = unset
+    assert "every zsh pages through bat" \
+        test "$(env -i HOME="$h" PATH=/usr/bin:/bin "$zsh_bin" -c 'print -r -- $PAGER:$BAT_THEME' 2>&1)" = bat:ansi
+    assert "man pages render through bat" \
+        test "$(env -i HOME="$h" PATH=/usr/bin:/bin "$zsh_bin" -c 'print -r -- $MANPAGER' 2>&1)" = "sh -c 'col -bx | bat -l man -p'"
 else
     printf 'skip zsh PATH checks (zsh not installed)\n'
 fi
+
+# Sourcing the shared file again (a login after ~/.zshenv, a nested shell)
+# moves its entries to the front instead of adding them twice.
+# The middle PATH is what macOS path_helper leaves: system paths moved first.
+resourced=$(env -i HOME="$h" PATH=/usr/bin:/bin sh -c \
+    '. "$HOME/.config/shell/env.sh"; PATH=/usr/bin:/bin:$HOME/.local/share/mise/shims:$HOME/.local/bin; . "$HOME/.config/shell/env.sh"; printf %s "$PATH"')
+assert "re-sourcing the env keeps one copy of each entry, in order" \
+    test "$resourced" = "$h/.local/bin:$h/.local/share/mise/shims:/usr/bin:/bin"
+
+for login in -lc -ic; do
+    assert "bash $login reads the shared env" \
+        test "$(env -i HOME="$h" PATH=/usr/bin:/bin TERM=dumb bash "$login" 'printf %s "${PATH%%:*}:$PAGER"' 2>/dev/null)" = "$h/.local/bin:bat"
+done
 
 if run_mise "$h" "" dot unapply >"$tmp/unapply.log" 2>&1; then
     ok "base unapply exits 0"
@@ -278,7 +296,7 @@ run_mise "$h" desktop,work dot apply >"$tmp/work.log" 2>&1 \
 assert "work links the shared smortress route" links_into_repo "$h/.ssh/smortress.conf"
 assert "the work smortress route is the same wrapper" \
     bash -c "env -i HOME='$h' PATH=/usr/bin:/bin ssh -F '$h/.ssh/config' -G smortress 2>/dev/null | grep -qxF 'proxycommand \$HOME/.local/bin/smortress-ssh %h'"
-assert "work links the zsh environment hook" links_into_repo "$h/.config/zsh/env.d/work.zsh"
+assert "work links the shared environment additions" links_into_repo "$h/.config/shell/env.d/work.sh"
 assert "work links the interactive work hook" links_into_repo "$h/.config/zsh/conf.d/90-work.zsh"
 assert "work links the Claude work rules" grep -q 'This is a work host' "$h/.claude/work.md"
 assert "work leaves the employer's ~/.zshrc a plain file" test ! -L "$h/.zshrc"
@@ -334,8 +352,9 @@ assert "the work SSH config has no github.com entry" \
     bash -c "! env -i HOME='$h' PATH=/usr/bin:/bin ssh -F '$h/.ssh/config' -G github.com | grep -qi '^identityagent '"
 assert "the work XDG ssh directory exists for known_hosts" test -d "$h/.config/ssh"
 
-# mise reports an entry whose source is missing as a warning and exits 0.
-if grep -h 'matched no files' "$tmp"/*.log >"$tmp/nomatch" 2>/dev/null; then
+# mise reports an entry whose source is missing, or one it cannot apply, as a
+# warning and exits 0.
+if grep -hE 'matched no files|ignoring entry' "$tmp"/*.log >"$tmp/nomatch" 2>/dev/null; then
     no "every dotfile source exists"
     sed 's/^/     /' "$tmp/nomatch" >&2
 else

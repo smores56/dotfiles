@@ -39,7 +39,8 @@ bash_syntax() {
 
 # --- shell scripts
 
-for script in "$root"/home/.local/bin/*; do
+for script in "$root"/home/.config/shell/env.sh "$root"/work/.config/shell/env.d/*.sh \
+        "$root"/home/.local/bin/*; do
     [ -f "$script" ] || continue
     case $(head -n 1 "$script") in
         *python*) continue ;;
@@ -314,8 +315,8 @@ else
     no "the pickers must read ghq list and git worktree list"
 fi
 
-if grep -q 'SDLC_REPO=smores56/sdlc' "$root/home/.config/zsh/.zshenv" \
-        && grep -q 'SDLC_REPO=smohr-blitzy/sdlc' "$root/work/.config/zsh/env.d/work.zsh"; then
+if grep -q 'SDLC_REPO=smores56/sdlc' "$root/home/.config/shell/env.sh" \
+        && grep -q 'SDLC_REPO=smohr-blitzy/sdlc' "$root/work/.config/shell/env.d/work.sh"; then
     ok "the SDLC registry follows the machine's GitHub account"
 else
     no "personal and work SDLC registries must be hardcoded"
