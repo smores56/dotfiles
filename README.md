@@ -14,19 +14,19 @@ configuration manager.
 
 ## Bootstrap
 
-The checkout is mise's default dotfiles root, `~/.dotfiles`:
+The checkout is mise's default dotfiles root, `~/.dotfiles`. One script installs
+the latest mise and applies the machine's inferred set:
 
 ```sh
 git clone https://github.com/smores56/dotfiles.git ~/.dotfiles
-mise -C ~/.dotfiles bootstrap
-```
-
-On a fresh machine, one script installs the latest mise and applies the
-inferred set:
-
-```sh
 ~/.dotfiles/scripts/install-mise.sh
 ```
+
+The script bootstraps with `--from … --from-dir ~/.dotfiles --config-dir
+global`; that last flag is what links `~/.config/mise` to `global/`. A bare
+`mise bootstrap` inside the checkout applies only the dotfiles, because the
+pinned tools and the `[settings]` they need live in `global/`: a fresh machine
+sees neither until the link exists.
 
 On smortress and smorespro, `install-mise.sh` creates `/srv/git` (one sudo
 prompt) and links `/srv/git/github.com/smores56/dotfiles` to `~/.dotfiles`.
