@@ -19,38 +19,53 @@ usage_error() {
     usage
 }
 
-# ghq lays a clone out as <root>/<host>/<path>, where shorthand specs mean
-# GitHub and URL paths drop their .git suffix. Mirroring that rule is what lets
-# the existing-path check below run before ghq turns its no-op into a lie.
+# ghq lays a clone out as <root>/<host>/<owner>/<repo>: the host is the URL
+# authority without its port, a first segment that carries a dot, or GitHub;
+# the path keeps exactly two segments, and the repo segment loses its @ref and
+# .git suffixes. Deeper paths are refused instead of silently truncated the way
+# ghq truncates them.
 destination() {
-    case $1 in
+    spec=$1
+    while [ "$spec" != "${spec%/}" ]; do spec=${spec%/}; done
+
+    case $spec in
         *://*)
-            rest=${1#*://}
-            rest=${rest#*@}
-            host=${rest%%/*}
+            rest=${spec#*://}
+            authority=${rest%%/*}
+            [ "$authority" = "$rest" ] && return 1
+            case $authority in *@*) authority=${authority##*@} ;; esac
+            host=${authority%%:*}
             path=${rest#*/}
             ;;
         *@*:*)
-            rest=${1#*@}
+            rest=${spec#*@}
             host=${rest%%:*}
             path=${rest#*:}
             ;;
-        */*/*)
-            host=${1%%/*}
-            path=${1#*/}
-            ;;
         */*)
-            host=github.com
-            path=$1
+            first=${spec%%/*}
+            case $first in
+                *.*) host=$first; path=${spec#*/} ;;
+                *)   host=github.com; path=$spec ;;
+            esac
             ;;
         *)
             return 1
             ;;
     esac
-    path=${path%/}
-    path=${path%.git}
-    [ -n "$host" ] && [ -n "$path" ] || return 1
-    printf '%s/%s\n' "$host" "$path"
+
+    case $path in
+        */*/*) return 1 ;;
+        */*) ;;
+        *) return 1 ;;
+    esac
+
+    owner=${path%%/*}
+    repo=${path#*/}
+    repo=${repo%%@*}
+    repo=${repo%.git}
+    [ -n "$host" ] && [ -n "$owner" ] && [ -n "$repo" ] || return 1
+    printf '%s/%s/%s\n' "$host" "$owner" "$repo"
 }
 
 [ $# -eq 1 ] || usage
@@ -84,7 +99,9 @@ if [ -e "$worktree" ]; then
     die "$worktree already exists; cd there, or inspect: git -C $repo worktree list"
 fi
 
-git -C "$repo" config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
+git -C "$repo" config --replace-all remote.origin.fetch \
+    '+refs/heads/*:refs/remotes/origin/*' \
+    || die "could not set the fetch refspec in $repo"
 git -C "$repo" worktree add "$worktree" "$branch" >/dev/null \
     || die "could not check out $branch into $worktree"
 git -C "$worktree" fetch origin || die "fetch of origin failed in $worktree"

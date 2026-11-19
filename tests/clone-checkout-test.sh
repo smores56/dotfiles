@@ -115,6 +115,27 @@ out=$(run codeberg.org/acme/cog 2>"$tmp/err.log")
 expect "a host-qualified spec clones" 0 "$?"
 expect "a host-qualified spec keeps the host" "$FAKE_GHQ_TARGET/main" "$out"
 
+FAKE_GHQ_TARGET=$ghq_root/github.com/acme/trailing
+out=$(run 'acme/trailing/' 2>"$tmp/err.log")
+expect "a trailing slash is ignored" "$FAKE_GHQ_TARGET/main" "$out"
+
+FAKE_GHQ_TARGET=$ghq_root/gitlab.com/acme/ported
+out=$(run 'ssh://git@gitlab.com:2222/acme/ported' 2>"$tmp/err.log")
+expect "a URL port is dropped from the host" "$FAKE_GHQ_TARGET/main" "$out"
+
+FAKE_GHQ_TARGET=$ghq_root/github.com/acme/suffixed
+out=$(run 'acme/suffixed.git' 2>"$tmp/err.log")
+expect "a .git suffix is dropped" "$FAKE_GHQ_TARGET/main" "$out"
+
+FAKE_GHQ_TARGET=$ghq_root/github.com/acme/refs
+out=$(run 'https://github.com/acme/refs@v2.git' 2>"$tmp/err.log")
+expect "an @ref suffix is dropped" "$FAKE_GHQ_TARGET/main" "$out"
+
+out=$(run justaname/a/b/c 2>"$tmp/err.log")
+status=$?
+expect "extra path segments are refused" 2 "$status"
+contains "extra path segments explain the forms" "expected" "$(cat "$tmp/err.log")"
+
 FAKE_GHQ_TARGET=$ghq_root/github.com/acme/bad
 out=$(run justaname 2>"$tmp/err.log")
 status=$?
@@ -143,6 +164,21 @@ git -C "$resume/.git" remote add origin "$tmp/origin.git"
 FAKE_GHQ_TARGET=$resume
 out=$(run acme/resume 2>"$tmp/err.log")
 expect "an unfinished clean-bare clone gets its worktree" "$resume/main" "$out"
+
+# --- an existing multi-valued fetch refspec does not stop the run
+
+multi=$ghq_root/github.com/acme/multi
+mkdir -p "$multi"
+seed_bare "$multi/.git"
+git -C "$multi/.git" remote add origin "$tmp/origin.git"
+git -C "$multi/.git" config --add remote.origin.fetch '+refs/heads/one:refs/remotes/origin/one'
+git -C "$multi/.git" config --add remote.origin.fetch '+refs/heads/two:refs/remotes/origin/two'
+FAKE_GHQ_TARGET=$multi
+out=$(run acme/multi 2>"$tmp/err.log")
+expect "a multi-valued fetch refspec is replaced" "$multi/main" "$out"
+expect "the fetch refspec ends up single and complete" \
+    '+refs/heads/*:refs/remotes/origin/*' \
+    "$(git -C "$multi" config --get-all remote.origin.fetch)"
 
 # --- ghq failures surface
 
