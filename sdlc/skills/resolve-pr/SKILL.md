@@ -12,13 +12,16 @@ stock `gh`.
 
 ## Loop
 
-1. Conflicts: `gh pr view $PR --json mergeStateStatus,baseRefName`. `DIRTY` → resolve.
-2. Threads: `gh-pr-review review view --pr $PR --unresolved --not_outdated`.
-   Skip threads whose last `thread_comments` entry starts with `[agent]`.
-   Any left → handle them.
-3. CI: `gh pr checks $PR --watch --fail-fast`, exit 0 pass, 1 fail, 8 pending.
+1. Conflicts: `gh pr view $PR --json mergeStateStatus,baseRefName`; set
+   `BASE` from `baseRefName`. `DIRTY` → resolve.
+2. Threads: `gh-pr-review review view --pr $PR --unresolved` (outdated threads
+   still block merge). Skip threads whose last `thread_comments` entry starts
+   with `[agent]`. Any left → handle them.
+3. CI: `gh pr checks $PR`: exit 0 pass, 8 pending, 1 fail or no checks (the
+   output says which). While pending, wait with `gh pr checks $PR --watch
+   --fail-fast` in the background so new threads and conflicts still surface.
    On failure → fix.
-4. Repeat steps 1–2. Done when there's no conflict, no unhandled thread, and checks pass.
+4. Repeat steps 1–3. Done when there's no conflict, no unhandled thread, and checks pass.
 
 After each fix push once and restart the loop. Count pushes in the
 conversation; after 10, stop and report the blockers.
