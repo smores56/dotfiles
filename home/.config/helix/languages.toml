@@ -11,15 +11,10 @@ language-servers = ["ruff", "basedpyright"]
 name = "json"
 auto-format = false
 
-[[language]]
-name = "yaml"
-auto-format = false
-
 # oxide first: Helix takes each feature from the first server offering it, and
 # oxide's backlinks, tags, and daily notes beat marksman's.
 [[language]]
 name = "markdown"
-auto-format = false
 language-servers = ["markdown-oxide", "marksman"]
 
 [[language]]

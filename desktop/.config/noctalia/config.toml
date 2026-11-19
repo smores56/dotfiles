@@ -1,8 +1,3 @@
-# Noctalia owns the shell surfaces niri does not: bar, launcher, notifications,
-# lock screen, idle handling, and wallpaper. Colors come from the community
-# "Rose Pine Moon" palette, which Noctalia caches after the first fetch.
-# Hot reload: Noctalia re-reads this file on change.
-
 # polkit_agent: the lock screen reaches fprintd over D-Bus, so the only elevated
 # step is enrollment (`fprintd-enroll` is auth_self); without this agent polkit
 # has nothing to prompt with and the daemon answers Not Authorized.

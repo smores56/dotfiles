@@ -1,22 +1,14 @@
-# Git and SSH identity for personal machines. smoreswork does not apply this
-# environment; mise.work.toml renders its own work identity and SSH config.
+# Git and SSH identity for personal machines; smoreswork uses mise.work.toml.
 
-# The personal checkout root, rendered into the `git get` alias, git's work
-# routing, and the fish repo picker.
 [vars]
 repos_root = "/srv/git"
 
 [dotfiles]
-"~/.gitconfig" = { source = "identity/.gitconfig" }
+"~/.config/git/config" = { source = "identity/.config/git/config" }
 "~/.ssh/config" = { source = "identity/.ssh/config" }
-# The smortress route is written once, under home/, and included by the two
-# ~/.ssh/config files that need it; the base environment deploys neither.
 "~/.ssh/smortress.conf" = { source = "home/.ssh/smortress.conf" }
-# The ed25519-sk key file is a pointer, not a secret: FIDO2 credential id,
-# application and flags, with no scalar anywhere off the token, which is what
-# tests/check.sh verifies before allowing it in a managed directory. Deploying
-# it is what makes a replacement laptop a single bootstrap, and it is why this
-# file is safe to commit while the file key beside it never is.
+# The ed25519-sk key file is a FIDO2 handle, not a secret (tests/check.sh
+# verifies that), so a replacement laptop is a single bootstrap.
 "~/.ssh/id_smortress" = { source = "identity/.ssh/id_smortress", mode = "copy" }
 "~/.config/fish/conf.d/85-identity.fish" = { source = "identity/.config/fish/conf.d/85-identity.fish.tera", mode = "template" }
 "~/.config/git/machine.inc" = { source = "identity/.config/git/machine.inc.tera", mode = "template" }

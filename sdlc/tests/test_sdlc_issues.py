@@ -1,14 +1,8 @@
-"""Tests for the stateless sdlc CLI.
-
-Written before implementation (red first). A fake `gh` on PATH records every
-call and serves canned JSON, so nothing here needs a network or the real
-registry. The design hash fixtures pin the T1 canonicalization rules.
-"""
+"""CLI tests against a fake `gh` on PATH that records every call and serves canned JSON."""
 
 import importlib
 import json
 import os
-import stat
 import subprocess
 import sys
 import tempfile
@@ -16,25 +10,9 @@ import tomllib
 import unittest
 from unittest import mock
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-MODULE_DIR = os.path.join(HERE, "..")
-CLI = os.path.join(MODULE_DIR, "sdlc_issues.py")
+from support import COMMENT_AT, DESIGN, DESIGN_SHA, MODULE_DIR, run_cli, write_script
 
-sys.path.insert(0, MODULE_DIR)
-import sdlc_issues  # noqa: E402
-
-DESIGN = (
-    "## Problem\n\n"
-    "Features drift from the approved design and merged code.\n\n"
-    "## Design\n\n"
-    "Use GitHub issues.\n\n"
-    "### Principles\n\n"
-    "1. One issue per feature.\n\n"
-    "## Plan\n\n"
-    "- [ ] T1: Build\n"
-)
-DESIGN_SHA = "a7c00c28e002380560f62e5ddc98968e2b93784ce57a4fc79152353d284bffcc"
-COMMENT_AT = "2026-10-20T12:00:00Z"
+import sdlc_issues
 
 FAKE_GH = '''#!{python}
 import json, os, sys
@@ -226,6 +204,17 @@ def issue(
     }
 
 
+def todo_feature(**overrides):
+    fields = dict(
+        number=1,
+        title="Reduce bespoke tooling",
+        body=DESIGN,
+        labels=["type:feature", "repo:nix-config", "status:todo"],
+    )
+    fields.update(overrides)
+    return issue(**fields)
+
+
 def approved_feature(**overrides):
     fields = dict(
         number=1,
@@ -251,16 +240,13 @@ class DesignHashTest(unittest.TestCase):
         self.assertEqual(sdlc_issues.design_hash(noisy), DESIGN_SHA)
 
     def test_drops_sam_annotation_lines(self):
-        annotated = DESIGN.replace(
-            "Use GitHub issues.", "> Sam: Is a label enough?\nUse GitHub issues."
-        )
-        self.assertEqual(sdlc_issues.design_hash(annotated), DESIGN_SHA)
-
-    def test_drops_indented_sam_annotation_lines(self):
-        annotated = DESIGN.replace(
-            "Use GitHub issues.", "  > Sam: Is a label enough?\nUse GitHub issues."
-        )
-        self.assertEqual(sdlc_issues.design_hash(annotated), DESIGN_SHA)
+        for indent in ("", "  "):
+            with self.subTest(indent=indent):
+                annotated = DESIGN.replace(
+                    "Use GitHub issues.",
+                    "%s> Sam: Is a label enough?\nUse GitHub issues." % indent,
+                )
+                self.assertEqual(sdlc_issues.design_hash(annotated), DESIGN_SHA)
 
     def test_stops_at_next_h2(self):
         changed_plan = DESIGN.replace("- [ ] T1: Build", "- [ ] T1: Different")
@@ -281,14 +267,10 @@ class GhTest(unittest.TestCase):
         self.bin = os.path.join(self.root, "bin")
         os.makedirs(self.state)
         os.makedirs(self.bin)
-        self.script("gh", FAKE_GH.replace("{python}", sys.executable))
+        self.script("gh", FAKE_GH)
 
     def script(self, name, source):
-        path = os.path.join(self.bin, name)
-        with open(path, "w") as fh:
-            fh.write(source)
-        os.chmod(path, os.stat(path).st_mode | stat.S_IXUSR | stat.S_IXGRP)
-        return path
+        return write_script(self.bin, name, source)
 
     def serve(self, name, payload):
         with open(os.path.join(self.state, name), "w") as fh:
@@ -300,9 +282,17 @@ class GhTest(unittest.TestCase):
     def serve_issue(self, iss):
         self.serve("issue-%d.json" % iss["number"], iss)
 
+    def serve_feature(self, feature):
+        self.serve_list([feature])
+        self.serve_issue(feature)
+
+    def serve_tasks(self):
+        self.serve_issue(issue(10, "T1: Build", labels=["status:todo"]))
+        self.serve_issue(issue(11, "T2: Wire", labels=["status:todo"]))
+
     def fakes(self):
-        self.script("revdiff", FAKE_REVDIFF.replace("{python}", sys.executable))
-        self.script("tv", FAKE_TV.replace("{python}", sys.executable))
+        self.script("revdiff", FAKE_REVDIFF)
+        self.script("tv", FAKE_TV)
         self.serve("tv-feature.txt", "1\n")
         self.serve("tv-action.txt", "show\n")
 
@@ -311,43 +301,28 @@ class GhTest(unittest.TestCase):
         if os.path.exists(path):
             os.unlink(path)
 
-    def calls(self):
-        path = os.path.join(self.state, "calls.jsonl")
+    def recorded(self, name):
+        path = os.path.join(self.state, name)
         if not os.path.exists(path):
             return []
         with open(path) as fh:
             return [json.loads(line) for line in fh if line.strip()]
+
+    def calls(self):
+        return self.recorded("calls.jsonl")
 
     def calls_for(self, *prefix):
         return [call for call in self.calls() if call[: len(prefix)] == list(prefix)]
 
-    def revdiff_calls(self):
-        path = os.path.join(self.state, "revdiff.jsonl")
-        if not os.path.exists(path):
-            return []
-        with open(path) as fh:
-            return [json.loads(line) for line in fh if line.strip()]
-
     def tv_calls(self):
-        path = os.path.join(self.state, "tv.jsonl")
-        if not os.path.exists(path):
-            return []
-        with open(path) as fh:
-            return [json.loads(line) for line in fh if line.strip()]
+        return self.recorded("tv.jsonl")
 
     def run_cli(self, *args, stdin=None, path=None):
         env = dict(os.environ)
         env["PATH"] = self.bin + os.pathsep + (path if path is not None else env.get("PATH", ""))
         env["SDLC_REPO"] = "test/repo"
         env["FAKE_GH_STATE"] = self.state
-        return subprocess.run(
-            [sys.executable, CLI, *args],
-            capture_output=True,
-            text=True,
-            env=env,
-            input=stdin,
-            stdin=subprocess.DEVNULL if stdin is None else None,
-        )
+        return run_cli(args, env, stdin)
 
 
 class ListTest(GhTest):
@@ -457,15 +432,7 @@ class ListTest(GhTest):
 class ShowTest(GhTest):
     def setUp(self):
         super().setUp()
-        self.feature = issue(
-            1,
-            "Reduce bespoke tooling",
-            DESIGN,
-            ["type:feature", "repo:nix-config", "status:todo"],
-            [comment("sam", "Please clarify the rollout.")],
-        )
-        self.serve_list([self.feature])
-        self.serve_issue(self.feature)
+        self.serve_feature(todo_feature(comments=[comment("sam", "Please clarify the rollout.")]))
 
     def test_show_prints_body_and_comment_thread(self):
         out = self.run_cli("show", "1")
@@ -481,14 +448,15 @@ class ShowTest(GhTest):
 
 
 class StatusTest(GhTest):
-    def serve_task_fixtures(self):
-        self.serve_issue(issue(10, "T1: Build", labels=["status:todo"]))
-        self.serve_issue(issue(11, "T2: Wire", labels=["status:todo"]))
+    def status(self, **feature_overrides):
+        self.serve_feature(approved_feature(**feature_overrides))
+        self.serve_tasks()
+        out = self.run_cli("status", "1")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        return out.stdout
 
     def test_approved_reports_hashes_author_and_counts(self):
-        feature = approved_feature()
-        self.serve_list([feature])
-        self.serve_issue(feature)
+        self.serve_feature(approved_feature())
         self.serve_issue(issue(10, "T1: Build", labels=["status:todo"]))
         self.serve_issue(
             issue(
@@ -511,19 +479,14 @@ class StatusTest(GhTest):
 
     def test_stale_when_design_changed_after_approval(self):
         old = DESIGN.replace("Use GitHub issues.", "Use a different tracker.")
-        feature = approved_feature(
+        out = self.status(
             comments=(comment("sam", "Approved design sha256:%s" % sdlc_issues.design_hash(old)),),
         )
-        self.serve_list([feature])
-        self.serve_issue(feature)
-        self.serve_task_fixtures()
-        out = self.run_cli("status", "1")
-        self.assertEqual(out.returncode, 0, out.stderr)
-        self.assertIn("approval=stale", out.stdout)
-        self.assertIn("re-approval", out.stdout)
+        self.assertIn("approval=stale", out)
+        self.assertIn("re-approval", out)
 
     def test_needs_reapproval_label_beats_approval(self):
-        feature = approved_feature(
+        out = self.status(
             labels=(
                 "type:feature",
                 "repo:nix-config",
@@ -532,71 +495,34 @@ class StatusTest(GhTest):
                 "status:needs-reapproval",
             )
         )
-        self.serve_list([feature])
-        self.serve_issue(feature)
-        self.serve_task_fixtures()
-        out = self.run_cli("status", "1")
-        self.assertEqual(out.returncode, 0, out.stderr)
-        self.assertIn("approval=stale", out.stdout)
+        self.assertIn("approval=stale", out)
 
     def test_missing_without_approval(self):
-        feature = approved_feature(labels=("type:feature", "repo:nix-config", "status:todo"))
-        self.serve_list([feature])
-        self.serve_issue(feature)
-        self.serve_task_fixtures()
-        out = self.run_cli("status", "1")
-        self.assertEqual(out.returncode, 0, out.stderr)
-        self.assertIn("approval=missing", out.stdout)
+        out = self.status(labels=("type:feature", "repo:nix-config", "status:todo"))
+        self.assertIn("approval=missing", out)
 
     def test_status_uses_one_graphql_fetch(self):
-        feature = approved_feature()
-        self.serve_list([feature])
-        self.serve_issue(feature)
-        self.serve_task_fixtures()
-        out = self.run_cli("status", "1")
-        self.assertEqual(out.returncode, 0, out.stderr)
+        self.status()
         self.assertEqual(len(self.calls_for("api", "graphql")), 1)
         self.assertEqual(self.calls_for("issue", "view"), [])
 
-    def test_quoted_approval_line_is_not_an_approval(self):
-        feature = approved_feature(
-            labels=("type:feature", "repo:nix-config", "status:todo"),
-            comments=(comment("sam", "> Approved design sha256:%s" % DESIGN_SHA),),
-        )
-        self.serve_list([feature])
-        self.serve_issue(feature)
-        self.serve_task_fixtures()
-        out = self.run_cli("status", "1")
-        self.assertEqual(out.returncode, 0, out.stderr)
-        self.assertIn("approval=missing", out.stdout)
-
-    def test_approval_embedded_in_review_text_is_not_an_approval(self):
-        feature = approved_feature(
-            labels=("type:feature", "repo:nix-config", "status:todo"),
-            comments=(
-                comment(
-                    "sam",
-                    "### Review\n\nApproved design sha256:%s\n\nLooks fine."
-                    % DESIGN_SHA,
-                ),
-            ),
-        )
-        self.serve_list([feature])
-        self.serve_issue(feature)
-        self.serve_task_fixtures()
-        out = self.run_cli("status", "1")
-        self.assertEqual(out.returncode, 0, out.stderr)
-        self.assertIn("approval=missing", out.stdout)
+    def test_approval_lines_that_are_not_the_whole_comment_do_not_count(self):
+        for body in (
+            "> Approved design sha256:%s" % DESIGN_SHA,
+            "### Review\n\nApproved design sha256:%s\n\nLooks fine." % DESIGN_SHA,
+        ):
+            with self.subTest(body=body):
+                out = self.status(
+                    labels=("type:feature", "repo:nix-config", "status:todo"),
+                    comments=(comment("sam", body),),
+                )
+                self.assertIn("approval=missing", out)
 
 
 class NextTest(GhTest):
     def ready_fixture(self, **feature_overrides):
-        feature = approved_feature(**feature_overrides)
-        self.serve_list([feature])
-        self.serve_issue(feature)
-        self.serve_issue(issue(10, "T1: Build", labels=["status:todo"]))
-        self.serve_issue(issue(11, "T2: Wire", labels=["status:todo"]))
-        return feature
+        self.serve_feature(approved_feature(**feature_overrides))
+        self.serve_tasks()
 
     def test_next_uses_one_graphql_fetch(self):
         self.ready_fixture()
@@ -649,14 +575,8 @@ class NextTest(GhTest):
 class ApproveTest(GhTest):
     def setUp(self):
         super().setUp()
-        self.feature = issue(
-            1,
-            "Reduce bespoke tooling",
-            DESIGN,
-            ["type:feature", "repo:nix-config", "status:todo"],
-        )
-        self.serve_list([self.feature])
-        self.serve_issue(self.feature)
+        self.feature = todo_feature()
+        self.serve_feature(self.feature)
 
     def test_requires_a_tty_without_yes(self):
         out = self.run_cli("approve", "1")
@@ -725,16 +645,13 @@ class TaskTest(GhTest):
     def setUp(self):
         super().setUp()
         body = DESIGN + "\n- [ ] T2: Wire (#12)\n"
-        self.feature = issue(
-            1,
-            "Reduce bespoke tooling",
-            body,
-            ["type:feature", "repo:nix-config", "status:todo", "status:approved"],
-            [comment("sam", "Approved design sha256:%s" % sdlc_issues.design_hash(body))],
-            sub_issues=(sub(10, "T1: Build"), sub(12, "T2: Wire")),
+        self.serve_feature(
+            approved_feature(
+                body=body,
+                comments=[comment("sam", "Approved design sha256:%s" % sdlc_issues.design_hash(body))],
+                sub_issues=(sub(10, "T1: Build"), sub(12, "T2: Wire")),
+            )
         )
-        self.serve_list([self.feature])
-        self.serve_issue(self.feature)
         self.serve("create_url.txt", "https://github.com/test/repo/issues/13\n")
 
     def test_task_add_sets_parent_and_translates_labels(self):
@@ -791,14 +708,7 @@ class TaskTest(GhTest):
 class FeatureTerminalTest(GhTest):
     def setUp(self):
         super().setUp()
-        self.feature = issue(
-            1,
-            "Reduce bespoke tooling",
-            DESIGN,
-            ["type:feature", "repo:nix-config", "status:todo"],
-        )
-        self.serve_list([self.feature])
-        self.serve_issue(self.feature)
+        self.serve_feature(todo_feature())
 
     def test_complete_sets_done_and_closes(self):
         out = self.run_cli("complete", "1")
@@ -808,15 +718,7 @@ class FeatureTerminalTest(GhTest):
         self.assertEqual(len(self.calls_for("issue", "close")), 1)
 
     def test_complete_refuses_open_tasks(self):
-        feature = issue(
-            1,
-            "Reduce bespoke tooling",
-            DESIGN,
-            ["type:feature", "repo:nix-config", "status:todo"],
-            sub_issues=(sub(10, "T1: Build"),),
-        )
-        self.serve_list([feature])
-        self.serve_issue(feature)
+        self.serve_feature(todo_feature(sub_issues=(sub(10, "T1: Build"),)))
         self.serve_issue(issue(10, "T1: Build", labels=["status:todo"]))
         out = self.run_cli("complete", "1")
         self.assertNotEqual(out.returncode, 0)
@@ -926,7 +828,7 @@ class ReviewCliTest(GhTest):
     def test_hands_the_body_to_revdiff_on_stdin(self):
         self.export()
         self.run_cli("review", "1")
-        args = self.revdiff_calls()[0]
+        args = self.recorded("revdiff.jsonl")[0]
         self.assertIn("--stdin", args)
         self.assertIn("--no-tree", args)
         self.assertIn("--wrap", args)
@@ -996,14 +898,7 @@ class ReviewCliTest(GhTest):
 class UiCliTest(GhTest):
     def setUp(self):
         super().setUp()
-        feature = issue(
-            1,
-            "Reduce bespoke tooling",
-            DESIGN,
-            ["type:feature", "repo:nix-config", "status:todo"],
-        )
-        self.serve_issue(feature)
-        self.serve_list([feature])
+        self.serve_feature(todo_feature())
         self.fakes()
 
     def test_no_command_is_the_picker(self):
@@ -1120,14 +1015,7 @@ class UiCliTest(GhTest):
 class CommentCliTest(GhTest):
     def setUp(self):
         super().setUp()
-        feature = issue(
-            1,
-            "Reduce bespoke tooling",
-            DESIGN,
-            ["type:feature", "repo:nix-config", "status:todo"],
-        )
-        self.serve_issue(feature)
-        self.serve_list([feature])
+        self.serve_feature(todo_feature())
         self.fakes()
 
     def test_comment_opens_the_editor(self):
@@ -1229,17 +1117,12 @@ class HookGhTest(GhTest):
 
 
 class EntryPointTest(unittest.TestCase):
-    """The pyproject console script is the only user-facing entry point."""
-
     def test_the_console_script_target_is_an_importable_callable(self):
         with open(os.path.join(MODULE_DIR, "pyproject.toml"), "rb") as fh:
             scripts = tomllib.load(fh)["project"]["scripts"]
         module_name, _, attr = scripts["sdlc"].partition(":")
         entry = getattr(importlib.import_module(module_name), attr)
         self.assertTrue(callable(entry))
-
-    def test_main_is_sdlc_issues_main(self):
-        self.assertTrue(callable(sdlc_issues.main))
 
 
 if __name__ == "__main__":

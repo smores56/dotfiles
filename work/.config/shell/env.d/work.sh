@@ -1,4 +1,3 @@
-# smoreswork additions to the shared environment.
 export SDLC_REPO=smohr-blitzy/sdlc
 # The cc crate and native builds use Apple clang (see ~/.cargo/config.toml).
 export CC=/usr/bin/clang

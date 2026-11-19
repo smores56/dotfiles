@@ -1,4 +1,3 @@
-# Portable lazygit config: the same file works on Fedora Atomic and macOS.
 os:
   edit: hx -- {{filename}}
   editAtLine: hx -- {{filename}}:{{line}}

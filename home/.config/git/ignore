@@ -1,6 +1,4 @@
-# Leftover worktrees from the old in-repo layout; a normal clone on the work
-# laptop cannot put them beside a bare gitdir.
+# A normal clone (the work laptop) keeps its worktrees in-repo.
 .worktrees/
 
-# Claude Code keeps per-checkout permissions here.
 **/.claude/settings.local.json

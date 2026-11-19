@@ -1,6 +1,5 @@
-# Environment for every shell. zsh and bash source this file, fish imports what
-# it exports, and agents' `zsh -c` sees the same values. POSIX sh only; nothing
-# here forks a process or touches the network.
+# zsh and bash source this file and fish imports what it exports. POSIX sh, and
+# nothing here forks or touches the network: every shell pays for it.
 
 # A ZDOTDIR inherited from a session older than this file would make every
 # later zsh skip ~/.zshenv, and with it this environment.
@@ -32,7 +31,6 @@ export PAGER=bat
 export BAT_THEME=ansi
 export MANPAGER="sh -c 'col -bx | bat -l man -p'"
 
-# The personal SDLC registry; the work environment overrides it in env.d.
 export SDLC_REPO=smores56/sdlc
 
 # The employer's flat checkout root, when it exists (see ~/.claude/work.md).
@@ -42,12 +40,10 @@ export SDLC_REPO=smores56/sdlc
 # no plaintext identity is ever on disk.
 [ -x "$HOME/.local/bin/sops-age-key" ] && export SOPS_AGE_KEY_CMD="$HOME/.local/bin/sops-age-key"
 
-# The machine's one GitHub token, for gh and git's credential helper alike.
-_env_f=${XDG_CONFIG_HOME:-$HOME/.config}/github-token
+_env_f=${XDG_CONFIG_HOME:-$HOME/.config}/gh/token
 # read fails at a missing final newline, but the token is still read.
 [ -r "$_env_f" ] && { read -r GH_TOKEN <"$_env_f" || [ -n "$GH_TOKEN" ]; } && export GH_TOKEN
 
-# Per-environment additions (the work environment drops a file here).
 for _env_f in "${XDG_CONFIG_HOME:-$HOME/.config}"/shell/env.d/*.sh; do
     # shellcheck source=/dev/null
     [ -r "$_env_f" ] && . "$_env_f"

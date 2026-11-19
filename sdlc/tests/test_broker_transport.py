@@ -1,15 +1,8 @@
-"""Broker transport tests.
-
-A stdlib `http.server` fake proxy on loopback records every request and serves
-canned GitHub REST JSON, so these tests never touch the network or `gh`. The
-`gh` transport keeps its own fake-gh suite in test_sdlc_issues.py.
-"""
+"""Broker transport tests against a loopback fake proxy serving canned GitHub REST JSON."""
 
 import http.server
 import json
 import os
-import stat
-import subprocess
 import sys
 import tempfile
 import threading
@@ -17,25 +10,10 @@ import unittest
 import urllib.parse
 from unittest import mock
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-MODULE_DIR = os.path.join(HERE, "..")
-CLI = os.path.join(MODULE_DIR, "sdlc_issues.py")
+from support import COMMENT_AT, DESIGN, DESIGN_SHA, run_cli, write_script
 
-sys.path.insert(0, MODULE_DIR)
-import sdlc_issues  # noqa: E402
+import sdlc_issues
 
-DESIGN = (
-    "## Problem\n\n"
-    "Features drift from the approved design and merged code.\n\n"
-    "## Design\n\n"
-    "Use GitHub issues.\n\n"
-    "### Principles\n\n"
-    "1. One issue per feature.\n\n"
-    "## Plan\n\n"
-    "- [ ] T1: Build\n"
-)
-DESIGN_SHA = sdlc_issues.design_hash(DESIGN)
-COMMENT_AT = "2026-10-20T12:00:00Z"
 PREFIX = "/github-sdlc"
 REPO_PATH = PREFIX + "/repos/test/repo"
 
@@ -129,7 +107,6 @@ def rest_comment(login, body, at=COMMENT_AT):
 
 
 def graph_issue(feature, comments=(), tasks=()):
-    """The GraphQL payload `gh api graphql` prints today."""
     return {
         "data": {
             "repository": {
@@ -168,8 +145,6 @@ def graph_task(number, title, state="OPEN", labels=(), blocked_by=()):
 
 
 class BrokerTest(unittest.TestCase):
-    """A fake broker plus a temp bin dir; SDLC_REPO is test/repo."""
-
     def setUp(self):
         self.broker = FakeBroker()
         self.addCleanup(self.broker.stop)
@@ -178,15 +153,7 @@ class BrokerTest(unittest.TestCase):
         self.bin = os.path.join(self.tmp.name, "bin")
         os.makedirs(self.bin)
 
-    def script(self, name, source):
-        path = os.path.join(self.bin, name)
-        with open(path, "w") as fh:
-            fh.write(source)
-        os.chmod(path, os.stat(path).st_mode | stat.S_IXUSR | stat.S_IXGRP)
-        return path
-
     def serve_feature(self, feature, comments=(), sub_issues=()):
-        """Register the REST routes `fetch_issue` needs for one feature."""
         number = feature["number"]
         self.broker.route("GET", "%s/issues/%d" % (REPO_PATH, number), feature)
         self.broker.route("GET", "%s/issues/%d/comments" % (REPO_PATH, number), list(comments))
@@ -217,14 +184,7 @@ class BrokerTest(unittest.TestCase):
         environ.pop("GITHUB_TOKEN", None)
         environ.pop("GH_TOKEN", None)
         environ.update(env or {})
-        return subprocess.run(
-            [sys.executable, CLI, *args],
-            capture_output=True,
-            text=True,
-            env=environ,
-            input=stdin,
-            stdin=subprocess.DEVNULL if stdin is None else None,
-        )
+        return run_cli(args, environ, stdin)
 
 
 class TransportSelectionTest(BrokerTest):
@@ -537,7 +497,8 @@ class CommentTest(BrokerTest):
         self.serve_feature(self.feature)
 
     def test_comment_opens_the_editor_and_posts_over_http(self):
-        editor = self.script(
+        editor = write_script(
+            self.bin,
             "fake-editor",
             "#!%s\nimport sys\nopen(sys.argv[1], 'w').write('A note from the editor\\n')\n"
             % sys.executable,
@@ -573,14 +534,11 @@ class ErrorTest(BrokerTest):
         self.assertNotIn("Traceback", out.stderr)
 
 
-
 HOOK_PATH = "/github-hooks/repos/test/repo/hooks"
 CAPABILITY_URL = "https://agent-hooks.sammohr.dev/hook/cap-abc123"
 
 
 class HookTest(BrokerTest):
-    """`sdlc hook add` against the broker's github-hooks logical host."""
-
     def serve_hook(self, hook_id=42, status=201):
         self.broker.route(
             "POST",
@@ -677,6 +635,7 @@ class HookTest(BrokerTest):
         self.assertEqual(out.returncode, 1)
         self.assertIn("owner/name", out.stderr)
         self.assertEqual(self.broker.requests, [])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -5,16 +5,13 @@
 [smores]
     flow = "local"
 
-# `git get owner/repo` clones clean-bare to {{ vars.repos_root }}/github.com/owner/repo/.git
-# and checks the default branch out beside it, tracking origin. The fetch
-# refspec at clone time fills origin/* in the same pass; git refuses an
-# existing destination, and ${1:?} refuses a missing argument. Run from inside
-# a linked worktree, git exports that worktree's GIT_DIR to the alias, which
-# would aim the worktree step at the caller's repository.
+# The fetch refspec at clone time fills origin/* in the same pass. GIT_DIR is
+# unset because, run from a linked worktree, git exports that worktree's
+# GIT_DIR to the alias and would aim the worktree step at the caller's repo.
 [alias]
     get = "!f() { unset GIT_DIR GIT_WORK_TREE; d={{ vars.repos_root }}/github.com/${1:?usage: git get owner/repo} && git clone --bare -c remote.origin.fetch='+refs/heads/*:refs/remotes/origin/*' https://github.com/$1 $d/.git && b=$(git -C $d symbolic-ref --short HEAD) && git -C $d worktree add -B $b $d/$b origin/$b; }; f"
 
-# Work checkouts, by path and by remote URL.
+# Work checkouts, by path and by remote URL as written (insteadOf does not apply).
 [includeIf "gitdir:{{ vars.repos_root }}/github.com/blitzy-ai/"]
     path = ~/.config/git/work.inc
 [includeIf "hasconfig:remote.*.url:git@github.com:blitzy-ai/**"]
@@ -32,6 +29,5 @@
 [includeIf "hasconfig:remote.*.url:https://github.com/blitzy-platform/**"]
     path = ~/.config/git/work.inc
 
-# The employer flat layout (<dir>/<repo>) is work.
 [includeIf "gitdir:~/Blitzy/"]
     path = ~/.config/git/work.inc

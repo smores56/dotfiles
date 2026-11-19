@@ -1,5 +1,3 @@
-# Rendered by mise. Personal checkouts are clean-bare clones under
-# {{ vars.repos_root }} with every worktree beside its gitdir; `git get` makes them.
 status is-interactive; or return
 
 abbr -a r 'path dirname {{ vars.repos_root }}/*/*/*/*/.git | fzf -d / --with-nth -3.. | read f; and c $f'

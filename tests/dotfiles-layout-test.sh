@@ -1,94 +1,54 @@
 #!/usr/bin/env bash
-# Behavioural tests for scripts/link-dotfiles-checkout.sh. The script maintains
-# ~/.dotfiles as a symlink to the dotfiles default worktree; it reports what it
-# will not touch and never moves or replaces anything.
+# scripts/link-dotfiles-checkout.sh keeps ~/.dotfiles a symlink to the default
+# worktree; it reports what it will not touch, exits 1 for it, and never moves or
+# replaces anything.
 set -uo pipefail
+# shellcheck source=tests/lib.sh
+. "$(dirname -- "$0")/lib.sh"
 
-root=$(cd -- "$(dirname -- "$0")/.." && pwd)
 script=$root/scripts/link-dotfiles-checkout.sh
 
-tmp=$(mktemp -d) || exit 1
-trap 'rm -rf "$tmp"' EXIT
-
-pass=0
-fail=0
-ok() { pass=$((pass + 1)); printf 'ok   %s\n' "$*"; }
-no() { fail=$((fail + 1)); printf 'FAIL %s\n' "$*" >&2; }
-
-run() {
-    DOTFILES_LINK=$1 DOTFILES_CHECKOUT=$2 sh "$script" >"$tmp/out" 2>&1
-    rc=$?
-    [ "$rc" -eq 0 ] || no "exit status $rc for link=$1"
-    return 0
+run() {  # run <want-status> <link> <checkout>
+    DOTFILES_LINK=$2 DOTFILES_CHECKOUT=$3 sh "$script" >"$tmp/out" 2>&1
+    expect "exit status for link=$2" "$1" "$?"
 }
+said() { grep -q "$1" "$tmp/out"; }
 
 mkdir -p "$tmp/worktree/main" "$tmp/home"
 : >"$tmp/worktree/main/.git"
 
-# 1. The link is created and points at the worktree.
-run "$tmp/home/.dotfiles" "$tmp/worktree/main"
-if [ -L "$tmp/home/.dotfiles" ] \
-        && [ "$(readlink "$tmp/home/.dotfiles")" = "$tmp/worktree/main" ]; then
-    ok "creates the link to the worktree"
-else
-    no "creates the link to the worktree"
-fi
+run 0 "$tmp/home/.dotfiles" "$tmp/worktree/main"
+expect "creates the link to the worktree" "$tmp/worktree/main" "$(readlink "$tmp/home/.dotfiles")"
 
-# 2. A second run changes nothing and says nothing.
-run "$tmp/home/.dotfiles" "$tmp/worktree/main"
-if [ "$(readlink "$tmp/home/.dotfiles")" = "$tmp/worktree/main" ] \
-        && ! grep -q 'linked' "$tmp/out"; then
-    ok "leaves a correct link alone"
-else
-    no "leaves a correct link alone"
-fi
+run 0 "$tmp/home/.dotfiles" "$tmp/worktree/main"
+expect "leaves a correct link alone" "$tmp/worktree/main" "$(readlink "$tmp/home/.dotfiles")"
+assert_not "a correct link is not relinked" said linked
 
-# 3. A link pointing elsewhere is reported, not replaced.
 mkdir -p "$tmp/other"
 ln -s "$tmp/other" "$tmp/home/foreign"
-run "$tmp/home/foreign" "$tmp/worktree/main"
-if [ "$(readlink "$tmp/home/foreign")" = "$tmp/other" ] && grep -q 'points at' "$tmp/out"; then
-    ok "reports a foreign link without replacing it"
-else
-    no "reports a foreign link without replacing it"
-fi
+run 1 "$tmp/home/foreign" "$tmp/worktree/main"
+expect "a foreign link is not replaced" "$tmp/other" "$(readlink "$tmp/home/foreign")"
+assert "a foreign link is reported" said 'points at'
 
-# 4. A real directory in the way is never touched.
 mkdir -p "$tmp/home/real/inner"
-run "$tmp/home/real" "$tmp/worktree/main"
-if [ -d "$tmp/home/real" ] && [ ! -L "$tmp/home/real" ] \
-        && grep -q 'not a symlink' "$tmp/out"; then
-    ok "reports a directory in the way without touching it"
-else
-    no "reports a directory in the way without touching it"
-fi
+run 1 "$tmp/home/real" "$tmp/worktree/main"
+assert "a directory in the way is untouched" test -d "$tmp/home/real" -a ! -L "$tmp/home/real"
+assert "a directory in the way is reported" said 'not a symlink'
 
-# 5. A machine without the worktree (the work laptop) is a no-op.
-run "$tmp/home/absent" "$tmp/missing/main"
-if [ ! -e "$tmp/home/absent" ] && grep -q 'nothing to link' "$tmp/out"; then
-    ok "does nothing when the worktree is absent"
-else
-    no "does nothing when the worktree is absent"
-fi
+# The work laptop has no worktree.
+run 0 "$tmp/home/absent" "$tmp/missing/main"
+assert_not "nothing is linked when the worktree is absent" test -e "$tmp/home/absent"
+assert "an absent worktree is reported" said 'nothing to link'
 
-# 6. A directory that is not a checkout is left alone.
 mkdir -p "$tmp/empty/main"
-run "$tmp/home/empty" "$tmp/empty/main"
-if [ ! -e "$tmp/home/empty" ] && grep -q 'no checkout' "$tmp/out"; then
-    ok "does nothing when the target is not a checkout"
-else
-    no "does nothing when the target is not a checkout"
-fi
+run 0 "$tmp/home/empty" "$tmp/empty/main"
+assert_not "nothing is linked when the target is not a checkout" test -e "$tmp/home/empty"
+assert "a target that is not a checkout is reported" said 'no checkout'
 
-# 7. An unwritable parent is reported, and nothing is created under it.
 mkdir -p "$tmp/ro" && chmod 555 "$tmp/ro"
-run "$tmp/ro/.dotfiles" "$tmp/worktree/main"
+run 1 "$tmp/ro/.dotfiles" "$tmp/worktree/main"
 chmod 755 "$tmp/ro"
-if [ ! -e "$tmp/ro/.dotfiles" ] && grep -q 'not writable' "$tmp/out"; then
-    ok "creates nothing under an unwritable parent"
-else
-    no "creates nothing under an unwritable parent"
-fi
+assert_not "nothing is created under an unwritable parent" test -e "$tmp/ro/.dotfiles"
+assert "an unwritable parent is reported" said 'not writable'
 
-printf '\n%d passed, %d failed\n' "$pass" "$fail"
-[ "$fail" -eq 0 ]
+finish

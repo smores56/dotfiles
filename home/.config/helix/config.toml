@@ -7,11 +7,9 @@ color-modes = true
 true-color = true
 completion-replace = true
 jump-label-alphabet = "sntgrwfmpvcldbxieahyouk"
-end-of-line-diagnostics = "hint"
 
 [editor.lsp]
 display-messages = true
-display-inlay-hints = false
 
 [editor.inline-diagnostics]
 cursor-line = "hint"
@@ -20,9 +18,6 @@ cursor-line = "hint"
 focus-lost = true
 
 [editor.auto-save.after-delay]
-enable = true
-
-[editor.smart-tab]
 enable = true
 
 [editor.file-picker]
@@ -39,7 +34,6 @@ tab = "all"
 enable = true
 
 [editor.cursor-shape]
-normal = "block"
 insert = "bar"
 select = "underline"
 

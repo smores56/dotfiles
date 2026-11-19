@@ -1,168 +1,99 @@
 #!/bin/sh
-# Checks the dotfiles source tree: every script parses, every config loads, the
-# guards hold, and the behavioral tests pass.
+# Checks the source tree: every script parses, every config loads, the guards
+# hold, and the behavioural tests pass.
 #
 # usage: tests/check.sh [--shellcheck]
 set -u
+# shellcheck source=tests/lib.sh
+. "$(dirname -- "$0")/lib.sh"
 
-root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 use_shellcheck=false
 [ "${1:-}" = "--shellcheck" ] && use_shellcheck=true
 
-checks=0
-fails=0
-tmp=$(mktemp -d) || exit 1
-trap 'rm -rf "$tmp"' EXIT
-
-ok() { checks=$((checks + 1)); printf 'ok   %s\n' "$*"; }
-no() { checks=$((checks + 1)); fails=$((fails + 1)); printf 'FAIL %s\n' "$*" >&2; }
 skip() { printf 'skip %s\n' "$*"; }
 rel() { printf '%s' "${1#"$root"/}"; }
+has() { command -v "$1" >/dev/null 2>&1; }
 
-sh_syntax() {
-    if sh -n "$1" 2>"$tmp/err"; then
-        ok "syntax $(rel "$1") (sh)"
-    else
-        no "syntax $(rel "$1") (sh)"
-        sed 's/^/     /' "$tmp/err" >&2
-    fi
+# --- syntax
+
+shell_scripts() {
+    for script in "$root"/home/.config/shell/env.sh "$root"/work/.config/shell/env.d/*.sh \
+            "$root"/home/.local/bin/* "$root"/desktop/.local/bin/* \
+            "$root"/scripts/*.sh "$root"/tests/*.sh; do
+        [ -f "$script" ] || continue
+        case $(head -n 1 "$script") in
+            *python*) ;;
+            *bash*) printf 'bash %s\n' "$script" ;;
+            *) printf 'sh %s\n' "$script" ;;
+        esac
+    done
 }
 
-bash_syntax() {
-    if bash -n "$1" 2>"$tmp/err"; then
-        ok "syntax $(rel "$1") (bash)"
-    else
-        no "syntax $(rel "$1") (bash)"
-        sed 's/^/     /' "$tmp/err" >&2
-    fi
-}
+shell_scripts >"$tmp/scripts"
+while read -r dialect script; do
+    assert "syntax $(rel "$script") ($dialect)" "$dialect" -n "$script"
+done <"$tmp/scripts"
 
-# --- shell scripts
-
-for script in "$root"/home/.config/shell/env.sh "$root"/work/.config/shell/env.d/*.sh \
-        "$root"/home/.local/bin/*; do
-    [ -f "$script" ] || continue
-    case $(head -n 1 "$script") in
-        *python*) continue ;;
-    esac
-    sh_syntax "$script"
-done
-
-for script in "$root"/scripts/*.sh "$root"/tests/*.sh; do
-    [ -f "$script" ] || continue
-    bash_syntax "$script"
-done
-
-# --- zsh
-
-if command -v zsh >/dev/null 2>&1; then
-    if zsh -n "$root/home/.zshenv" 2>"$tmp/err"; then
-        ok "syntax home/.zshenv (zsh)"
-    else
-        no "syntax home/.zshenv (zsh)"
-        sed 's/^/     /' "$tmp/err" >&2
-    fi
+if has zsh; then
+    assert "syntax home/.zshenv (zsh)" zsh -n "$root/home/.zshenv"
 else
     skip "syntax home/.zshenv (zsh not installed)"
 fi
 
-# --- fish
-
-if command -v fish >/dev/null 2>&1; then
+if has fish; then
     for fish_file in "$root"/home/.config/fish/*.fish \
             "$root"/*/.config/fish/conf.d/*.fish "$root"/*/.config/fish/conf.d/*.fish.tera; do
-        [ -f "$fish_file" ] || continue
-        if fish --no-config -n "$fish_file" 2>"$tmp/err"; then
-            ok "syntax $(rel "$fish_file") (fish)"
-        else
-            no "syntax $(rel "$fish_file") (fish)"
-            sed 's/^/     /' "$tmp/err" >&2
-        fi
+        [ -f "$fish_file" ] && assert "syntax $(rel "$fish_file") (fish)" fish --no-config -n "$fish_file"
     done
 else
-    skip "syntax home/.config/fish (fish not installed)"
+    skip "syntax fish (fish not installed)"
 fi
 
-# --- TOML
-
-toml() {
-    if python3 -c 'import tomllib' >/dev/null 2>&1; then
-        if python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$1" 2>"$tmp/err"; then
-            ok "toml $(rel "$1")"
-        else
-            no "toml $(rel "$1")"
-            sed 's/^/     /' "$tmp/err" >&2
-        fi
-    else
-        skip "toml $(rel "$1") (python3 tomllib missing)"
-    fi
-}
-
-for cfg in "$root"/mise.toml "$root"/mise.*.toml "$root"/global/*.toml "$root"/global/*.lock \
-        "$root"/desktop/.aerospace.toml "$root"/home/.config/maki/*.toml \
-        "$root"/home/.config/helix/*.toml; do
-    [ -f "$cfg" ] && toml "$cfg"
-done
-
-# --- desktop packages and login shell
-
-flatpaks=$(sed -n 's/^"flatpak-user:\([^"]*\)".*/\1/p' "$root/mise.desktop.toml")
-
-if printf '%s\n' "$flatpaks" | grep -qvE '^[A-Za-z0-9_]+(\.[A-Za-z0-9_-]+)+$'; then
-    no "every flatpak id looks like a reverse-DNS app id"
+if python3 -c 'import tomllib' >/dev/null 2>&1; then
+    has_tomllib=true
+    for cfg in "$root"/mise.toml "$root"/mise.*.toml "$root"/global/*.toml "$root"/global/*.lock \
+            "$root"/desktop/.config/aerospace/aerospace.toml "$root"/home/.config/maki/*.toml \
+            "$root"/home/.config/helix/*.toml; do
+        [ -f "$cfg" ] && assert "toml $(rel "$cfg")" \
+            python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$cfg"
+    done
 else
-    ok "every flatpak id looks like a reverse-DNS app id"
+    has_tomllib=false
+    skip "toml and lockfile coverage (python3 tomllib missing)"
 fi
+
+# --- desktop and shells
+
+assert_not "every flatpak id looks like a reverse-DNS app id" sh -c \
+    "sed -n 's/^\"flatpak-user:\([^\"]*\)\".*/\1/p' '$root/mise.desktop.toml' \
+        | grep -vE '^[A-Za-z0-9_]+(\.[A-Za-z0-9_-]+)+\$'"
 
 for kitty_conf in "$root"/desktop/.config/kitty/linux.conf "$root"/desktop/.config/kitty/macos.conf; do
-    if grep -qxF 'shell ${HOME}/.local/share/mise/shims/fish' "$kitty_conf"; then
-        ok "kitty starts fish through its mise shim ($(rel "$kitty_conf"))"
-    else
-        no "kitty must start fish through its mise shim ($(rel "$kitty_conf"))"
-    fi
+    assert "kitty starts fish through its mise shim ($(rel "$kitty_conf"))" \
+        grep -qxF 'shell ${HOME}/.local/share/mise/shims/fish' "$kitty_conf"
 done
+assert "zellij starts fish" grep -qx 'default_shell "fish"' "$root/home/.config/zellij/config.kdl"
 
-if grep -qx 'default_shell "fish"' "$root/home/.config/zellij/config.kdl"; then
-    ok "zellij starts fish"
-else
-    no "zellij must start fish"
-fi
+assert_not "zsh has no interactive config: no ZDOTDIR, zim, plugins, or conda zsh" sh -c \
+    "[ -e '$root/home/.config/zsh' ] || grep -rnE 'zim|zsh-plugins|conda:zsh|ZDOTDIR' \
+        '$root/mise.toml' '$root'/mise.*.toml '$root/global/config.toml' '$root/scripts'"
 
-if [ ! -e "$root/home/.config/zsh" ] && ! grep -rqE 'zim|zsh-plugins|conda:zsh|ZDOTDIR' \
-        "$root/mise.toml" "$root"/mise.*.toml "$root/global/config.toml" "$root/scripts" 2>/dev/null; then
-    ok "zsh has no interactive config: no ZDOTDIR, zim, plugins, or conda zsh"
-else
-    no "zsh must stay at the two env one-liners (no ZDOTDIR, zim, plugins, or conda zsh)"
-fi
+assert "maki/pin.env pins version, target, and checksum" sh -c \
+    "grep -qE '^MAKI_VERSION=v[0-9]+\.[0-9]+\.[0-9]+\$' '$root/maki/pin.env' \
+        && grep -qE '^MAKI_SHA256=[0-9a-f]{64}\$' '$root/maki/pin.env' \
+        && grep -qE '^MAKI_TARGET=[A-Za-z0-9_-]+\$' '$root/maki/pin.env'"
 
-if grep -qE '^MAKI_VERSION=v[0-9]+\.[0-9]+\.[0-9]+$' "$root/maki/pin.env" \
-        && grep -qE '^MAKI_SHA256=[0-9a-f]{64}$' "$root/maki/pin.env" \
-        && grep -qE '^MAKI_TARGET=[A-Za-z0-9_-]+$' "$root/maki/pin.env"; then
-    ok "maki/pin.env pins version, target, and checksum"
-else
-    no "maki/pin.env must pin MAKI_VERSION, MAKI_TARGET, and a 64-hex MAKI_SHA256"
-fi
+# `mise dot status` renders templates and hooks, so an exec() there would run.
+assert_not "no template or hook calls exec()" \
+    grep -rnE 'exec\(' "$root"/identity "$root"/desktop "$root"/home "$root"/mise.toml "$root"/mise.*.toml
 
-if grep -rqE 'exec\(' "$root"/identity "$root"/desktop "$root"/home "$root"/mise*.toml 2>/dev/null; then
-    no "no template or hook calls exec() (dotfile status would run it)"
-else
-    ok "no template or hook calls exec() (dotfile status would run it)"
-fi
-
-# --- layout
-
-if [ -e "$root/home/.config/mise" ]; then
-    # `mise bootstrap --config-dir global` links ~/.config/mise to global/; a
-    # second copy under home/ would drift from it.
-    no "home/.config/mise must not exist (global/ is the global config)"
-else
-    ok "the global mise config lives only in global/"
-fi
+# `--config-dir global` links ~/.config/mise to global/; a copy under home/ would drift.
+assert_not "the global mise config lives only in global/" test -e "$root/home/.config/mise"
 
 # --- lockfiles cover every pinned tool on every platform it runs on
 
-if python3 -c 'import tomllib' >/dev/null 2>&1; then
-    if python3 - "$root/global" >"$tmp/lock.out" 2>&1 <<'PY'
+lock_coverage() {
+    python3 - "$root/global" <<'PY'
 import pathlib, sys, tomllib
 root = pathlib.Path(sys.argv[1])
 all_platforms = {"linux-x64", "linux-arm64", "macos-arm64"}
@@ -174,10 +105,8 @@ for config in sorted(root.glob("config*.toml")):
     tools = tomllib.loads(config.read_text()).get("tools", {})
     locked = tomllib.loads(lock_path.read_text()).get("tools", {}) if lock_path.exists() else {}
     for name, spec in tools.items():
-        # A tool upstream does not build for every architecture in its os list
-        # names the platforms it publishes (age-plugin-fido2-hmac has no
-        # linux-arm64 binary); mise skips the rest and warns. `platforms` is
-        # this check's key, not mise's.
+        # `platforms` is this check's key, not mise's: a tool upstream does not
+        # build for every architecture in its os list names what it publishes.
         if isinstance(spec, dict) and "platforms" in spec:
             want = set(spec["platforms"])
         elif isinstance(spec, dict) and "os" in spec:
@@ -191,8 +120,7 @@ for config in sorted(root.glob("config*.toml")):
             continue
         have = {p.removeprefix("platforms.") for e in entries for p, v in e.items()
                 if p.startswith("platforms.") and isinstance(v, dict) and v.get("checksum")}
-        # mise records only the version for pipx tools; the uv lock beside the
-        # config pins the package and its dependencies by hash.
+        # mise records only the version for pipx tools; a uv lock pins them by hash.
         if name.startswith("pipx:"):
             uv_lock = root / "locks" / name.replace(":", "-") / pin / "uv.lock"
             text = uv_lock.read_text() if uv_lock.exists() else ""
@@ -204,142 +132,73 @@ for config in sorted(root.glob("config*.toml")):
 print("\n".join(missing))
 sys.exit(1 if missing else 0)
 PY
-    then
-        ok "the global lockfiles cover every pinned tool on its platforms"
-    else
-        no "the global lockfiles cover every pinned tool on its platforms"
-        sed 's/^/     /' "$tmp/lock.out" >&2
-    fi
-else
-    skip "lockfile coverage (python3 tomllib missing)"
-fi
+}
+$has_tomllib && assert "the global lockfiles cover every pinned tool on its platforms" lock_coverage
 
+# --- secrets and downloads
+
+# An sk- key file is a pointer, not a secret: it holds the FIDO2 credential id,
+# and the private scalar never leaves the token. ssh-keygen derives its public
+# half without a device, which no real private key allows.
 secret_pattern='BEGIN [A-Z ]*PRIVATE KEY|AGE-SECRET-KEY-[A-Z0-9]|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}'
-# An sk- private key file is a pointer, not a secret: it holds the FIDO2
-# credential id, the application string and the flags, and the private scalar
-# never exists off the token. ssh-keygen will derive its public half without a
-# device, which is what distinguishes it from a real key. Anything that fails
-# that test is still secret material.
-secret_hits=$(grep -rIlE "$secret_pattern" "$root/home" "$root/identity" "$root/desktop" \
-    "$root/work" "$root/maki" "$root/global" "$root/scripts" "$root/tests" \
-    "$root/.github" 2>/dev/null || true)
 offenders=''
-for hit in $secret_hits; do
-    probe=$tmp/sk-probe$$
-    if grep -q 'BEGIN OPENSSH PRIVATE' "$hit" \
-            && cp "$hit" "$probe" && chmod 600 "$probe" \
+for hit in $(grep -rIlE "$secret_pattern" "$root/home" "$root/identity" "$root/desktop" \
+        "$root/work" "$root/maki" "$root/global" "$root/scripts" "$root/tests" \
+        "$root/.github" 2>/dev/null); do
+    probe=$tmp/sk-probe
+    if grep -q 'BEGIN OPENSSH PRIVATE' "$hit" && cp "$hit" "$probe" && chmod 600 "$probe" \
             && ssh-keygen -y -f "$probe" 2>/dev/null | grep -q '^sk-ssh-ed25519@openssh.com '; then
-        rm -f "$probe"
         continue
     fi
-    rm -f "$probe"
     offenders="$offenders $hit"
 done
-if [ -n "$offenders" ]; then
-    no "secret material in a managed file:$offenders"
-else
-    ok "no secret material in managed files"
-fi
+expect "no secret material in managed files" "" "$offenders"
 
-if grep -E '^"~/.local/share/fish-plugins/' "$root/mise.toml" | grep -qvE 'ref = "[0-9a-f]{40}"( |,)'; then
-    no "every fish plugin repo is pinned to a full commit"
-else
-    ok "every fish plugin repo is pinned to a full commit"
-fi
-
-if grep -rE 'curl|wget' "$root/home/.config/fish" "$root/home/.config/shell" >/dev/null 2>&1; then
-    no "fish startup downloads at shell start"
-else
-    ok "no downloader in fish startup or the shared env"
-fi
+assert_not "every fish plugin repo is pinned to a full commit" sh -c \
+    "grep -E '^\"~/.local/share/fish-plugins/' '$root/mise.toml' | grep -vE 'ref = \"[0-9a-f]{40}\"( |,)'"
+assert_not "no downloader in fish startup or the shared env" \
+    grep -rnE 'curl|wget' "$root/home/.config/fish" "$root/home/.config/shell"
 
 # --- cross-file consistency
 
-if grep -rqE 'ghq' "$root/global" "$root/scripts" "$root/identity" "$root/home/.config" \
-        "$root/work" "$root/desktop" "$root/mise.toml" "$root"/mise.*.toml 2>/dev/null; then
-    no "nothing pins, calls, or configures ghq; git get replaced it"
-    grep -rnE 'ghq' "$root/global" "$root/scripts" "$root/identity" "$root/home/.config" \
-        "$root/work" "$root/desktop" "$root/mise.toml" "$root"/mise.*.toml 2>/dev/null | sed 's/^/     /' >&2
-else
-    ok "nothing pins, calls, or configures ghq; git get replaced it"
-fi
-
 var_root=$(sed -n 's|^repos_root = "\(/[^"]*\)"$|\1|p' "$root/mise.identity.toml" | head -1)
-boot_root=$(sed -n 's|^ROOT=${BOOTSTRAP_ROOT:-\(/[^}]*\)}$|\1|p' \
-    "$root/scripts/bootstrap.sh" | head -1)
+boot_root=$(sed -n 's|^ROOT=${BOOTSTRAP_ROOT:-\(/[^}]*\)}$|\1|p' "$root/scripts/bootstrap.sh" | head -1)
 link_root=$(sed -n 's|^checkout=${DOTFILES_CHECKOUT:-\(/srv/git\)/.*|\1|p' \
     "$root/scripts/link-dotfiles-checkout.sh" | head -1)
-if [ -n "$var_root" ] && [ "$var_root" = "$boot_root" ] && [ "$var_root" = "$link_root" ]; then
-    ok "the checkout root matches in repos_root, bootstrap, and the link script"
-else
-    no "repos_root in mise.identity.toml, bootstrap.sh's ROOT, and link-dotfiles-checkout.sh must match"
-fi
+assert "the checkout root matches in repos_root, bootstrap, and the link script" \
+    test -n "$var_root" -a "$var_root" = "$boot_root" -a "$var_root" = "$link_root"
 
-if grep -qF "git clone --bare -c remote.origin.fetch=" "$root/scripts/bootstrap.sh" \
-        && grep -qF "git clone --bare -c remote.origin.fetch=" "$root/identity/.config/git/machine.inc.tera" \
-        && ! grep -q '{{ vars.repos_root }}' "$root/work/.config/git/machine.inc.tera"; then
-    ok "bootstrap and git get make the same clean-bare clone, on personal machines only"
-else
-    no "bootstrap.sh and the identity git get alias must both clone bare with the fetch refspec"
-fi
+assert "bootstrap and git get make the same clean-bare clone, on personal machines only" sh -c \
+    "grep -qF 'git clone --bare -c remote.origin.fetch=' '$root/scripts/bootstrap.sh' \
+        && grep -qF 'git clone --bare -c remote.origin.fetch=' '$root/identity/.config/git/machine.inc.tera' \
+        && ! grep -q '{{ vars.repos_root }}' '$root/work/.config/git/machine.inc.tera'"
 
-if [ ! -e "$root/home/.local/bin/repos" ] && [ ! -e "$root/home/.local/bin/worktrees" ]; then
-    ok "the checkout and worktree wrappers are gone"
-else
-    no "home/.local/bin must not carry repos or worktrees"
-fi
-
-agent_docs_ok=true
 for doc in "$root/home/.claude/CLAUDE.md" "$root/home/.config/maki/AGENTS.md"; do
-    grep -qF '`git get <owner/repo>`' "$doc" || agent_docs_ok=false
-    ! grep -qE 'ghq|clone-checkout' "$doc" || agent_docs_ok=false
+    assert "$(rel "$doc") tells agents to clone with git get" grep -qF '`git get <owner/repo>`' "$doc"
 done
-if $agent_docs_ok; then
-    ok "agents are told to clone with git get, and never about ghq"
-else
-    no "CLAUDE.md and maki's AGENTS.md must describe git get and must not mention ghq or clone-checkout"
-fi
 
-if grep -q 'SDLC_REPO=smores56/sdlc' "$root/home/.config/shell/env.sh" \
-        && grep -q 'SDLC_REPO=smohr-blitzy/sdlc' "$root/work/.config/shell/env.d/work.sh"; then
-    ok "the SDLC registry follows the machine's GitHub account"
-else
-    no "personal and work SDLC registries must be hardcoded"
-fi
+assert "the personal SDLC registry is hardcoded" \
+    grep -q 'SDLC_REPO=smores56/sdlc' "$root/home/.config/shell/env.sh"
+assert "the work SDLC registry is hardcoded" \
+    grep -q 'SDLC_REPO=smohr-blitzy/sdlc' "$root/work/.config/shell/env.d/work.sh"
 
-# The Access token has one producer and one consumer; a rename on either side
-# would silently leave the wrapper without a credential.
-if grep -q 'cloudflare/access.env' "$root/scripts/secrets.sh" \
-        && grep -q 'cloudflare/access.env' "$root/home/.local/bin/smortress-ssh" \
-        && grep -q 'CLOUDFLARE_ACCESS_CLIENT_SECRET' "$root/scripts/secrets.sh" \
-        && grep -q 'CLOUDFLARE_ACCESS_CLIENT_SECRET' "$root/home/.local/bin/smortress-ssh"; then
-    ok "secrets.sh delivers the Access token where smortress-ssh reads it"
-else
-    no "secrets.sh and smortress-ssh must agree on the Access token file and names"
-fi
+# One producer and one consumer: a rename on either side leaves the wrapper
+# without a credential.
+for side in "$root/scripts/secrets.sh" "$root/home/.local/bin/smortress-ssh"; do
+    assert "$(rel "$side") names the Access token file and secret" sh -c \
+        "grep -q 'cloudflare/access.env' '$side' && grep -q CLOUDFLARE_ACCESS_CLIENT_SECRET '$side'"
+done
 
 # --- Maki guards
 
-require() {  # require <desc> <path> <fixed-string>
-    local desc=$1 path=$2 want=$3
-    if grep -qF -- "$want" "$path" 2>/dev/null; then
-        ok "$desc"
-    else
-        no "$desc"
-    fi
-}
-
-require "the TinyFish guard runs on every tool call" \
-    "$root/home/.config/maki/init.lua" 'set_slot("tool.*.input"'
-require "the TinyFish guard allows only search" \
-    "$root/home/.config/maki/init.lua" 'ctx.tool ~= "tinyfish__search"'
-
-if grep -qF 'TINYFISH_API_KEY=$tinyfish exec "$bin"' "$root/home/.local/bin/maki" 2>/dev/null \
-        && ! grep -rlE '^\s*export (NEURALWATT|TINYFISH)_API_KEY' "$root/home" >/dev/null 2>&1; then
-    ok "provider keys reach only the maki process, never an export"
-else
-    no "provider keys must be passed by the ~/.local/bin/maki wrapper only, never exported"
-fi
+assert "the TinyFish guard runs on every tool call" \
+    grep -qF 'set_slot("tool.*.input"' "$root/home/.config/maki/init.lua"
+assert "the TinyFish guard allows only search" \
+    grep -qF 'ctx.tool ~= "tinyfish__search"' "$root/home/.config/maki/init.lua"
+assert "the maki wrapper hands the keys to the maki process" \
+    grep -qF 'TINYFISH_API_KEY=$tinyfish exec "$bin"' "$root/home/.local/bin/maki"
+assert_not "no file exports a provider key" \
+    grep -rnE '^\s*export (NEURALWATT|TINYFISH)_API_KEY' "$root/home"
 
 # --- helix: every configured language server is a pinned tool
 
@@ -354,118 +213,38 @@ for server in $helix_servers; do
         marksman) pkg='aqua:artempyanykh/marksman' ;;
         markdown-oxide) pkg='github:Feel-ix-343/markdown-oxide' ;;
         basedpyright) pkg='pipx:basedpyright' ;;
-        *)
-            helix_missing="$helix_missing $server(no pin)"
-            continue ;;
+        *) helix_missing="$helix_missing $server(no pin)"; continue ;;
     esac
-    grep -qF "\"$pkg\" = " "$root/global/config.toml" \
-        || helix_missing="$helix_missing $server($pkg)"
+    grep -qF "\"$pkg\" = " "$root/global/config.toml" || helix_missing="$helix_missing $server($pkg)"
 done
 for server in $(grep -E '^language-servers' "$helix_languages" \
         | sed -E 's/.*\[//; s/\].*//; s/[" ]//g' | tr ',' '\n'); do
-    printf '%s\n' "$helix_servers" | grep -qx "$server" \
-        || helix_missing="$helix_missing $server(undefined)"
+    printf '%s\n' "$helix_servers" | grep -qx "$server" || helix_missing="$helix_missing $server(undefined)"
 done
-if [ -z "$helix_missing" ]; then
-    ok "every Helix language server is defined and pinned in global/config.toml"
-else
-    no "Helix references a language server that is not installed:$helix_missing"
-fi
+expect "every Helix language server is defined and pinned in global/config.toml" "" "$helix_missing"
 
-# --- behavioral tests
+# --- behavioural tests
 
-if command -v git >/dev/null 2>&1 && command -v bash >/dev/null 2>&1; then
-    if bash "$root/tests/bootstrap-test.sh" >"$tmp/bootstrap.log" 2>&1; then
-        if grep -q '^skip bootstrap tests' "$tmp/bootstrap.log"; then
-            skip "behavioral tests (tests/bootstrap-test.sh: mise not installed)"
+if has git && has bash; then
+    for test_script in "$root"/tests/*-test.sh; do
+        name=$(rel "$test_script")
+        if bash "$test_script" >"$tmp/test.log" 2>&1; then
+            if grep -q '^skip all' "$tmp/test.log"; then
+                skip "behavioral tests ($name: $(sed -n 's/^skip all (\(.*\))$/\1/p' "$tmp/test.log"))"
+            else
+                ok "behavioral tests ($name)"
+            fi
         else
-            ok "behavioral tests (tests/bootstrap-test.sh)"
+            no "behavioral tests ($name)"
+            indent <"$tmp/test.log"
         fi
-    else
-        no "behavioral tests (tests/bootstrap-test.sh)"
-        sed 's/^/     /' "$tmp/bootstrap.log" >&2
-    fi
-    if bash "$root/tests/bootstrap-script-test.sh" >"$tmp/bootstrap-script.log" 2>&1; then
-        ok "behavioral tests (tests/bootstrap-script-test.sh)"
-    else
-        no "behavioral tests (tests/bootstrap-script-test.sh)"
-        sed 's/^/     /' "$tmp/bootstrap-script.log" >&2
-    fi
-    if bash "$root/tests/maki-test.sh" >"$tmp/maki.log" 2>&1; then
-        ok "behavioral tests (tests/maki-test.sh)"
-    else
-        no "behavioral tests (tests/maki-test.sh)"
-        sed 's/^/     /' "$tmp/maki.log" >&2
-    fi
-    if bash "$root/tests/git-get-test.sh" >"$tmp/git-get.log" 2>&1; then
-        if grep -q '^skip git get tests' "$tmp/git-get.log"; then
-            skip "behavioral tests (tests/git-get-test.sh: mise not installed)"
-        else
-            ok "behavioral tests (tests/git-get-test.sh)"
-        fi
-    else
-        no "behavioral tests (tests/git-get-test.sh)"
-        sed 's/^/     /' "$tmp/git-get.log" >&2
-    fi
-    if bash "$root/tests/dotfiles-layout-test.sh" >"$tmp/layout.log" 2>&1; then
-        ok "behavioral tests (tests/dotfiles-layout-test.sh)"
-    else
-        no "behavioral tests (tests/dotfiles-layout-test.sh)"
-        sed 's/^/     /' "$tmp/layout.log" >&2
-    fi
-    if bash "$root/tests/fish-test.sh" >"$tmp/fish.log" 2>&1; then
-        if grep -q '^skip fish tests' "$tmp/fish.log"; then
-            skip "behavioral tests (tests/fish-test.sh: mise or fish not installed)"
-        else
-            ok "behavioral tests (tests/fish-test.sh)"
-        fi
-    else
-        no "behavioral tests (tests/fish-test.sh)"
-        sed 's/^/     /' "$tmp/fish.log" >&2
-    fi
-
-    if bash "$root/tests/wallpapers-test.sh" >"$tmp/wallpapers.log" 2>&1; then
-        ok "behavioral tests (tests/wallpapers-test.sh)"
-    else
-        no "behavioral tests (tests/wallpapers-test.sh)"
-        sed 's/^/     /' "$tmp/wallpapers.log" >&2
-    fi
-    if bash "$root/tests/smortress-ssh-test.sh" >"$tmp/smortress-ssh.log" 2>&1; then
-        ok "behavioral tests (tests/smortress-ssh-test.sh)"
-    else
-        no "behavioral tests (tests/smortress-ssh-test.sh)"
-        sed 's/^/     /' "$tmp/smortress-ssh.log" >&2
-    fi
-    if bash "$root/tests/sops-age-key-test.sh" >"$tmp/sops-age-key.log" 2>&1; then
-        ok "behavioral tests (tests/sops-age-key-test.sh)"
-    else
-        no "behavioral tests (tests/sops-age-key-test.sh)"
-        sed 's/^/     /' "$tmp/sops-age-key.log" >&2
-    fi
-    if bash "$root/tests/detect-envs-test.sh" >"$tmp/detect-envs.log" 2>&1; then
-        ok "behavioral tests (tests/detect-envs-test.sh)"
-    else
-        no "behavioral tests (tests/detect-envs-test.sh)"
-        sed 's/^/     /' "$tmp/detect-envs.log" >&2
-    fi
-    if bash "$root/tests/secrets-test.sh" >"$tmp/secrets.log" 2>&1; then
-        ok "behavioral tests (tests/secrets-test.sh)"
-    else
-        no "behavioral tests (tests/secrets-test.sh)"
-        sed 's/^/     /' "$tmp/secrets.log" >&2
-    fi
+    done
 else
     skip "behavioral tests (git or bash not installed)"
 fi
 
-if command -v python3 >/dev/null 2>&1; then
-    if PYTHONPATH="$root/sdlc" python3 -m unittest discover -s "$root/sdlc/tests" \
-            >"$tmp/sdlc.log" 2>&1; then
-        ok "sdlc unit tests"
-    else
-        no "sdlc unit tests"
-        sed 's/^/     /' "$tmp/sdlc.log" >&2
-    fi
+if has python3; then
+    assert "sdlc unit tests" python3 -m unittest discover -s "$root/sdlc/tests"
 else
     skip "sdlc unit tests (python3 not installed)"
 fi
@@ -473,34 +252,15 @@ fi
 # --- optional shellcheck
 
 if $use_shellcheck; then
-    if command -v shellcheck >/dev/null 2>&1; then
-        for script in "$root"/home/.local/bin/* "$root"/work/.local/bin/* "$root"/desktop/.local/bin/*; do
-            [ -f "$script" ] || continue
-            case $(head -n 1 "$script") in
-                *python*) continue ;;
-            esac
-            # SC3043: `local` is not POSIX, but every real /bin/sh implements it.
-            if shellcheck -s sh -S warning -e SC3043 "$script" >"$tmp/out" 2>&1; then
-                ok "shellcheck $(rel "$script")"
-            else
-                no "shellcheck $(rel "$script")"
-                sed 's/^/     /' "$tmp/out" >&2
-            fi
-        done
-        for script in "$root"/scripts/*.sh "$root"/tests/*.sh; do
-            [ -f "$script" ] || continue
-            # The shebang picks the dialect; SC3043 as above for the sh ones.
-            if shellcheck -S warning -e SC3043 "$script" >"$tmp/out" 2>&1; then
-                ok "shellcheck $(rel "$script")"
-            else
-                no "shellcheck $(rel "$script")"
-                sed 's/^/     /' "$tmp/out" >&2
-            fi
-        done
+    if has shellcheck; then
+        # SC3043: `local` is not POSIX, but every real /bin/sh implements it.
+        while read -r dialect script; do
+            assert "shellcheck $(rel "$script")" \
+                sh -c 'cd "$1" && shellcheck -x -s "$2" -S warning -e SC3043 "$3"' sh "$root" "$dialect" "$script"
+        done <"$tmp/scripts"
     else
         skip "shellcheck (not installed)"
     fi
 fi
 
-printf '\n%d checks, %d failed\n' "$checks" "$fails"
-[ "$fails" -eq 0 ]
+finish

@@ -1,27 +1,20 @@
 #!/usr/bin/env bash
-# install-maki.sh: install the pinned Maki release into ~/.local/libexec.
-#
-# The binary stays off PATH: ~/.local/bin/maki is the dotfiles wrapper that
-# hands it the provider keys.
-#
-# The version, target, and sha256 live in maki/pin.env. The script downloads
-# the release tarball, verifies it against both the embedded pin and the
-# release's published sha256sums.txt, and only then installs the binary. Any
-# mismatch, missing checksum, or unsupported platform aborts without touching
-# the destination.
-#
-# usage: install-maki.sh [--prefix DIR] [--dry-run]
+# Install the Maki release pinned in maki/pin.env into ~/.local/libexec, off
+# PATH, behind the ~/.local/bin/maki key wrapper. The tarball must match both
+# the pin and the release's sha256sums.txt, or nothing is installed.
 set -euo pipefail
 
 repo=$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-prefix=${HOME:-}
+prefix=${HOME:+$HOME/.local}
 dry_run=false
+
+fail() { printf 'install-maki: %s\n' "$*" >&2; exit 1; }
 
 usage() {
     cat <<'EOF'
 usage: install-maki.sh [--prefix DIR] [--dry-run]
 
-  --prefix DIR  install into DIR/.local/libexec (default: $HOME)
+  --prefix DIR  install into DIR/libexec (default: ~/.local)
   --dry-run     print the download URL and checksum; write nothing
 EOF
 }
@@ -51,18 +44,14 @@ done
 
 case $(uname -s)-$(uname -m) in
     Linux-x86_64) ;;
-    *)
-        printf 'install-maki: no pinned build for %s-%s; only linux-x86_64 is pinned (%s)\n' \
-            "$(uname -s)" "$(uname -m)" "$MAKI_TARGET" >&2
-        exit 1 ;;
+    *) fail "no pinned build for $(uname -s)-$(uname -m); only linux-x86_64 is pinned ($MAKI_TARGET)" ;;
 esac
 
 asset="maki-${MAKI_VERSION}-${MAKI_TARGET}.tar.gz"
 base="https://github.com/${MAKI_REPO}/releases/download/${MAKI_VERSION}"
 url="${base}/${asset}"
 sums_url="${base}/sha256sums.txt"
-dest=$prefix/.local/libexec/maki
-legacy=$prefix/.local/bin/maki
+dest=$prefix/libexec/maki
 
 if $dry_run; then
     printf 'would download %s\n' "$url"
@@ -71,13 +60,8 @@ if $dry_run; then
     exit 0
 fi
 
-work=$(mktemp -d) || { printf 'install-maki: cannot create a temporary directory\n' >&2; exit 1; }
+work=$(mktemp -d) || fail "cannot create a temporary directory"
 trap 'rm -rf "$work"' EXIT HUP INT TERM
-
-fail() {
-    printf 'install-maki: %s\n' "$*" >&2
-    exit 1
-}
 
 curl -fL --proto '=https' --tlsv1.2 -o "$work/$asset" "$url" \
     || fail "could not download $url"
@@ -98,14 +82,7 @@ tar -xzf "$work/$asset" -C "$work" || fail "could not extract $asset"
 binary=$(find "$work" -type f -name maki -perm -u+x | head -n 1)
 [ -n "$binary" ] || fail "$asset contains no maki executable"
 
-mkdir -p "$prefix/.local/libexec"
+mkdir -p "$prefix/libexec"
 install -m 0755 "$binary" "$dest.tmp"
 mv -- "$dest.tmp" "$dest"
 printf 'installed maki %s at %s\n' "$MAKI_VERSION" "$dest"
-
-# Older installs put the binary where the wrapper's link now goes, and mise
-# refuses to replace a real file. Only a regular file is ours to remove.
-if [ -f "$legacy" ] && [ ! -L "$legacy" ]; then
-    rm -f -- "$legacy"
-    printf 'removed the old binary at %s; `mise -C ~/.dotfiles dot apply` links the wrapper there\n' "$legacy"
-fi

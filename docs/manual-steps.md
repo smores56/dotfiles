@@ -1,123 +1,58 @@
 # Operator steps
 
-Everything here needs a human at the keyboard: a disk wipe, a root package
-layer, a reboot, or a secret. Run the steps in order. Commands are exact; paths
-are the ones this repository installs.
+Steps that need a human: a disk wipe, a reboot, a secret, or a physical key.
+Run them in order.
 
 ## 1. Before wiping the old disk
 
-The FIDO2 credential handles live on the old machine. Back them up first; after
-the wipe they are unrecoverable.
+The FIDO2 credential handles live on the old machine and are unrecoverable
+after the wipe. Back them up, copy the printed directory to external media, and
+confirm it is there:
 
 ```sh
 cd /srv/git/github.com/smores56/nix-config
 nix run .#key-backup
-```
-
-The command prints the directory it wrote. Copy that directory to external
-media and confirm it is there before continuing:
-
-```sh
 ls -la <printed-directory>
 ```
 
-Also copy the SSH material off the machine, because it is created by hand and
-is not in this repository:
+Copy the hand-made SSH material and the sops age identity:
 
 ```sh
-install -d /media/<usb>/ssh-backup
+install -d /media/<usb>/ssh-backup /media/<usb>/sops-backup
 cp -a ~/.ssh/. /media/<usb>/ssh-backup/
+cp -a ~/.config/sops/. /media/<usb>/sops-backup/
+ls -la /media/<usb>/ssh-backup/id_ed25519 /media/<usb>/sops-backup/keys.age
 ```
 
-Verify the copy before wiping:
-
-```sh
-ls -la /media/<usb>/ssh-backup/id_ed25519
-```
-
-Nothing else secret is copied from this machine:
-
-- The provider API keys (`NEURALWATT_API_KEY`, `TINYFISH_API_KEY`) are fetched
-  from Bitwarden in step 6. There is no `~/.config/secrets.env` on this machine
-  to copy: the keys have been read out of sops.
-- The sops age identity is required for the Maki provider keys as well as any
-  remaining sops-consuming repository, so always back it up:
-
-  ```sh
-  install -d /media/<usb>/sops-backup
-  cp -a ~/.config/sops/. /media/<usb>/sops-backup/
-  ```
+The provider API keys come from Bitwarden in step 6; nothing else is copied.
 
 ## 2. Install Fedora atomic, then the smorespro image
-
-Write an official Fedora atomic desktop ISO to a USB stick, boot it, and run
-the stock installer:
 
 ```sh
 sudo dd if=<fedora-cosmic-atomic.iso> of=/dev/sdX bs=4M status=progress oflag=sync
 ```
 
-In the installer:
+In the installer, enable LUKS encryption for the root filesystem, create the
+user `smores`, keep the default layout, and reboot. Add no repositories or
+packages. Then switch to the image with
+[smorespro-image/docs/switch.md](https://github.com/smores56/smorespro-image/blob/main/docs/switch.md);
+it brings every host package.
 
-1. Choose the disk and enable **encryption** (LUKS) for the root filesystem.
-   The laptop's root must be encrypted; there is no separate encrypted-home
-   step in this repository.
-2. Create the user `smores` and set the password.
-3. Use the default filesystem layout and finish the install.
-4. Reboot into the installed system and unlock the disk.
-
-Do not add third-party repositories or layer packages during the install. The
-image itself bakes in the one third-party repository this machine needs, Brave's
-own RPM repository, for `brave-origin`; kitty, Dolphin, ImageMagick and jq come
-from Fedora.
-
-Then switch the host to the image this repository runs, following
-[smorespro-image/docs/switch.md](https://github.com/smores56/smorespro-image/blob/main/docs/switch.md).
-That switch is what brings niri, Noctalia, kitty, Dolphin, Brave Origin and the
-other host packages; nothing is ever added with `rpm-ostree install`.
-
-## 3. First login: base tools and the checkout
-
-Open a terminal. The stock image ships `git`, `curl`, and `flatpak`. Restore
-the SSH material from step 1 first; the clone below authenticates with it:
+## 3. First login: restore keys and bootstrap
 
 ```sh
-install -d -m 700 ~/.ssh
+install -d -m 700 ~/.ssh ~/.config/sops
 cp -a /media/<usb>/ssh-backup/. ~/.ssh/
 chmod 600 ~/.ssh/id_ed25519
-```
-
-Before bootstrapping, restore the sops identity so the task can decrypt the
-provider keys:
-
-```sh
-install -d -m 700 ~/.config/sops
 install -m 600 /media/<usb>/sops-backup/keys.age ~/.config/sops/keys.age
-```
-
-Run the one-command bootstrap. It takes one sudo prompt to create `/srv/git`,
-installs mise, clones the dotfiles clean-bare (the layout `git get` makes), adds the
-`main` worktree, links `~/.dotfiles`, and runs the checkout's
-`scripts/install-mise.sh`:
-
-```sh
 curl -fsSL https://bootstrap.sammohr.dev | sh
 ```
 
-`bootstrap.sammohr.dev` is a Cloudflare redirect to `scripts/bootstrap.sh` on
-`main`. The hostname needs an Access bypass scoped to it alone before the
-command works, because the rest of the domain sits behind Access; that endpoint
-and the GitHub account are the trust boundary for a fresh machine.
-
-It infers `desktop,identity` here (`DOTFILES_ENVS` overrides it) and runs
-`mise bootstrap`; the [README](../README.md#bootstrap) covers what that applies.
-
 ## 3b. Migrating a machine still on a normal clone
 
-Only a machine that already carries the old `~/.dotfiles` clone needs this.
-Commit or stash first, then run as your user. The old layout also left
-`/srv/git/github.com/smores56/dotfiles` as a symlink to `~/.dotfiles`; it must go
-first, or the bare clone below has nowhere to land:
+Only a machine whose `~/.dotfiles` is a real directory needs this. Commit or
+stash first. Clone from GitHub, not from `~/.dotfiles`, so `origin` does not
+point at the directory about to be deleted:
 
 ```sh
 repo=/srv/git/github.com/smores56/dotfiles
@@ -131,38 +66,23 @@ git -C "$repo/main" branch --set-upstream-to=origin/main
 ln -s "$repo/main" ~/.dotfiles
 ```
 
-Cloning from the GitHub URL, not from the local checkout, is what leaves
-`origin` pointing at GitHub; a bare clone of `~/.dotfiles` would leave it
-pointing at the directory that is about to be deleted.
-
-A bare clone also carries only tracked files, and the machine set lives in an
-ignored local file (`global/miserc.local.toml`, written by `--save-env` in the
-old checkout). Restore it first, or the apply below runs only the base
-environment: `machine.inc` keeps its old content, `git get` is never defined, and
-the new tools stay uninstalled.
+Restore the ignored machine set, or the apply runs only the base environment.
+Apply twice (the first apply after the move can prune links without recreating
+them); the diff must end with `all files are applied` and `all edits are
+applied`:
 
 ```sh
 cp ~/.dotfiles.old/global/miserc.local.toml ~/.config/mise/miserc.local.toml
 mise -C ~/.dotfiles install
 mise -C ~/.dotfiles dot apply --prune
-```
-
-Run the apply twice: the first one after the move can prune the old links
-without recreating them, and the second converges. Use the diff as the gate —
-it must end with `all files are applied` and `all edits are applied`:
-
-```sh
 mise -C ~/.dotfiles dot apply --yes --prune
 mise -C ~/.dotfiles dot diff
+mise -C ~/.dotfiles ls --missing   # empty
+git config alias.get               # no --global: that ignores includes
 ```
 
-`mise -C ~/.dotfiles ls --missing` should be empty and `git config alias.get`
-(no `--global`, which ignores includes) should print the alias, cloning under
-`/srv/git`. Then remove `~/.dotfiles.old`.
-
-Other repositories were also left as normal clones by the old `repos get`.
-`git get` refuses an existing path, so remove each old checkout first (commit
-anything you need), then clone it again:
+Then remove `~/.dotfiles.old`. `git get` refuses an existing path, so re-clone
+other old normal clones:
 
 ```sh
 rm -rf /srv/git/github.com/<owner>/<repo>
@@ -171,86 +91,39 @@ git get <owner>/<repo>
 
 ## 4. Tailscale
 
-Tailscale ships in the image and `tailscaled` is enabled, so there is no host
-layer to add and no reboot:
-
 ```sh
 sudo tailscale up
-```
-
-Authenticate in the browser window Tailscale opens. Confirm the node:
-
-```sh
 tailscale status
 ```
 
-Enable HTTPS certificates for the tailnet in the admin console's DNS page:
-step 10 serves the wallpaper tree over them. Tailscale SSH stays off; SSH to
-smortress is the Cloudflare Access route in step 7a.
+Enable HTTPS certificates and MagicDNS in the admin console's DNS page; step 9
+needs them. Tailscale SSH stays off.
 
-## 5. Maki and sdlc
+## 5. Maki
 
 ```sh
-cd ~/.dotfiles
-scripts/install-maki.sh
+~/.dotfiles/scripts/install-maki.sh
 maki --version
 ```
 
-The binary goes to `~/.local/libexec/maki`, off PATH; `~/.local/bin/maki` is
-the dotfiles wrapper that hands it the provider keys. On a machine that still
-has a binary at `~/.local/bin/maki` from before, the installer removes it, and
-`mise -C ~/.dotfiles dot apply` then links the wrapper there.
+## 6. Agent keys and GitHub tokens
 
-The Maki installer verifies the downloaded tarball against `maki/pin.env` and
-the release's published `sha256sums.txt`. A mismatch aborts and installs
-nothing. An update is a pin bump in `maki/pin.env` followed by a re-run; never
-copy a release into `~/.local/libexec` by hand.
-
-`sdlc` is `sdlc/sdlc_issues.py` in this checkout, linked to `~/.local/bin/sdlc`
-by the base environment. There is no private clone or install step: update
-the source in the repository and re-apply the dotfiles. `sdlc list` calls `gh`,
-so it starts working after step 6 authenticates the personal PAT.
-
-## 6. Agent keys and personal token
-
-The local agent's provider keys and the GitHub tokens live encrypted in
-`sops.yaml`. The bootstrap task decrypts that file once into
-`~/.config/secrets.env` (mode 600) when the admin age identity is present and
-the ciphertext changed; the `~/.local/bin/maki` wrapper reads only that cache.
-The machine's GitHub token goes to `~/.config/github-token` (mode 600), which
-the shared env (`~/.config/shell/env.sh`) exports as `GH_TOKEN` for `gh`, git,
-and the `sdlc` CLI.
-
-Verify without printing a key:
-
-```sh
-test -s ~/.config/secrets.env && echo keys-present
-test "$(stat -c %a ~/.config/secrets.env)" = 600 && echo secrets-mode-ok
-head -1 "$(command -v maki)" | grep -q '^#!/bin/sh' && echo maki-wrapper-ok
-test "$(stat -c %a ~/.config/github-token)" = 600 && echo token-mode-ok
-gh auth status
-sdlc list
-```
-
-The committed `sops.yaml` holds the encrypted values; edit it in place with
-`sops`, using the passphrase-wrapped admin identity:
+Edit the ciphertext with the admin identity, then commit it and re-run the
+bootstrap task:
 
 ```sh
 cd ~/.dotfiles
 sops sops.yaml
 ```
 
-Set `NEURALWATT_API_KEY` and `TINYFISH_API_KEY` from the named Bitwarden login
-items. Set `GITHUB_PERSONAL_PAT` to a token with Contents read/write on your
-repositories and Issues read/write on `smores56/sdlc`: without it, personal
-machines have no git or `gh` access to GitHub. Set `GITHUB_WORK_PAT` to the
-`smohr-blitzy` classic token with `repo` scope (lifetime at most 366 days,
-which the Blitzy enterprise requires); only machines in the `work`
-environment use it. The Cloudflare pair is step 6a. Save, commit the new
-ciphertext, and run the bootstrap task again.
+| Key | Value |
+| --- | --- |
+| `NEURALWATT_API_KEY`, `TINYFISH_API_KEY` | the named Bitwarden login items |
+| `GITHUB_PERSONAL_PAT` | Contents read/write on your repositories, Issues read/write on `smores56/sdlc` |
+| `GITHUB_WORK_PAT` | the `smohr-blitzy` classic token, `repo` scope, lifetime at most 366 days (Blitzy enterprise rule) |
+| `CLOUDFLARE_ACCESS_*` | step 6a |
 
-The desktop Flatpak ships the `bw` CLI if you prefer to read the values from
-Bitwarden in a terminal:
+To read the Bitwarden values in a terminal:
 
 ```sh
 bw() { flatpak run --command=bw com.bitwarden.desktop "$@"; }
@@ -262,228 +135,112 @@ bw get password <tinyfish-item>
 unset BW_SESSION
 ```
 
-`<neuralwatt-item>` and `<tinyfish-item>` are the Bitwarden login item names.
-Never commit the plaintext values; `sops` re-encrypts on save.
+Verify without printing a key:
+
+```sh
+test "$(stat -c %a ~/.config/maki/secrets.env)" = 600 && echo secrets-ok
+test "$(stat -c %a ~/.config/gh/token)" = 600 && echo token-ok
+head -1 "$(command -v maki)" | grep -q '^#!/bin/sh' && echo maki-wrapper-ok
+gh auth status
+sdlc list
+```
 
 ## 6a. The Cloudflare Access service token
 
-SSH to smortress goes through Cloudflare Access, so every client machine needs
-one Access service token. Create it once in the Zero Trust dashboard under
-**Access → Service Auth**, restricted to the SSH application (a token that
-reaches the other applications is one leak away from the assistant's memory and
-the backup reader), with a one-year lifetime; rotate it whenever a machine
-leaves your control.
-
-Put both halves in `sops.yaml` like any other cross-machine secret:
-
-```sh
-cd ~/.dotfiles
-sops sops.yaml
-```
-
-- `CLOUDFLARE_ACCESS_CLIENT_ID` is the token's Client ID.
-- `CLOUDFLARE_ACCESS_CLIENT_SECRET` is the token's Client Secret.
-
-Save, commit the ciphertext, and re-run the delivery:
+Create one service token in Zero Trust under **Access → Service Auth**,
+restricted to the SSH application, with a one-year lifetime; rotate it whenever
+a machine leaves your control. In `sops sops.yaml`, set
+`CLOUDFLARE_ACCESS_CLIENT_ID` and `CLOUDFLARE_ACCESS_CLIENT_SECRET`, commit,
+and deliver:
 
 ```sh
 sh ~/.dotfiles/scripts/secrets.sh
+test "$(stat -c %a ~/.config/cloudflare/access.env)" = 600 && echo access-ok
+ssh smortress true && echo tunnel-ok
 ```
 
-The task writes `~/.config/cloudflare/access.env` (mode 600) and keeps the pair
-out of `~/.config/secrets.env`, so nothing that reads the Maki cache holds it.
-Only `~/.local/bin/smortress-ssh` reads the file, and only into cloudflared's
-environment. Verify without printing the secret:
-
-```sh
-test -s ~/.config/cloudflare/access.env && echo access-token-present
-test "$(stat -c %a ~/.config/cloudflare/access.env)" = 600 && echo access-mode-ok
-grep -c . ~/.config/cloudflare/access.env   # 2 lines, no values printed
-ssh smortress true && echo tunnel-ssh-with-token-ok
-```
-
-A machine without the file refuses the route and names it: there is no browser
-login fallback, because the route is meant to work from a systemd unit or a GUI
-launch, where no browser prompt can be answered.
+There is no browser-login fallback: the route must work from systemd units and
+GUI launches.
 
 ## 6b. The YubiKey age recipient
 
-`sops.yaml` is encrypted to the admin identity and, once enrolled, to the
-YubiKey beside it. `sops-age-key` prefers the YubiKey handle and does not fall
-back, so the admin key stays as loss insurance: it is read only when the handle
-file is absent. The recipient cannot be generated here: it
-is derived from the token's hmac-secret, so this step needs the physical key.
-
-The plugin installs as a mise tool (`github:olastor/age-plugin-fido2-hmac` in
-`global/config.toml`, so `mise bootstrap` provides it). It links `libfido2`:
-Fedora's image must ship `libfido2`, and the Mac needs `brew install libfido2`.
-
-Generate the recipient and its handle with the token attached:
+The YubiKey recipient is enrolled in `.sops.yaml`. On a new machine, or after a
+token reset (which erases the credential, the LUKS keyslot, the resident SSH
+handle and the `pam_u2f` mapping), regenerate the handle with the token
+attached. It needs `libfido2` (in the Fedora image; `brew install libfido2` on
+the Mac). Answer **yes** to "separate identity":
 
 ```sh
 age-plugin-fido2-hmac -g | tee /tmp/yubikey-age.txt
-```
-
-It asks for the token's FIDO2 PIN, then for a touch, and prints a comment line
-with the public key plus the `AGE-PLUGIN-FIDO2-HMAC-1...` identity. Answer
-**yes** to "separate identity" so the recipient is a plain age key. Keep the
-output as the identity file, readable only by you, and delete the copy:
-
-```sh
 install -d -m 700 ~/.config/sops
 install -m 600 /tmp/yubikey-age.txt ~/.config/sops/fido2-identity.txt
 shred -u /tmp/yubikey-age.txt
 grep '^# public key:' ~/.config/sops/fido2-identity.txt   # the recipient
 ```
 
-`~/.local/bin/sops-age-key` hands that file to `sops` whenever it exists, so no
-passphrase is asked for; deleting the file is the documented fallback to the
-admin identity.
-
-Paste the printed `age1...` into `.sops.yaml`, uncommenting both lines:
-
-```yaml
-  # - &yubikey age1...
-      - age:
-          - *admin
-          # - *yubikey
-```
-
-Then re-encrypt the data key to the new recipient and prove each identity on its
-own. `sops-age-key` prefers the YubiKey handle whenever that file is readable and
-never falls back, so the admin key can only be proven with the handle moved
-aside; keep it inside `~/.config/sops` (mode 700), never in a shared directory
-like `/tmp`:
+After a reset, replace the `&yubikey` recipient in `.sops.yaml`, re-encrypt,
+and prove each identity alone. `sops-age-key` uses the handle whenever it is
+readable, so move it aside (inside `~/.config/sops`, never `/tmp`) to test the
+admin key, and always move it back:
 
 ```sh
 cd ~/.dotfiles
 sops updatekeys sops.yaml
-
-# The admin key: no token involved, only the passphrase on keys.age.
 mv ~/.config/sops/fido2-identity.txt ~/.config/sops/fido2-identity.txt.off
 sops -d sops.yaml >/dev/null && echo admin-identity-ok
 mv ~/.config/sops/fido2-identity.txt.off ~/.config/sops/fido2-identity.txt
-
-# The YubiKey path: the handle is back, so this asks for the PIN and a touch and
-# never opens keys.age.
-sops -d sops.yaml >/dev/null && echo yubikey-identity-ok   # touch the token
+sops -d sops.yaml >/dev/null && echo yubikey-identity-ok   # PIN, then touch
 ```
 
-Restore the handle before investigating a failed admin decrypt: while
-`fido2-identity.txt.off` is there, every `sops` call on this machine takes the
-passphrase path, which is not the state to leave a host in.
+The plugin is pre-1.0, so the admin key stays enrolled as recovery.
 
-Nothing else has to change: `sops.yaml` stays the only secret file, and the
-private identity never enters this repository. The plugin is pre-1.0 upstream,
-which is why the admin key stays enrolled. Clearing the token's FIDO2 PIN block
-erases this credential along with the LUKS keyslot, the resident SSH handle and
-the `pam_u2f` mapping; the admin key is then the recovery.
+## 7. Reach smortress over its tunnel
 
-## 7. The work laptop's GitHub token
-
-Restore the admin age identity (`~/.config/sops/keys.age`) before
-smoreswork's first bootstrap; the bootstrap then writes `GITHUB_WORK_PAT` from
-`sops.yaml` to `~/.config/github-token`.
-
-## 7a. Reach smortress over its tunnel
-
-smortress publishes SSH at `ssh.sammohr.dev` through its Cloudflare tunnel, and
-Access is the only route for every machine, the work laptop included: no
-Tailscale SSH, no VPN client. `~/.ssh/smortress.conf` carries the one route
-(`ProxyCommand $HOME/.local/bin/smortress-ssh %h`), and both `~/.ssh/config` files
-include it.
-
-`cloudflared` comes from `brew:cloudflared` on smoreswork and from the pinned
-`aqua:cloudflare/cloudflared` in `global/config.desktop.toml` on smorespro, so
-`mise bootstrap` installs it either way. The wrapper reads the Access service
-token from step 6a; without that file it stops and names it.
-
-The key is the one smortress already accepts as `smores`: copy
-`~/.ssh/id_smortress-access` (mode 600) from the password manager or the USB
-backup. Both halves are needed: Access verifies the service token, sshd verifies
-the key.
+SSH to smortress goes only through Cloudflare Access at `ssh.sammohr.dev`, on
+every machine. Copy `~/.ssh/id_smortress-access` (mode 600) from the password
+manager or the USB backup; Access checks the service token, sshd checks the key.
+On smoreswork, restore `~/.config/sops/keys.age` before the first bootstrap so
+it can write the work token.
 
 ```sh
 ssh smortress true && echo tunnel-ssh-ok
 ```
 
-## 8. Login shell
-
-Linux keeps bash as the login shell; kitty and zellij start fish through its
-mise shim. No `/etc/shells` change and no `chsh` are needed:
-
-```sh
-echo "$SHELL"                                 # still bash
-bash -lc 'echo $PAGER'                        # bat: bash reads the shared env
-~/.local/share/mise/shims/fish --version      # fish, version 4.x
-```
-
-Open a new kitty window and confirm the prompt is pure (a ❯ on its own line)
-and that `e` expands to `hx`.
-
-## 9. Verify the machine
+## 8. Verify the machine
 
 ```sh
 cd ~/.dotfiles
-mise dot status                    # every dotfile target is applied
-tests/check.sh                     # source tree checks
-mise ls                            # pinned tools are installed
-flatpak list --user                # GUI applications are present
-maki --version                     # pinned Maki release
-sdlc list                          # local sdlc CLI reaches the registry
-git config --show-origin user.email # resolves through machine.inc
-gw list                            # runs inside a checkout
+mise dot status
+tests/check.sh
+mise ls
+flatpak list --user
+git config --show-origin user.email   # resolves through machine.inc
 ```
 
-## 10. Desktop specifics
+Open a new kitty window: the prompt is pure (❯ on its own line) and `e`
+expands to `hx`.
 
-The terminal, browser and file manager are system packages from the image:
-`kitty`, `brave-origin` and `dolphin`. The image also supplies `ImageMagick`
-and `jq` for wallpaper rotation. Confirm they start:
+## 9. Desktop specifics
 
-```sh
-kitty --version
-brave-origin --version             # Brave Origin is the only non-Fedora package
-dolphin --version
-```
-
-Brave Origin has had upstream Fedora RPM launch bugs; if `Mod+B` does nothing,
-run it from a terminal and check its stderr before relying on the bind.
-
-Noctalia's GUI-managed state outranks `desktop/.config/noctalia/config.toml`,
-so select the palette once even though the config file declares it:
+Select the palette once; Noctalia's GUI state outranks its config file:
 
 ```sh
 noctalia msg color-scheme-set community "Rose Pine Moon"
 ```
 
-Wallpaper rotation sets one image per display through Noctalia:
+If `Mod+B` does nothing, run `brave-origin` from a terminal and read its stderr.
 
-```sh
-systemctl --user start wallpapers  # sync the cache and set every output
-journalctl --user -u wallpapers -n 20
-```
-
-A run with no session (greetd, SSH) logs a skip instead of failing the unit.
-
-The cache is mirrored over HTTPS from smortress, which serves `/srv/wallpapers`
-with Tailscale's own file server: the request is authenticated by the device, so
-the three-hourly timer carries no credential, and the old SFTP helper is gone.
-On smortress, once:
+Wallpapers sync over Tailscale's file server from smortress, authenticated by
+the device. On smortress, once, with `/srv/wallpapers` holding the images:
 
 ```sh
 sudo tailscale serve --bg --set-path /wallpapers /srv/wallpapers
 tailscale serve status
 ```
 
-`tailscale serve` needs HTTPS certificates enabled for the tailnet (admin
-console, DNS page) and MagicDNS. `/srv/wallpapers` must hold the images; an
-empty listing is reported and the cache kept. The URL is
-`https://smortress.<tailnet>.ts.net/wallpapers/`, which the sync resolves from
-`tailscale status --json` instead of a pinned tailnet name. Confirm the listing
-before relying on the timer:
+On the desktop:
 
 ```sh
-suffix=$(tailscale status --json | jq -r '.Self.DNSName' | sed 's/\.$//; s/^[^.]*\.//')
-curl -fsS "https://smortress.$suffix/wallpapers/" | head -n 5
+systemctl --user start wallpapers
+journalctl --user -u wallpapers -n 20
 ```
