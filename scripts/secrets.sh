@@ -39,6 +39,18 @@ sha256_of() {
     if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d' ' -f1
 }
 
+# mise exports MISE_ENV only to what it runs, and not at all for an empty set,
+# so unset is ambiguous: ask mise rather than let a hand run on a work machine
+# fall through to the personal PAT.
+if [ -z "${MISE_ENV+x}" ]; then
+    # shellcheck disable=SC2016 # the inner shell expands it, under mise
+    MISE_ENV=$(cd "$root" && MISE_EXEC_AUTO_INSTALL=false \
+        mise exec -- sh -c 'printf %s "${MISE_ENV-}"') || {
+        log "cannot read the environment set from mise; run: mise exec -- sh scripts/secrets.sh"
+        exit 1
+    }
+fi
+
 # One token per machine: the work PAT where the work environment is applied,
 # the personal PAT everywhere else.
 case ",${MISE_ENV-}," in

@@ -34,11 +34,25 @@ cat >"$tmp/bin/gh" <<'EOF'
 #!/bin/sh
 printf 'gh %s\n' "$*" >>"$SECRETS_LOG"
 EOF
-chmod +x "$tmp/bin/sops" "$tmp/bin/gh"
+# Stands in for `mise exec`, which exports the saved set only when it is non-empty.
+cat >"$tmp/bin/mise" <<'EOF'
+#!/bin/sh
+printf 'mise %s\n' "$*" >>"$SECRETS_LOG"
+[ -z "${FAKE_MISE_FAIL-}" ] || exit 1
+[ "$1 $2" = "exec --" ] || exit 2
+shift 2
+[ -z "${FAKE_MISE_ENV-}" ] || { MISE_ENV=$FAKE_MISE_ENV; export MISE_ENV; }
+exec "$@"
+EOF
+chmod +x "$tmp/bin/sops" "$tmp/bin/gh" "$tmp/bin/mise"
 
+# BY_HAND=1 leaves MISE_ENV unset, as a shell outside mise does.
 run() {
+    local mise_env=(MISE_ENV="${MISE_ENV-}")
+    [ -z "${BY_HAND-}" ] || mise_env=()
     env -i HOME="$home" PATH="$tmp/bin:/usr/bin:/bin" \
-        SECRETS_LOG="$tmp/log" MISE_ENV="${MISE_ENV-}" \
+        SECRETS_LOG="$tmp/log" ${mise_env[@]+"${mise_env[@]}"} \
+        FAKE_MISE_ENV="${FAKE_MISE_ENV-}" FAKE_MISE_FAIL="${FAKE_MISE_FAIL-}" \
         FAKE_NEURALWATT="${FAKE_NEURALWATT-nw-test}" \
         FAKE_TINYFISH="${FAKE_TINYFISH-tf-test}" \
         FAKE_PAT="${FAKE_PAT-ghp_test}" \
@@ -183,6 +197,26 @@ check "an absent pair says how to remove it" grep -q -- '--prune removes it' "$t
 FAKE_PAT='' FAKE_ACCESS_ID='' FAKE_ACCESS_SECRET='' run --prune
 check "--prune removes the token" test ! -e "$token"
 check "--prune removes access.env" test ! -e "$access"
+
+# A hand run outside mise has no MISE_ENV; the set must come from mise, or a
+# work machine silently gets the personal PAT.
+printf 'hand1\n' >"$tmp/secrets.yaml"
+BY_HAND=1 FAKE_MISE_ENV=desktop,work run
+check "a hand run on a work machine gets the work PAT" \
+    test "$(cat "$token" 2>/dev/null)" = ghp_work
+check "a hand run asks mise for the environment set" grep -q '^mise exec' "$tmp/log"
+printf 'hand2\n' >"$tmp/secrets.yaml"
+BY_HAND=1 run
+check "a hand run where mise has no set gets the personal PAT" \
+    test "$(cat "$token" 2>/dev/null)" = ghp_test
+printf 'hand3\n' >"$tmp/secrets.yaml"
+if BY_HAND=1 FAKE_MISE_FAIL=1 run; then
+    no "a hand run fails when mise cannot report the set"
+else
+    ok "a hand run fails when mise cannot report the set"
+fi
+check "a failed mise lookup leaves the token alone" test "$(cat "$token" 2>/dev/null)" = ghp_test
+check "a failed mise lookup says how to run it" grep -q 'mise exec -- sh scripts/secrets.sh' "$tmp/out"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
