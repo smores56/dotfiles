@@ -12,7 +12,8 @@ if [ -z "$mise_bin" ] || [ -z "$fish_bin" ]; then
     exit 0
 fi
 
-tmp=$(mktemp -d) || exit 1
+# Physical, because git reports worktrees by their real path (/private/var on macOS).
+tmp=$(cd -P -- "$(mktemp -d)" && pwd) || exit 1
 trap 'rm -rf "$tmp"' EXIT
 
 pass=0
@@ -31,11 +32,19 @@ ln -s "$fish_bin" "$h/.local/bin/fish"
 # The real binary, not a mise shim: a shim would read this checkout's config.
 zoxide_bin=$("$mise_bin" which zoxide 2>/dev/null || command -v zoxide || true)
 [ -n "$zoxide_bin" ] && ln -s "$zoxide_bin" "$h/.local/bin/zoxide"
-# A stand-in pfetch, so the greeting is observable.
+for tool in fzf fd rg; do
+    bin=$("$mise_bin" which "$tool" 2>/dev/null || command -v "$tool" || true)
+    [ -n "$bin" ] && ln -s "$bin" "$h/.local/bin/$tool"
+done
+# Stand-ins, so the greeting and the desktop guard are observable.
 printf '#!/bin/sh\necho PFETCH\n' >"$h/.local/bin/pfetch"
-chmod +x "$h/.local/bin/pfetch"
+printf '#!/bin/sh\n' >"$h/.local/bin/gtrash"
+chmod +x "$h/.local/bin/pfetch" "$h/.local/bin/gtrash"
+mkdir -p "$h/.ssh"
 
-if env -i HOME="$h" PATH="$base_path" TERM=dumb MISE_TRUSTED_CONFIG_PATHS="$root" MISE_YES=1 \
+# A personal machine: base plus desktop and identity, as on smorespro.
+if env -i HOME="$h" PATH="$base_path" TERM=dumb MISE_ENV=desktop,identity \
+        MISE_TRUSTED_CONFIG_PATHS="$root" MISE_YES=1 \
         "$mise_bin" -C "$root" bootstrap --only repos,dotfiles --yes >"$tmp/bootstrap.log" 2>&1; then
     ok "repos and dotfiles apply"
 else
@@ -45,10 +54,10 @@ fi
 
 fi_() {  # fi_ <script>: run inside an interactive fish in the test HOME
     (cd "$h" && env -i HOME="$h" PATH="$base_path" TERM=xterm-256color \
-        "$h/.local/bin/fish" -i -c "$1") 2>"$tmp/fi.err"
+        "$h/.local/bin/fish" -i -c "$1" </dev/null) 2>"$tmp/fi.err"
 }
 fc_() {  # fc_ <script>: run inside a non-interactive fish
-    (cd "$h" && env -i HOME="$h" PATH="$base_path" "$h/.local/bin/fish" -c "$1") 2>"$tmp/fc.err"
+    (cd "$h" && env -i HOME="$h" PATH="$base_path" "$h/.local/bin/fish" -c "$1" </dev/null) 2>"$tmp/fc.err"
 }
 
 expect "non-interactive fish imports the shared env" "$h/.local/bin bat hx" \
@@ -69,6 +78,91 @@ if [ -n "$zoxide_bin" ]; then
     expect "zoxide jumps with c" yes "$(fi_ 'functions -q c; and echo yes')"
 fi
 expect "interactive startup writes nothing to stderr" "" "$(cat "$tmp/fi.err")"
+
+# --- abbreviations
+
+exp_() {  # exp_ <name> [home]: an abbreviation's expansion, or nothing
+    local home=${2:-$h}
+    (cd "$home" && env -i HOME="$home" PATH="$base_path" TERM=xterm-256color \
+        "$home/.local/bin/fish" -i -c "abbr --show | string match -- 'abbr -a -- $1 *' \
+            | string replace -- 'abbr -a -- $1 ' 'printf %s\\n ' | source" </dev/null) 2>/dev/null
+}
+
+expect "e opens Helix" hx "$(exp_ e)"
+expect "f opens yazi" yazi "$(exp_ f)"
+expect "g opens lazygit" lazygit "$(exp_ g)"
+expect "l lists long, directories first" 'eza --icons --group-directories-first -lh' "$(exp_ l)"
+expect "m makes parents" 'mkdir -p' "$(exp_ m)"
+expect "t attaches the main zellij session" 'zellij a -c main' "$(exp_ t)"
+expect "a starts maki" maki "$(exp_ a)"
+expect "s opens sdlc" sdlc "$(exp_ s)"
+expect "d pulls and bootstraps the dotfiles" \
+    'git -C ~/.dotfiles pull --ff-only --no-rebase --autostash && mise -C ~/.dotfiles bootstrap' "$(exp_ d)"
+expect "gw is git worktree" 'git worktree' "$(exp_ gw)"
+expect "copy goes through Clipboard" 'cb copy' "$(exp_ copy)"
+expect "paste goes through Clipboard" 'cb paste' "$(exp_ paste)"
+expect "gc clones with git get" 'git get' "$(exp_ gc)"
+expect "sm opens fish on smortress" 'ssh smortress -t fish' "$(exp_ sm)"
+for gone in b la gp gq dv dot boot ms wn cr; do
+    expect "the retired abbreviation $gone stays gone" "" "$(exp_ "$gone")"
+done
+if [ "$(uname -s)" = Linux ]; then
+    expect "ct empties the trash where gtrash exists" 'gtrash find --rm --force' "$(exp_ ct)"
+else
+    expect "ct is Linux-only" "" "$(exp_ ct)"
+fi
+
+# --- pickers: fzf filters instead of prompting, hx and c report the pick
+
+repo_root=$tmp/repos
+git init -q -b main "$tmp/up"
+git -C "$tmp/up" -c user.name=t -c user.email=t@t commit -q --allow-empty -m init
+git clone -q --bare "$tmp/up" "$repo_root/github.com/o/r/.git"
+git -C "$repo_root/github.com/o/r" worktree add -q "$repo_root/github.com/o/r/main" main
+git -C "$repo_root/github.com/o/r" worktree add -q -b feat "$repo_root/github.com/o/r/feat" main
+mkdir -p "$tmp/proj/src"
+printf 'one\nneedle here\n' >"$tmp/proj/src/hay.txt"
+
+# stdin is /dev/null throughout: at a prompt it is the terminal, and rg with no
+# path searches a piped stdin instead of the directory.
+pick_() {  # pick_ <abbr> <query> <dir> [from] [to]: run the picker non-interactively
+    local exp
+    exp=$(exp_ "$1")
+    [ -n "${4:-}" ] && exp=${exp//"$4"/"$5"}
+    (cd "$3" && env -i HOME="$h" PATH="$base_path" TERM=xterm-256color "$h/.local/bin/fish" -i -c "
+        function hx; echo OPEN \$argv; end
+        function c; echo JUMP \$argv; end
+        $(printf '%s' "$exp" | sed "s/fzf/fzf --filter=$2/")" </dev/null) 2>"$tmp/pick.err"
+}
+
+expect "r lists every worktree of every repo" "JUMP $repo_root/github.com/o/r/feat" \
+    "$(pick_ r feat "$h" /srv/git "$repo_root")"
+expect "w jumps to a worktree of this repo" "JUMP $repo_root/github.com/o/r/feat" \
+    "$(pick_ w feat "$repo_root/github.com/o/r/main")"
+expect "w never offers the bare gitdir" "" \
+    "$(pick_ w "'$repo_root/github.com/o/r\$" "$repo_root/github.com/o/r/main")"
+expect "ef opens the picked file" "OPEN src/hay.txt" "$(pick_ ef hay "$tmp/proj")"
+expect "et opens Helix at the matching line" "OPEN src/hay.txt:2" "$(pick_ et needle "$tmp/proj")"
+expect "a cancelled pick runs nothing" "" "$(pick_ ef zzz-no-match "$tmp/proj")"
+expect "a cancelled pick prints nothing" "" "$(cat "$tmp/pick.err")"
+
+# --- work machine
+
+hw=$tmp/work
+mkdir -p "$hw/.local/bin"
+ln -s "$fish_bin" "$hw/.local/bin/fish"
+if env -i HOME="$hw" PATH="$base_path" TERM=dumb MISE_ENV=desktop,work \
+        MISE_TRUSTED_CONFIG_PATHS="$root" MISE_YES=1 \
+        "$mise_bin" -C "$root" dot apply >"$tmp/work.log" 2>&1; then
+    ok "work dotfiles apply"
+else
+    no "work dotfiles apply"
+    sed 's/^/     /' "$tmp/work.log" >&2
+fi
+expect "a starts claude on work" claude "$(exp_ a "$hw")"
+expect "r lists the flat work clones" \
+    'path dirname ~/Blitzy/*/.git ~/Blitzy/*/.worktrees/*/.git | fzf | read f; and c $f' "$(exp_ r "$hw")"
+expect "work has no git get" "" "$(exp_ gc "$hw")"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

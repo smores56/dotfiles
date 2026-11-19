@@ -7,6 +7,7 @@
 "~/.config/kitty" = { source = "desktop/.config/kitty", mode = "symlink-each" }
 # gtrash and nym-vpnc abbreviations; neither tool exists on the work Mac.
 "~/.config/zsh/conf.d/80-desktop.zsh" = { source = "desktop/.config/zsh/conf.d/80-desktop.zsh", variants = [{ os = "linux" }] }
+"~/.config/fish/conf.d/80-desktop.fish" = { source = "desktop/.config/fish/conf.d/80-desktop.fish", variants = [{ os = "linux" }] }
 "~/.config/mimeapps.list" = { source = "desktop/.config/mimeapps.list", mode = "copy", variants = [{ os = "linux" }] }
 # niri owns the session and Noctalia the shell surfaces. mise deploys both
 # directories per file so each can be edited without replacing the others.
