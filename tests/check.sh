@@ -405,6 +405,12 @@ if command -v git >/dev/null 2>&1 && command -v bash >/dev/null 2>&1; then
         no "behavioral tests (tests/bootstrap-script-test.sh)"
         sed 's/^/     /' "$tmp/bootstrap-script.log" >&2
     fi
+    if bash "$root/tests/clone-checkout-test.sh" >"$tmp/clone-checkout.log" 2>&1; then
+        ok "behavioral tests (tests/clone-checkout-test.sh)"
+    else
+        no "behavioral tests (tests/clone-checkout-test.sh)"
+        sed 's/^/     /' "$tmp/clone-checkout.log" >&2
+    fi
     if bash "$root/tests/picker-cables-test.sh" >"$tmp/picker-cables.log" 2>&1; then
         ok "behavioral tests (tests/picker-cables-test.sh)"
     else

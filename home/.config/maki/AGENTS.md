@@ -2,7 +2,7 @@
 - Start from the problem, not a solution — state what's wrong or needed; a suspected approach is context, not the goal
 - First move on any request: classify aloud — quick fix, investigation, or feature — and act. Features run the `sdlc` skill (research → brainstorm → [grill] → plan → human approval → build → review & fix); quick fixes skip the funnel; investigations are read-only. In `pr`-flow work repos the skill's phases run in the conversation, without the personal registry
 - Resuming: the issues-only registry (`smores56/sdlc`, `$SDLC_REPO`) is driven by `s` (`sdlc ui`): the human picks a feature then an action, including a review of the body in revdiff. Agents call the CLI literally (`sdlc list`, `sdlc show <n>`, `sdlc status <n>`, `sdlc next <n>`, `sdlc review <n>`) because the picker needs an interactive shell. Never resume from conversation memory
-- On a ghq machine, ordinary repos are clean-bare clones under `/srv/git/<host>/<owner>/<repo>/.git`: clone with `ghq get --clean-bare <owner/repo>`, then run the checkout recipe — never plain `git clone` there, never `ghq get -u`:
+- On a ghq machine, ordinary repos are clean-bare clones under `/srv/git/<host>/<owner>/<repo>/.git`: `gc <owner/repo>` (the zsh abbreviation for `scripts/clone-checkout.sh`) runs the checkout recipe below in one step — never plain `git clone` there, never `ghq get -u`, and only fall back to the manual form when `gc` refuses an existing path:
   ```
   ghq get --clean-bare <owner/repo>
   repo="$(ghq root)/github.com/<owner>/<repo>"
