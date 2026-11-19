@@ -1,5 +1,5 @@
-# Worktrees created by `worktrees new` live inside the repository directory,
-# so they must never appear as untracked files.
+# Leftover worktrees from the old in-repo layout; a normal clone on the work
+# laptop cannot put them beside a bare gitdir.
 .worktrees/
 
 # Claude Code keeps per-checkout permissions here.

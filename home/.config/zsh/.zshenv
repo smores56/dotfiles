@@ -2,7 +2,7 @@
 # editors run `zsh -c`, so nothing they need may live in .zshrc. Nothing here
 # touches the network or forks a process.
 
-# ~/.local/bin first so a wrapper (repos, worktrees, dev, the zsh link) wins
+# ~/.local/bin first so a wrapper (dev, the zsh link) wins
 # over a system package of the same name; mise shims next, so pinned tools
 # resolve without `mise activate`.
 typeset -U path
@@ -18,8 +18,8 @@ export PAGER=less
 export LESS=-FRX
 export BAT_THEME=ansi
 
-# The employer's flat checkout root, when it exists (see `repos` and the work
-# includeIf in ~/.config/git/machine.inc).
+# The employer's flat checkout root, when it exists (see the work rules in
+# ~/.claude/work.md).
 [[ -d $HOME/Blitzy ]] && export BLITZY_REPOS_DIR=$HOME/Blitzy
 
 # sops unwraps the passphrase-protected age identity through this wrapper, so

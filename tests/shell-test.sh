@@ -98,8 +98,16 @@ expect "the shared abbreviations are session abbreviations" yes \
     "$(zi 'abbr list-abbreviations --session | grep -qx "\"e\"" && print yes || print no')"
 expect "abbreviations are session-scoped, not written to a file" no \
     "$(zi '[[ -s ${ABBR_USER_ABBREVIATIONS_FILE} ]] && print yes || print no')"
-expect "r changes into a picked repo" 'cd "$(tv repos)"' "$(zi 'print -r -- $aliases[r]')"
-expect "w changes into a picked worktree" 'cd "$(tv worktrees)"' "$(zi 'print -r -- $aliases[w]')"
+expect "r jumps through the picker function" yes \
+    "$(zi '(( $+functions[r] )) && print yes || print no')"
+expect "w jumps through the picker function" yes \
+    "$(zi '(( $+functions[w] )) && print yes || print no')"
+expect "abbreviation gq expands to ghq" ghq "$(zi 'abbr expand gq')"
+expect "abbreviation gw expands to git worktree" 'git worktree' "$(zi 'abbr expand gw')"
+expect "the wrapper abbreviation cr is gone" no \
+    "$(zi 'abbr list-abbreviations --session | grep -qx "\"cr\"" && print yes || print no')"
+expect "the wrapper abbreviation wn is gone" no \
+    "$(zi 'abbr list-abbreviations --session | grep -qx "\"wn\"" && print yes || print no')"
 expect "autosuggestions use abbreviations, then history" "abbreviations history" \
     "$(zi 'print -r -- $ZSH_AUTOSUGGEST_STRATEGY')"
 expect "history lives in ~/.zsh_history" "$h/.zsh_history" "$(zi 'print -r -- $HISTFILE')"

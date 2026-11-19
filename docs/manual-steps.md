@@ -95,22 +95,56 @@ install -d -m 700 ~/.config/sops
 install -m 600 /media/<usb>/sops-backup/keys.age ~/.config/sops/keys.age
 ```
 
-Clone the dotfiles repository at mise's default root:
+Run the one-command bootstrap. It takes one sudo prompt to create `/srv/git`,
+installs mise, clones the dotfiles with ghq's clean-bare layout, adds the
+`main` worktree, links `~/.dotfiles`, and runs the checkout's
+`scripts/install-mise.sh`:
 
 ```sh
-git clone https://github.com/smores56/dotfiles.git ~/.dotfiles
-cd ~/.dotfiles
+curl -fsSL https://bootstrap.sammohr.dev | sh
 ```
 
-Install the latest mise and apply this machine's set. It asks for sudo once to
-create `/srv/git` and hand it to you:
-
-```sh
-~/.dotfiles/scripts/install-mise.sh
-```
+`bootstrap.sammohr.dev` is a Cloudflare redirect to `scripts/bootstrap.sh` on
+`main`. The hostname needs an Access bypass scoped to it alone before the
+command works, because the rest of the domain sits behind Access; that endpoint
+and the GitHub account are the trust boundary for a fresh machine.
 
 It infers `desktop,identity` here (`DOTFILES_ENVS` overrides it) and runs
 `mise bootstrap`; the [README](../README.md#bootstrap) covers what that applies.
+
+## 3b. Migrating a machine still on a normal clone
+
+Only a machine that already carries the old `~/.dotfiles` clone needs this.
+Commit or stash first, then run as your user. The old layout also left
+`/srv/git/github.com/smores56/dotfiles` as a symlink to `~/.dotfiles`; it must go
+first, or the bare clone below has nowhere to land:
+
+```sh
+repo=/srv/git/github.com/smores56/dotfiles
+rm "$repo"                       # the old alias symlink; ~/.dotfiles stays intact
+git clone --bare https://github.com/smores56/dotfiles.git "$repo/.git"
+git -C "$repo" config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
+mv ~/.dotfiles ~/.dotfiles.old
+git -C "$repo" worktree add "$repo/main" main
+git -C "$repo/main" fetch origin
+git -C "$repo/main" branch --set-upstream-to=origin/main
+ln -s "$repo/main" ~/.dotfiles
+```
+
+Cloning from the GitHub URL, not from the local checkout, is what leaves
+`origin` pointing at GitHub; a bare clone of `~/.dotfiles` would leave it
+pointing at the directory that is about to be deleted. Then run
+`mise -C ~/.dotfiles dot apply --prune` and remove `~/.dotfiles.old`.
+
+Other repositories were also left as normal clones by the old `repos get`.
+`ghq get --clean-bare` is a no-op on an existing path, so remove each old
+checkout first (commit anything you need), then clone and run the recipe in
+`home/.config/maki/AGENTS.md`:
+
+```sh
+rm -rf /srv/git/github.com/<owner>/<repo>
+ghq get --clean-bare <owner>/<repo>
+```
 
 ## 4. Tailscale
 
@@ -373,7 +407,7 @@ flatpak list --user                # GUI applications are present
 maki --version                     # pinned Maki release
 sdlc list                          # local sdlc CLI reaches the registry
 git config --show-origin user.email # resolves through machine.inc
-worktrees list                     # runs inside a checkout
+gw list                            # runs inside a checkout
 ```
 
 ## 10. Desktop specifics

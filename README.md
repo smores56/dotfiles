@@ -14,13 +14,22 @@ configuration manager.
 
 ## Bootstrap
 
-The checkout is mise's default dotfiles root, `~/.dotfiles`. One script installs
-the latest mise and applies the machine's inferred set:
+The checkout is mise's default dotfiles root, `~/.dotfiles`, a symlink to the
+`main` worktree of the clean-bare dotfiles repository under the ghq root.
+
+On a fresh personal Linux machine, one command installs mise and applies the
+machine's inferred set:
 
 ```sh
-git clone https://github.com/smores56/dotfiles.git ~/.dotfiles
-~/.dotfiles/scripts/install-mise.sh
+curl -fsSL https://bootstrap.sammohr.dev | sh
 ```
+
+`scripts/bootstrap.sh` runs it: one sudo prompt creates `/srv/git`, then it
+installs mise, clones `smores56/dotfiles` with ghq's clean-bare layout, adds the
+`main` worktree, links `~/.dotfiles`, and runs `install-mise.sh`.
+`bootstrap.sammohr.dev` is a Cloudflare redirect to that script on `main`, with
+an Access bypass scoped to the hostname alone. The work laptop clones
+`~/.dotfiles` by hand and runs its `scripts/install-mise.sh`; it has no ghq.
 
 The script bootstraps with `--from … --from-dir ~/.dotfiles --config-dir
 global`; that last flag is what links `~/.config/mise` to `global/`. A bare
@@ -28,11 +37,9 @@ global`; that last flag is what links `~/.config/mise` to `global/`. A bare
 pinned tools and the `[settings]` they need live in `global/`: a fresh machine
 sees neither until the link exists.
 
-On smortress and smorespro, `install-mise.sh` creates `/srv/git` (one sudo
-prompt) and links `/srv/git/github.com/smores56/dotfiles` to `~/.dotfiles`.
-`scripts/link-dotfiles-checkout.sh` re-asserts that alias on every bootstrap
-when the parent is writable, so a moved or deleted link is repaired rather
-than surfacing later as a `repos` failure. The set
+`scripts/link-dotfiles-checkout.sh` re-asserts the `~/.dotfiles` link on every
+bootstrap when its parent is writable, so a moved or deleted link is repaired
+rather than surfacing later as a broken checkout. The set
 is `identity` on a server, `desktop,identity` on a Linux desktop, and
 `desktop,work` on macOS; `DOTFILES_ENVS` overrides it. The login shell is a separate step
 because `chsh` asks for a password:
@@ -65,7 +72,7 @@ shell file exports `MISE_ENV`.
 | --- | --- |
 | every machine | POSIX shell and coreutils, `curl`, `git`, `tar`, `gzip`, CA certificates |
 | Fedora Atomic / CoreOS | nothing more; the image ships `git`, `curl`, and, on desktops, `flatpak` |
-| smortress / smorespro | nothing extra; `install-mise.sh` prompts for sudo once to create `/srv/git` owned by you |
+| smortress / smorespro | nothing extra; `scripts/bootstrap.sh` prompts for sudo once to create `/srv/git` owned by you |
 | macOS | Command Line Tools (they provide `git`) and Homebrew; run `scripts/install-homebrew.sh` once, interactively |
 | smoreswork | the bootstrap installs the `op` CLI |
 
@@ -99,16 +106,20 @@ mise dot diff                    # what a dotfile apply would change
 mise dot apply                   # deploy the checkout's dotfiles
 mise bootstrap                   # tools, repos, dotfiles, and the bootstrap task
 
-repos get owner/project          # plain git clone under /srv/git/<host>/<owner>/<repo>
-repos list
-worktrees new --slug add-gizmo --ticket ABC-123 --type feat
-worktrees prune              # dry run; --apply removes what it reported
+ghq get --clean-bare owner/project   # then the checkout recipe in AGENTS.md
+repo="$(ghq root)/github.com/owner/project"
+git -C "$repo" worktree add "$repo/<slug>" -b smores/<slug> origin/main
+gw list
 ```
 
-`worktrees new` renders the branch name from `git config smores.branchTemplate`
-and prints JSON: use its `path`.
+Checkouts are worktrees of a clean-bare clone: the default branch at
+`<repo>/main`, task work at `<repo>/<slug>`. `~/.dotfiles` is the `main`
+worktree of the dotfiles repository. Personal branches are `smores/<slug>`;
+employer branches are `{ticket}-<slug>` or `{type}/<slug>`. The full clone
+recipe is in `home/.config/maki/AGENTS.md`. `tv repos` picks a checkout and
+`tv worktrees` a worktree of the current repository.
 
-Personal checkouts live under `/srv/git` on smortress and smorespro; the work Mac keeps work repositories in `~/Blitzy` and only
+Personal checkouts live under `/srv/git` on smortress and smorespro; the work Mac keeps work repositories flat in `~/Blitzy` and only
 the `dotfiles` clone in `~/.dotfiles`.
 
 Every dotfile target is absolute or starts with `~/`, and application
@@ -237,8 +248,9 @@ tests/check.sh --shellcheck   # also shellcheck every script
 checks symlinks, templates, modes, rendered identity, and conflicts.
 `tests/shell-test.sh` starts an interactive zsh and checks the plugins,
 abbreviations, prompt, and that the Maki keys stay out of the parent shell.
-`tests/cli.sh` exercises `repos` and `worktrees` against throwaway
-repositories. `tests/secrets-test.sh`, `tests/detect-envs-test.sh`,
+`tests/bootstrap-script-test.sh` exercises the one-command bootstrap against a
+fixture remote, and `tests/picker-cables-test.sh` runs both picker cables
+against a clean-bare fixture. `tests/secrets-test.sh`, `tests/detect-envs-test.sh`,
 `tests/smortress-ssh-test.sh`, and `tests/wallpapers-test.sh` cover the SOPS
 cache, machine-set inference, the Access token wrapper, and the wallpaper
 sync. CI runs the same suite and a real Fedora apply lane.

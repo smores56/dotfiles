@@ -262,11 +262,56 @@ fi
 
 # --- cross-file consistency
 
-if grep -q 'ROOT=${REPOS_ROOT:-/srv/git}' "$root/home/.local/bin/repos" \
-        && grep -q '/srv/git' "$root/scripts/install-mise.sh"; then
-    ok "repos and install-mise agree on the /srv/git checkout root"
+if grep -qF '"aqua:x-motemen/ghq" = { version = "1.12.0", os = ["linux"] }' \
+        "$root/global/config.toml"; then
+    ok "ghq is pinned for Linux only"
 else
-    no "repos and install-mise must both use /srv/git"
+    no "ghq must be pinned for Linux only in global/config.toml"
+fi
+
+if grep -A1 '^\[ghq\]' "$root/identity/.config/git/machine.inc.tera" \
+        | grep -qx '    root = "/srv/git"' \
+        && ! grep -q '^\[ghq\]' "$root/work/.config/git/machine.inc.tera"; then
+    ok "only the personal machine template sets ghq.root"
+else
+    no "ghq.root belongs in the personal template and nowhere else"
+fi
+
+root_ghq=$(sed -n 's|.*root = "\(/srv/git\)"|\1|p' \
+    "$root/identity/.config/git/machine.inc.tera" | head -1)
+boot_root=$(sed -n 's|^ROOT=${BOOTSTRAP_ROOT:-\(/srv/git\)}$|\1|p' \
+    "$root/scripts/bootstrap.sh" | head -1)
+link_root=$(sed -n 's|^checkout=${DOTFILES_CHECKOUT:-\(/srv/git\)/.*|\1|p' \
+    "$root/scripts/link-dotfiles-checkout.sh" | head -1)
+if [ -n "$root_ghq" ] && [ "$root_ghq" = "$boot_root" ] && [ "$root_ghq" = "$link_root" ]; then
+    ok "the ghq root matches in the template, bootstrap, and the link script"
+else
+    no "the ghq root must match in identity/machine.inc.tera, bootstrap.sh, and link-dotfiles-checkout.sh"
+fi
+
+bootstrap_ghq=$(sed -n 's/^GHQ_VERSION=${GHQ_VERSION:-\([0-9.]*\)}$/\1/p' \
+    "$root/scripts/bootstrap.sh" 2>/dev/null | head -1)
+config_ghq=$(sed -n 's/.*"aqua:x-motemen\/ghq" = { version = "\([0-9.]*\)".*/\1/p' \
+    "$root/global/config.toml" | head -1)
+if [ -n "$bootstrap_ghq" ] && [ "$bootstrap_ghq" = "$config_ghq" ] \
+        && grep -qF 'get --clean-bare' "$root/scripts/bootstrap.sh"; then
+    ok "the bootstrap clones with ghq at the pinned version"
+else
+    no "scripts/bootstrap.sh must clone with ghq at the global pin"
+fi
+
+if [ ! -e "$root/home/.local/bin/repos" ] && [ ! -e "$root/home/.local/bin/worktrees" ]; then
+    ok "the checkout and worktree wrappers are gone"
+else
+    no "home/.local/bin must not carry repos or worktrees"
+fi
+
+if grep -qF 'ghq list -p' "$root/home/.config/television/cable/repos.toml" \
+        && grep -qF 'git worktree list --porcelain' \
+            "$root/home/.config/television/cable/worktrees.toml"; then
+    ok "the pickers read ghq and git"
+else
+    no "the pickers must read ghq list and git worktree list"
 fi
 
 if grep -q 'SDLC_REPO=smores56/sdlc' "$root/home/.config/zsh/.zshenv" \
@@ -354,6 +399,18 @@ if command -v git >/dev/null 2>&1 && command -v bash >/dev/null 2>&1; then
         no "behavioral tests (tests/bootstrap-test.sh)"
         sed 's/^/     /' "$tmp/bootstrap.log" >&2
     fi
+    if bash "$root/tests/bootstrap-script-test.sh" >"$tmp/bootstrap-script.log" 2>&1; then
+        ok "behavioral tests (tests/bootstrap-script-test.sh)"
+    else
+        no "behavioral tests (tests/bootstrap-script-test.sh)"
+        sed 's/^/     /' "$tmp/bootstrap-script.log" >&2
+    fi
+    if bash "$root/tests/picker-cables-test.sh" >"$tmp/picker-cables.log" 2>&1; then
+        ok "behavioral tests (tests/picker-cables-test.sh)"
+    else
+        no "behavioral tests (tests/picker-cables-test.sh)"
+        sed 's/^/     /' "$tmp/picker-cables.log" >&2
+    fi
     if bash "$root/tests/dotfiles-layout-test.sh" >"$tmp/layout.log" 2>&1; then
         ok "behavioral tests (tests/dotfiles-layout-test.sh)"
     else
@@ -370,12 +427,7 @@ if command -v git >/dev/null 2>&1 && command -v bash >/dev/null 2>&1; then
         no "behavioral tests (tests/shell-test.sh)"
         sed 's/^/     /' "$tmp/shell.log" >&2
     fi
-    if bash "$root/tests/cli.sh" >"$tmp/cli.log" 2>&1; then
-        ok "behavioral tests (tests/cli.sh)"
-    else
-        no "behavioral tests (tests/cli.sh)"
-        sed 's/^/     /' "$tmp/cli.log" >&2
-    fi
+
     if bash "$root/tests/wallpapers-test.sh" >"$tmp/wallpapers.log" 2>&1; then
         ok "behavioral tests (tests/wallpapers-test.sh)"
     else

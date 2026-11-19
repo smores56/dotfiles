@@ -3,5 +3,3 @@
     email = "smohr@blitzy.com"
 [smores]
     flow = "pr"
-    branchTemplate = "{ticket}-{slug}"
-    branchTemplateUnticketed = "{type}/{slug}"

@@ -44,14 +44,14 @@ tighten_ssh_dir() {
     return 0
 }
 
-# The /srv/git alias is install-mise.sh's job, but it is the one piece of that
-# install a later move can drop, and a missing alias breaks `repos` and every
-# instruction that names the canonical path. Re-assert it where the parent is
-# writable; where it is not, the script names the single sudo instead.
+# The ~/.dotfiles link is bootstrap.sh's job, but it is the one piece of that
+# install a later move can drop, and a missing link breaks mise and every
+# instruction that names the canonical path. Re-assert it on a clean-bare
+# machine; on the work laptop the script leaves the real clone alone.
 link_dotfiles_checkout() {
     [ "$(uname -s)" = Linux ] || return 0
     sh "$(dirname "$0")/link-dotfiles-checkout.sh" \
-        || log "dotfiles alias unchanged; see scripts/link-dotfiles-checkout.sh"
+        || log "dotfiles link unchanged; see scripts/link-dotfiles-checkout.sh"
 }
 
 link_conda_zsh

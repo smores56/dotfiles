@@ -17,13 +17,9 @@
     s     'sdlc ui'
     dot   'git -C ~/.dotfiles pull --ff-only --no-rebase --autostash && mise -C ~/.dotfiles dot apply --yes'
     boot  'mise -C ~/.dotfiles bootstrap'
-    cr    'repos'
-    cw    'worktrees'
     dv    'dev'
-    wg    'repos get'
-    wn    'worktrees new'
-    wp    'worktrees prune'
-    wl    'worktrees list'
+    gq    'ghq'
+    gw    'git worktree'
   )
   # zsh-abbr forks `rm` per add to release a queue lock that session adds
   # never take; its file-loading flag skips that (~3ms per abbreviation).

@@ -138,7 +138,7 @@ branch, `review`, then a local merge to `main`; quick fixes commit directly;
 investigations are read-only. `pr` (work): every change lands through a PR,
 though one PR may cover several SDLC tasks; quick fixes skip the funnel but
 still need a PR; never merge. Unset: the repo's own contribution rules. Follow
-AGENTS.md for `worktrees new`, branch names, and commits; this skill adds only
+AGENTS.md for clone, worktree, branch, and commit rules; this skill adds only
 the design/plan/gate layer.
 
 ## Rules

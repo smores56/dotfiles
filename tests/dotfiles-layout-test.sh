@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Behavioural tests for scripts/link-dotfiles-checkout.sh. The alias points at
-# the live checkout, it is created only where the parent is writable, and nothing
-# that exists is ever moved or replaced.
+# Behavioural tests for scripts/link-dotfiles-checkout.sh. The script maintains
+# ~/.dotfiles as a symlink to the dotfiles default worktree; it reports what it
+# will not touch and never moves or replaces anything.
 set -uo pipefail
 
 root=$(cd -- "$(dirname -- "$0")/.." && pwd)
@@ -22,51 +22,69 @@ run() {
     return 0
 }
 
-mkdir -p "$tmp/home/.dotfiles/.git" "$tmp/srv/github.com/o"
+mkdir -p "$tmp/worktree/main" "$tmp/home"
+: >"$tmp/worktree/main/.git"
 
-# 1. The alias is created and points at the checkout.
-run "$tmp/srv/github.com/o/dotfiles" "$tmp/home/.dotfiles"
-if [ -L "$tmp/srv/github.com/o/dotfiles" ] \
-        && [ "$(readlink "$tmp/srv/github.com/o/dotfiles")" = "$tmp/home/.dotfiles" ]; then
-    ok "creates the alias to the checkout"
+# 1. The link is created and points at the worktree.
+run "$tmp/home/.dotfiles" "$tmp/worktree/main"
+if [ -L "$tmp/home/.dotfiles" ] \
+        && [ "$(readlink "$tmp/home/.dotfiles")" = "$tmp/worktree/main" ]; then
+    ok "creates the link to the worktree"
 else
-    no "creates the alias to the checkout"
+    no "creates the link to the worktree"
 fi
 
 # 2. A second run changes nothing and says nothing.
-run "$tmp/srv/github.com/o/dotfiles" "$tmp/home/.dotfiles"
-if [ "$(readlink "$tmp/srv/github.com/o/dotfiles")" = "$tmp/home/.dotfiles" ] \
+run "$tmp/home/.dotfiles" "$tmp/worktree/main"
+if [ "$(readlink "$tmp/home/.dotfiles")" = "$tmp/worktree/main" ] \
         && ! grep -q 'linked' "$tmp/out"; then
-    ok "leaves a correct alias alone"
+    ok "leaves a correct link alone"
 else
-    no "leaves a correct alias alone"
+    no "leaves a correct link alone"
 fi
 
-# 3. An alias pointing elsewhere is reported, not replaced.
+# 3. A link pointing elsewhere is reported, not replaced.
 mkdir -p "$tmp/other"
-ln -s "$tmp/other" "$tmp/srv/github.com/o/second"
-run "$tmp/srv/github.com/o/second" "$tmp/home/.dotfiles"
-if [ "$(readlink "$tmp/srv/github.com/o/second")" = "$tmp/other" ] && grep -q 'points at' "$tmp/out"; then
-    ok "reports a foreign alias without replacing it"
+ln -s "$tmp/other" "$tmp/home/foreign"
+run "$tmp/home/foreign" "$tmp/worktree/main"
+if [ "$(readlink "$tmp/home/foreign")" = "$tmp/other" ] && grep -q 'points at' "$tmp/out"; then
+    ok "reports a foreign link without replacing it"
 else
-    no "reports a foreign alias without replacing it"
+    no "reports a foreign link without replacing it"
 fi
 
 # 4. A real directory in the way is never touched.
-mkdir -p "$tmp/srv/github.com/o/third/inner"
-run "$tmp/srv/github.com/o/third" "$tmp/home/.dotfiles"
-if [ -d "$tmp/srv/github.com/o/third" ] && [ ! -L "$tmp/srv/github.com/o/third" ] \
+mkdir -p "$tmp/home/real/inner"
+run "$tmp/home/real" "$tmp/worktree/main"
+if [ -d "$tmp/home/real" ] && [ ! -L "$tmp/home/real" ] \
         && grep -q 'not a symlink' "$tmp/out"; then
     ok "reports a directory in the way without touching it"
 else
     no "reports a directory in the way without touching it"
 fi
 
-# 5. An unwritable parent is reported, and nothing is created under it.
-mkdir -p "$tmp/ro/inner" && chmod 555 "$tmp/ro/inner"
-run "$tmp/ro/inner/dotfiles" "$tmp/home/.dotfiles"
-chmod 755 "$tmp/ro/inner"
-if [ ! -e "$tmp/ro/inner/dotfiles" ]; then
+# 5. A machine without the worktree (the work laptop) is a no-op.
+run "$tmp/home/absent" "$tmp/missing/main"
+if [ ! -e "$tmp/home/absent" ] && grep -q 'nothing to link' "$tmp/out"; then
+    ok "does nothing when the worktree is absent"
+else
+    no "does nothing when the worktree is absent"
+fi
+
+# 6. A directory that is not a checkout is left alone.
+mkdir -p "$tmp/empty/main"
+run "$tmp/home/empty" "$tmp/empty/main"
+if [ ! -e "$tmp/home/empty" ] && grep -q 'no checkout' "$tmp/out"; then
+    ok "does nothing when the target is not a checkout"
+else
+    no "does nothing when the target is not a checkout"
+fi
+
+# 7. An unwritable parent is reported, and nothing is created under it.
+mkdir -p "$tmp/ro" && chmod 555 "$tmp/ro"
+run "$tmp/ro/.dotfiles" "$tmp/worktree/main"
+chmod 755 "$tmp/ro"
+if [ ! -e "$tmp/ro/.dotfiles" ] && grep -q 'not writable' "$tmp/out"; then
     ok "creates nothing under an unwritable parent"
 else
     no "creates nothing under an unwritable parent"

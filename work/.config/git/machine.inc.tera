@@ -5,7 +5,3 @@
     email = "smohr@blitzy.com"
 [smores]
     flow = "pr"
-    branchTemplate = "{ticket}-{slug}"
-    branchTemplateUnticketed = "{type}/{slug}"
-    workFlat = "~/Blitzy"
-    workOwners = "blitzy-ai blitzy-platform"

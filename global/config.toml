@@ -20,6 +20,10 @@ experimental = true
 # python runs the maki-session-search helper.
 python = "3.14.10"
 gh = "2.104.0"
+# ghq owns the checkout root: clean-bare clones with worktrees beside them.
+# The only Mac is the work laptop, which keeps flat clones and does not use
+# ghq, so the tool is Linux-only rather than present everywhere.
+"aqua:x-motemen/ghq" = { version = "1.12.0", os = ["linux"] }
 jq = "1.8.2"
 yq = "4.54.3"
 ripgrep = "15.2.0"
