@@ -33,15 +33,53 @@ dotfiles. The machine set is inferred — `identity` on a server,
 `desktop,identity` on a Linux desktop, `desktop,work` on macOS — overridden by
 `DOTFILES_ENVS`, and saved in `~/.config/mise/miserc.local.toml`.
 
-Steps that need a human, including what to back up before wiping a disk, are
-in [docs/manual-steps.md](docs/manual-steps.md).
-
 | If it fails | Do |
 | --- | --- |
 | `macOS keeps a normal clone` | run `~/.dotfiles/scripts/install-mise.sh` |
-| `~/.dotfiles is a real directory` | migrate it: manual-steps step 3b |
-| `not a clean-bare clone` | remove the old checkout first |
+| `~/.dotfiles is a real directory` | move it aside and re-run |
+| `not a clean-bare clone` | remove the old checkout and re-run |
 | mise refuses to replace a file | resolve the conflict by hand; bootstrap never passes `--force-dotfiles` |
+
+## Rebuilding a machine
+
+Before wiping a disk, back up what exists nowhere else: the FIDO2 credential
+handles are unrecoverable afterwards.
+
+```sh
+(cd /srv/git/github.com/smores56/nix-config && nix run .#key-backup)  # copy the printed dir off-machine
+cp -a ~/.ssh ~/.config/sops /media/<usb>/
+```
+
+On the new machine, restore `~/.ssh` and `~/.config/sops` (modes 700/600),
+then bootstrap. OS install for smorespro is in
+[smorespro-image](https://github.com/smores56/smorespro-image/blob/main/docs/switch.md).
+
+Secrets are edited with `sops sops.yaml`, committed, and delivered by the next
+bootstrap:
+
+| Key | Value |
+| --- | --- |
+| `NEURALWATT_API_KEY`, `TINYFISH_API_KEY` | the Bitwarden items of those names |
+| `GITHUB_PERSONAL_PAT` | fine-grained: Contents read/write on your repos, Issues read/write on `smores56/sdlc` |
+| `GITHUB_WORK_PAT` | `smohr-blitzy` classic, `repo` scope, at most 366 days (Blitzy enterprise rule) |
+| `CLOUDFLARE_ACCESS_*` | a Zero Trust service token (Access → Service Auth) restricted to the SSH app, one-year lifetime |
+
+After a YubiKey reset (or on a new machine), regenerate the age handle, answering
+yes to "separate identity", then re-encrypt and prove each identity alone. The
+admin key stays enrolled as recovery: the plugin is pre-1.0.
+
+```sh
+age-plugin-fido2-hmac -g > ~/.config/sops/fido2-identity.txt && chmod 600 ~/.config/sops/fido2-identity.txt
+# after a reset: replace &yubikey in .sops.yaml with the "# public key:" line, then
+sops updatekeys sops.yaml
+mv ~/.config/sops/fido2-identity.txt{,.off}; sops -d sops.yaml >/dev/null && echo admin-ok
+mv ~/.config/sops/fido2-identity.txt{.off,}; sops -d sops.yaml >/dev/null && echo yubikey-ok
+```
+
+Once per host: `sudo tailscale up` (MagicDNS and HTTPS certs on in the admin
+console); on smortress, `sudo tailscale serve --bg --set-path /wallpapers
+/srv/wallpapers`; on smorespro, `noctalia msg color-scheme-set community "Rose
+Pine Moon"` (its GUI state outranks the config file).
 
 ## Environments
 
