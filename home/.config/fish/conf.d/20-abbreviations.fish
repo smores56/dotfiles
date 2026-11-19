@@ -13,8 +13,10 @@ abbr -a s sdlc
 # pull.rebase is on, so --no-rebase keeps this a fast-forward or nothing.
 abbr -a d 'git -C ~/.dotfiles pull --ff-only --no-rebase --autostash && mise -C ~/.dotfiles bootstrap'
 abbr -a gw git worktree
-abbr -a copy cb copy
-abbr -a paste cb paste
+# fish's own clipboard functions: copy also sends OSC 52, so it works over SSH
+# and through zellij; paste reads pbpaste or wl-paste locally.
+abbr -a copy fish_clipboard_copy
+abbr -a paste fish_clipboard_paste
 
 # Pickers. Cancelling fzf prints nothing, so read fails and nothing runs.
 abbr -a ef 'fd -t f | fzf | read f; and hx $f'

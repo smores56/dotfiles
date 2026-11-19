@@ -99,8 +99,8 @@ expect "s opens sdlc" sdlc "$(exp_ s)"
 expect "d pulls and bootstraps the dotfiles" \
     'git -C ~/.dotfiles pull --ff-only --no-rebase --autostash && mise -C ~/.dotfiles bootstrap' "$(exp_ d)"
 expect "gw is git worktree" 'git worktree' "$(exp_ gw)"
-expect "copy goes through Clipboard" 'cb copy' "$(exp_ copy)"
-expect "paste goes through Clipboard" 'cb paste' "$(exp_ paste)"
+expect "copy is fish's clipboard copy, with OSC 52" fish_clipboard_copy "$(exp_ copy)"
+expect "paste is fish's clipboard paste" fish_clipboard_paste "$(exp_ paste)"
 expect "gc clones with git get" 'git get' "$(exp_ gc)"
 expect "sm opens fish on smortress" 'ssh smortress -t fish' "$(exp_ sm)"
 for gone in b la gp gq dv dot boot ms wn cr; do
