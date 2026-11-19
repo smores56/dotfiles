@@ -3,8 +3,12 @@
 # "Rose Pine Moon" palette, which Noctalia caches after the first fetch.
 # Hot reload: Noctalia re-reads this file on change.
 
+# polkit_agent: the lock screen reaches fprintd over D-Bus, so the only elevated
+# step is enrollment (`fprintd-enroll` is auth_self); without this agent polkit
+# has nothing to prompt with and the daemon answers Not Authorized.
 [shell]
 telemetry_enabled = false
+polkit_agent = true
 clipboard_enabled = true
 clipboard_auto_paste = "auto"
 time_format = "{:%-I:%M %p}"
