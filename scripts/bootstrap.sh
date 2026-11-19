@@ -36,6 +36,18 @@ case $path in
     */*/*) ;;
     *) die "expected host/owner/repo in the remote, got: $REMOTE" ;;
 esac
+host=${path%%/*}
+case $host in
+    *@*|*:*) die "credentials in the remote are not supported: $REMOTE" ;;
+esac
+rest=${path#*/}
+owner=${rest%%/*}
+name=${rest#*/}
+for part in "$host" "$owner" "$name"; do
+    case $part in
+        ''|.|..|-*) die "invalid path component in the remote: $part" ;;
+    esac
+done
 repo=$ROOT/$path
 checkout_target=$repo/main
 
@@ -43,10 +55,14 @@ checkout_target=$repo/main
 # moves the running checkout, so it is a human step (docs/manual-steps.md).
 if [ -e "$CHECKOUT" ] || [ -L "$CHECKOUT" ]; then
     [ -L "$CHECKOUT" ] || die "$CHECKOUT is a real directory; see the migration note in docs/manual-steps.md"
+    # A broken link whose target is the expected worktree is repaired below,
+    # so compare the raw target as well as the resolved one: readlink -f
+    # fails for both when the root or the worktree is missing.
+    raw=$(readlink "$CHECKOUT")
     resolved=$(readlink -f "$CHECKOUT" 2>/dev/null || printf '%s' "$CHECKOUT")
     want=$(readlink -f "$checkout_target" 2>/dev/null || printf '%s' "$checkout_target")
-    [ "$resolved" = "$want" ] \
-        || die "$CHECKOUT points at $resolved, expected $checkout_target; resolve it by hand"
+    [ "$raw" = "$checkout_target" ] || [ "$resolved" = "$want" ] \
+        || die "$CHECKOUT points at $raw, expected $checkout_target; resolve it by hand"
 fi
 
 if [ ! -d "$ROOT" ]; then
@@ -54,7 +70,7 @@ if [ ! -d "$ROOT" ]; then
     sudo install -d -o "$(id -un)" -g "$(id -gn)" "$ROOT" || die "could not create $ROOT"
 elif [ ! -w "$ROOT" ]; then
     command -v sudo >/dev/null 2>&1 || die "$ROOT is not writable and sudo is missing"
-    sudo chown "$USER:$(id -gn)" "$ROOT" || die "could not take ownership of $ROOT"
+    sudo chown "$(id -un):$(id -gn)" "$ROOT" || die "could not take ownership of $ROOT"
 fi
 
 if [ ! -x "$MISE" ]; then
@@ -65,16 +81,11 @@ if [ ! -x "$MISE" ]; then
     [ -x "$MISE" ] || die "the official installer did not write $MISE"
 fi
 
-ghq_cmd() {
-    if command -v ghq >/dev/null 2>&1; then
-        ghq "$@"
-    else
-        MISE_LOCKED=0 "$MISE" exec "ghq@$GHQ_VERSION" -- ghq "$@"
-    fi
-}
-
+# Always the pinned ghq through mise: a `ghq` on PATH may be a stale shim or a
+# binary another writer controls, and this clone's scripts run below.
 log "cloning $REMOTE"
-GHQ_ROOT="$ROOT" ghq_cmd get --clean-bare "$REMOTE" || die "ghq get failed"
+GHQ_ROOT="$ROOT" MISE_LOCKED=0 "$MISE" exec "ghq@$GHQ_VERSION" -- ghq \
+    get --clean-bare "$REMOTE" || die "ghq get failed"
 [ -d "$repo/.git" ] || die "ghq did not create $repo/.git"
 
 git -C "$repo" config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
@@ -88,6 +99,9 @@ git -C "$repo/main" branch --set-upstream-to=origin/main >/dev/null \
 DOTFILES_LINK=$CHECKOUT DOTFILES_CHECKOUT=$repo/main \
     sh "$repo/main/scripts/link-dotfiles-checkout.sh" \
     || die "could not link $CHECKOUT"
+
+[ -x "$CHECKOUT/scripts/install-mise.sh" ] \
+    || die "$CHECKOUT is not the linked worktree; see the link script output above"
 
 log "running the checkout's installer"
 exec "$CHECKOUT/scripts/install-mise.sh"

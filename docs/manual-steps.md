@@ -115,11 +115,14 @@ It infers `desktop,identity` here (`DOTFILES_ENVS` overrides it) and runs
 ## 3b. Migrating a machine still on a normal clone
 
 Only a machine that already carries the old `~/.dotfiles` clone needs this.
-Commit or stash first, then run as your user:
+Commit or stash first, then run as your user. The old layout also left
+`/srv/git/github.com/smores56/dotfiles` as a symlink to `~/.dotfiles`; it must go
+first, or the bare clone below has nowhere to land:
 
 ```sh
 repo=/srv/git/github.com/smores56/dotfiles
-git clone --bare ~/.dotfiles "$repo/.git"
+rm "$repo"                       # the old alias symlink; ~/.dotfiles stays intact
+git clone --bare https://github.com/smores56/dotfiles.git "$repo/.git"
 git -C "$repo" config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
 mv ~/.dotfiles ~/.dotfiles.old
 git -C "$repo" worktree add "$repo/main" main
@@ -128,9 +131,20 @@ git -C "$repo/main" branch --set-upstream-to=origin/main
 ln -s "$repo/main" ~/.dotfiles
 ```
 
-Then run `mise -C ~/.dotfiles dot apply --prune` and remove `~/.dotfiles.old`.
-Every other repository is re-cloned with `ghq get --clean-bare` followed by the
-recipe in `home/.config/maki/AGENTS.md`.
+Cloning from the GitHub URL, not from the local checkout, is what leaves
+`origin` pointing at GitHub; a bare clone of `~/.dotfiles` would leave it
+pointing at the directory that is about to be deleted. Then run
+`mise -C ~/.dotfiles dot apply --prune` and remove `~/.dotfiles.old`.
+
+Other repositories were also left as normal clones by the old `repos get`.
+`ghq get --clean-bare` is a no-op on an existing path, so remove each old
+checkout first (commit anything you need), then clone and run the recipe in
+`home/.config/maki/AGENTS.md`:
+
+```sh
+rm -rf /srv/git/github.com/<owner>/<repo>
+ghq get --clean-bare <owner>/<repo>
+```
 
 ## 4. Tailscale
 

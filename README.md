@@ -248,8 +248,9 @@ tests/check.sh --shellcheck   # also shellcheck every script
 checks symlinks, templates, modes, rendered identity, and conflicts.
 `tests/shell-test.sh` starts an interactive zsh and checks the plugins,
 abbreviations, prompt, and that the Maki keys stay out of the parent shell.
-`tests/cli.sh` exercises `repos` and `worktrees` against throwaway
-repositories. `tests/secrets-test.sh`, `tests/detect-envs-test.sh`,
+`tests/bootstrap-script-test.sh` exercises the one-command bootstrap against a
+fixture remote, and `tests/picker-cables-test.sh` runs both picker cables
+against a clean-bare fixture. `tests/secrets-test.sh`, `tests/detect-envs-test.sh`,
 `tests/smortress-ssh-test.sh`, and `tests/wallpapers-test.sh` cover the SOPS
 cache, machine-set inference, the Access token wrapper, and the wallpaper
 sync. CI runs the same suite and a real Fedora apply lane.

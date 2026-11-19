@@ -40,8 +40,19 @@ git clone -q --bare "$tmp/src" "$tmp/remote.git"
 # --- fakes ------------------------------------------------------------------
 
 mkdir -p "$tmp/bin" "$tmp/home/.local/bin"
-# A mise already installed: bootstrap skips the network installer.
-printf '#!/bin/sh\nexit 0\n' >"$tmp/home/.local/bin/mise"
+# A mise already installed: bootstrap skips the network installer, and the
+# script reaches ghq through `mise exec ghq@<version> -- ghq`.
+cat >"$tmp/home/.local/bin/mise" <<EOF
+#!/bin/sh
+printf '%s\\n' "\$*" >>"$tmp/mise.log"
+[ "\$1" = exec ] || exit 9
+shift
+shift
+shift
+[ "\$1" = ghq ] || exit 9
+shift
+exec "$tmp/bin/ghq" "\$@"
+EOF
 chmod +x "$tmp/home/.local/bin/mise"
 # ghq records the call and builds the clean-bare fixture in its root.
 cat >"$tmp/bin/ghq" <<EOF
@@ -79,6 +90,8 @@ else
     sed 's/^/     /' "$tmp/out" >&2
 fi
 
+assert "bootstrap runs the pinned ghq through mise" \
+    grep -qx 'exec ghq@1.12.0 -- ghq get --clean-bare https://github.com/smores56/dotfiles.git' "$tmp/mise.log"
 assert "bootstrap clones through ghq get --clean-bare" \
     grep -qx 'get --clean-bare https://github.com/smores56/dotfiles.git' "$tmp/ghq.log"
 repo=$repos/github.com/smores56/dotfiles

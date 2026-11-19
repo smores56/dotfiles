@@ -277,6 +277,18 @@ else
     no "ghq.root belongs in the personal template and nowhere else"
 fi
 
+root_ghq=$(sed -n 's|.*root = "\(/srv/git\)"|\1|p' \
+    "$root/identity/.config/git/machine.inc.tera" | head -1)
+boot_root=$(sed -n 's|^ROOT=${BOOTSTRAP_ROOT:-\(/srv/git\)}$|\1|p' \
+    "$root/scripts/bootstrap.sh" | head -1)
+link_root=$(sed -n 's|^checkout=${DOTFILES_CHECKOUT:-\(/srv/git\)/.*|\1|p' \
+    "$root/scripts/link-dotfiles-checkout.sh" | head -1)
+if [ -n "$root_ghq" ] && [ "$root_ghq" = "$boot_root" ] && [ "$root_ghq" = "$link_root" ]; then
+    ok "the ghq root matches in the template, bootstrap, and the link script"
+else
+    no "the ghq root must match in identity/machine.inc.tera, bootstrap.sh, and link-dotfiles-checkout.sh"
+fi
+
 bootstrap_ghq=$(sed -n 's/^GHQ_VERSION=${GHQ_VERSION:-\([0-9.]*\)}$/\1/p' \
     "$root/scripts/bootstrap.sh" 2>/dev/null | head -1)
 config_ghq=$(sed -n 's/.*"aqua:x-motemen\/ghq" = { version = "\([0-9.]*\)".*/\1/p' \
@@ -392,6 +404,12 @@ if command -v git >/dev/null 2>&1 && command -v bash >/dev/null 2>&1; then
     else
         no "behavioral tests (tests/bootstrap-script-test.sh)"
         sed 's/^/     /' "$tmp/bootstrap-script.log" >&2
+    fi
+    if bash "$root/tests/picker-cables-test.sh" >"$tmp/picker-cables.log" 2>&1; then
+        ok "behavioral tests (tests/picker-cables-test.sh)"
+    else
+        no "behavioral tests (tests/picker-cables-test.sh)"
+        sed 's/^/     /' "$tmp/picker-cables.log" >&2
     fi
     if bash "$root/tests/dotfiles-layout-test.sh" >"$tmp/layout.log" 2>&1; then
         ok "behavioral tests (tests/dotfiles-layout-test.sh)"
