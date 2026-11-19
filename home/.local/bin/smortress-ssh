@@ -1,15 +1,8 @@
 #!/bin/sh
-# ssh's ProxyCommand for smortress, on every machine that reaches it.
-#
-# Access is the only route to smortress's sshd, so ssh has to speak through
-# `cloudflared access ssh` with an Access service token. A ProxyCommand inherits
-# only the caller's environment, and an ssh started from the GUI or a systemd
-# unit has none, so the token cannot live in a shell profile: it sits in a
-# mode-600 file that this wrapper reads and hands to cloudflared's environment
-# alone. exec replaces this process, so the caller's own environment never sees
-# the token either.
-#
-# ssh passes the hostname it resolved from ~/.ssh/smortress.conf as $1.
+# ssh's ProxyCommand for smortress: `cloudflared access ssh` with the Access
+# service token. An ssh started from the GUI or a unit has no shell profile, so
+# the token comes from a mode-600 file and reaches only cloudflared's
+# environment. $1 is the hostname from ~/.ssh/smortress.conf.
 set -eu
 
 host=${1:-ssh.sammohr.dev}
@@ -23,11 +16,9 @@ command -v cloudflared >/dev/null 2>&1 \
 [ -r "$env_file" ] \
     || fail "no Access service token at $env_file; run scripts/secrets.sh"
 
-# A token another account can read is not a token: refuse instead of using it.
 mode=$(stat -c %a "$env_file" 2>/dev/null || stat -f %Lp "$env_file")
 [ "$mode" = 600 ] || fail "$env_file is mode $mode, not 600"
 
-# Same shape as scripts/secrets.sh writes: NAME=value lines, optional quotes.
 value_of() {
     v=$(sed -n "s/^${1}=//p" "$env_file" | head -n 1 | tr -d '\r')
     case $v in

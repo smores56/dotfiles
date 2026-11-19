@@ -1,10 +1,5 @@
-# Custom providers for Maki. The key comes from the environment
-# (NEURALWATT_API_KEY, passed by the ~/.local/bin/maki wrapper), never from this
-# file.
-#
-# Maki's always_thinking="max" picks the effort level, so every
-# model declares the full scale; a missing level would leave the request silent
-# and keep the model default.
+# always_thinking picks the effort level, so every model declares the full
+# scale; a missing level would silently keep the model default.
 
 [neuralwatt]
 display_name = "Neuralwatt"

@@ -4,4 +4,3 @@ aliases:
     pv: pr view
 editor: hx
 git_protocol: https
-prompt: enabled

@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
-# sops runs this through SOPS_AGE_KEY_CMD and reads the age identity from stdout;
-# age prompts for the passphrase on the tty, so the identity never appears in
-# argv or in the environment. The YubiKey identity is exported the same way, and
-# that one is unwrapped by the token, not by a passphrase.
+# SOPS_AGE_KEY_CMD: print the age identity, the YubiKey handle when present,
+# else the passphrase-wrapped admin key, so it never sits in argv or the env.
 set -eu
 
 # sops folds a failing command's stderr into its own error, so repeat the reason
@@ -22,19 +20,14 @@ if [ -e "$legacy" ]; then
     fail "remove the retired plaintext identity $legacy"
 fi
 
-# The YubiKey identity wins whenever it is provisioned: it is a plaintext
-# age-plugin-fido2-hmac handle that the token unlocks, so nothing here can leak
-# a long-term secret. Nothing below can correct a wrong key either: while this
-# file is readable sops sees this identity alone, so removing it is the
-# documented way back to the passphrase-wrapped admin identity.
+# No fallback: while the handle is readable, sops sees only it; removing the
+# file is the way back to the admin identity.
 fido2=$config/sops/fido2-identity.txt
 if [ -r "$fido2" ]; then
     exec cat "$fido2"
 fi
 
 key=$config/sops/keys.age
-# Checked here so the error names the file to provision instead of age's generic
-# passphrase prompt.
 if [ ! -r "$key" ]; then
     fail "$key is missing or unreadable;" \
         "provision the passphrase-wrapped admin age identity there," \

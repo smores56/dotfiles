@@ -1,11 +1,9 @@
 #!/bin/sh
-# Apply one environment set into $HOME, the way a machine does, and check the
-# result. CI runs this in a Fedora container and on macOS; host packages and the
-# login shell are skipped because neither belongs to a throwaway HOME.
+# Applies one environment set into $HOME the way a machine does, and checks the
+# result. Host packages and the login shell are skipped: neither belongs to a
+# throwaway HOME.
 #
-# usage: apply-lane.sh <env set> [mise binary]
-#   env sets: desktop,identity (Linux) and desktop,work (macOS)
-#   mise binary defaults to `mise` on PATH
+# usage: apply-lane.sh <desktop,identity|desktop,work> [mise binary]
 set -eu
 
 env_set=${1:?usage: apply-lane.sh <env set> [mise]}
@@ -28,21 +26,12 @@ MISE_YES=1
 MISE_TRUSTED_CONFIG_PATHS=$root
 export MISE_YES MISE_TRUSTED_CONFIG_PATHS
 
-run_mise() {
-    "$mise" -C "$root" -E "$env_set" "$@"
-}
+fail() { printf 'apply-lane: %s\n' "$*" >&2; exit 1; }
 
 case $env_set in
-    *identity*)
-        email=sam@sammohr.dev
-        ;;
-    *work*)
-        email=smohr@blitzy.com
-        ;;
-    *)
-        printf 'apply-lane: unknown environment set %s\n' "$env_set" >&2
-        exit 1
-        ;;
+    *identity*) email=sam@sammohr.dev ;;
+    *work*) email=smohr@blitzy.com ;;
+    *) fail "unknown environment set $env_set" ;;
 esac
 
 # Clone the checkout the way a machine bootstraps, so `--config-dir` links the
@@ -56,13 +45,9 @@ rm -rf "$source"
 cp -a "$root" "$source"
 git -C "$source" checkout -q -B ci-apply
 
-# The real run: tools from the lockfiles, the pinned repositories, the
-# dotfiles, and the bootstrap task.
 "$mise" bootstrap --from "file://$source?ref=ci-apply" --from-dir "$from_dir" \
     --config-dir global -E "$env_set" --skip packages,user --yes
 "$mise" -C "$from_dir" -E "$env_set" dot status
-
-fail() { printf 'apply-lane: %s\n' "$*" >&2; exit 1; }
 
 link() { [ -L "$1" ] || fail "$1 is not a link into the checkout"; }
 present() { [ -f "$1" ] || fail "$1 is missing"; }
@@ -80,12 +65,8 @@ present "$HOME/.config/git/machine.inc"
     || fail "the git identity did not render"
 
 case $env_set in
-    *identity*)
-        present "$HOME/.config/git/work.inc"
-        ;;
-    *work*)
-        present "$HOME/.claude/work.md"
-        ;;
+    *identity*) present "$HOME/.config/git/work.inc" ;;
+    *work*) present "$HOME/.claude/work.md" ;;
 esac
 
 case $(uname -s) in
@@ -101,7 +82,7 @@ case $(uname -s) in
     Darwin)
         present "$HOME/Library/Fonts/GoogleSansCode-MONO-VF.ttf"
         absent "$HOME/.local/share/fonts/GoogleSansCode-MONO-VF.ttf"
-        present "$HOME/.aerospace.toml"
+        present "$HOME/.config/aerospace/aerospace.toml"
         ;;
 esac
 

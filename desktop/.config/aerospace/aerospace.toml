@@ -1,11 +1,7 @@
-# AeroSpace (macOS tiling). Installed as a Homebrew cask; this file is the whole config.
 config-version = 2
-# The cask registers its own login item.
 start-at-login = true
 after-startup-command = ["layout tiles"]
 
-default-root-container-layout = "tiles"
-default-root-container-orientation = "auto"
 # Version 2 no longer infers persistent workspaces from bindings; keep 1-9 so
 # empty pinned workspaces stay on their monitors.
 persistent-workspaces = ["1", "2", "3", "4", "5", "6", "7", "8", "9"]

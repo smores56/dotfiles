@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
 """Stateless sdlc CLI: GitHub Issues are the system of record.
 
-Global and self-contained: it needs `gh` (or, under `SDLC_TRANSPORT=broker`,
-only the standard library) and nothing from this repo's justfile or local
-state. Feature = issue labeled type:feature; tasks = sub-issues with
-blocked-by links; approval = the status:approved label plus a comment holding
-the canonical design hash. `ui` uses `tv` when present; `review` launches
-`revdiff`.
+Feature = issue labeled type:feature; tasks = sub-issues with blocked-by
+links; approval = the status:approved label plus a comment holding the
+canonical design hash.
 """
 
 import argparse
@@ -25,14 +22,10 @@ import urllib.request
 from collections import namedtuple
 
 DEFAULT_REPO = "smores56/sdlc"
-# The broker is an HTTP path proxy that injects the GitHub App token, so every
-# request is `$BROKER_URL/github-sdlc/<api.github.com path>`.
 BROKER_PATH = "/github-sdlc"
-# The hook broker is a second logical host: it proxies only
-# `POST /repos/<owner>/<repo>/hooks` and injects an installation token that
-# holds `repository_hooks: write`.
+# A second broker host: it proxies only `POST /repos/<owner>/<repo>/hooks`.
 HOOKS_PATH = "/github-hooks"
-# The agent webhook receiver; the broker refuses any other `config.url`.
+# The broker refuses any other `config.url`.
 AGENT_HOOKS_URL = "https://agent-hooks.sammohr.dev/"
 DEFAULT_HOOK_EVENTS = ("push", "pull_request", "issues", "issue_comment")
 PAGE_SIZE = 100
@@ -84,22 +77,19 @@ ReviewNote = namedtuple("ReviewNote", "file start end text")
 
 
 class CliError(Exception):
-    """A user-facing failure; main() prints it and exits nonzero."""
+    pass
 
 
 _CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]")
 
 
 def clean(value):
-    """Strip control characters from untrusted issue text before rendering."""
+    """Strip control characters: issue text is untrusted and reaches the terminal."""
     return _CONTROL.sub("", value) if isinstance(value, str) else value
 
 
 def one_line(value):
-    """Clean text and collapse tabs/newlines so it fits one row or prompt."""
     return clean(value).replace("\t", " ").replace("\r", " ").replace("\n", " ")
-
-
 
 
 def gh(*args, input=None):
@@ -113,12 +103,12 @@ def gh(*args, input=None):
     return proc.stdout
 
 
-def gh_json(*args):
-    out = gh(*args)
+def gh_json(*args, input=None, error=None):
+    out = gh(*args, input=input)
     try:
         return json.loads(out)
     except ValueError:
-        raise CliError("gh %s returned invalid JSON" % " ".join(args[:2]))
+        raise CliError(error or "gh %s returned invalid JSON" % " ".join(args[:2]))
 
 
 def fetch_issue(repo, number, fields=FEATURE_FIELDS):
@@ -132,8 +122,6 @@ def split_repo(repo, what="registry repo"):
 
 
 class GhTransport:
-    """Shell out to `gh`; the default on hosts that hold a GitHub credential."""
-
     name = "gh"
 
     def list_issues(self, repo, state="open", limit=500):
@@ -148,22 +136,14 @@ class GhTransport:
 
     def feature_graph(self, repo, number):
         owner, name = split_repo(repo)
-        out = gh(
-            "api",
-            "graphql",
-            "-F",
-            "owner=%s" % owner,
-            "-F",
-            "name=%s" % name,
-            "-F",
-            "number=%d" % int(number),
-            "-f",
-            "query=%s" % FEATURE_GRAPH_QUERY,
+        payload = gh_json(
+            "api", "graphql",
+            "-F", "owner=%s" % owner,
+            "-F", "name=%s" % name,
+            "-F", "number=%d" % int(number),
+            "-f", "query=%s" % FEATURE_GRAPH_QUERY,
+            error="gh api graphql returned an unexpected payload",
         )
-        try:
-            payload = json.loads(out)
-        except ValueError:
-            raise CliError("gh api graphql returned an unexpected payload")
         return feature_graph_issue(payload, repo, number)
 
     def edit_labels(self, repo, number, add=(), remove=()):
@@ -192,32 +172,22 @@ class GhTransport:
     def comment(self, repo, number, body=None, editor=False, body_file=False):
         command = ["issue", "comment", str(number), "--repo", repo]
         if editor:
-            command += ["--editor"]
-            return gh(*command)
+            return gh(*command, "--editor")
         if body_file:
-            # Long review notes go over stdin, exactly as before.
+            # Review notes can outgrow argv.
             return gh(*command, "--body-file", "-", input=body)
         return gh(*command, "--body", body)
 
     def create_hook(self, repo, body):
-        out = gh(
-            "api",
-            "repos/%s/hooks" % repo,
-            "-X",
-            "POST",
-            "--input",
-            "-",
+        return gh_json(
+            "api", "repos/%s/hooks" % repo, "-X", "POST", "--input", "-",
             input=json.dumps(body),
+            error="gh api repos/%s/hooks returned invalid JSON" % repo,
         )
-        try:
-            return json.loads(out)
-        except ValueError:
-            raise CliError("gh api repos/%s/hooks returned invalid JSON" % repo)
 
 
-def broker_base(env=None):
-    env = os.environ if env is None else env
-    url = (env.get("BROKER_URL") or "").strip()
+def broker_base():
+    url = (os.environ.get("BROKER_URL") or "").strip()
     if not url:
         raise CliError(
             "SDLC_TRANSPORT=broker needs BROKER_URL (e.g. http://broker:8080)"
@@ -228,8 +198,8 @@ def broker_base(env=None):
 class BrokerTransport:
     """GitHub's REST API through the broker's path proxy.
 
-    The broker injects the GitHub App bearer, so the client sends no token and
-    must never add one: an Authorization header here would shadow the app's.
+    The broker injects the GitHub App bearer, so the client must never send an
+    Authorization header: it would shadow the app's.
     """
 
     name = "broker"
@@ -237,10 +207,6 @@ class BrokerTransport:
 
     def __init__(self, base):
         self.base = base
-
-    @classmethod
-    def from_env(cls, env=None):
-        return cls(broker_base(env) + BROKER_PATH)
 
     def call(self, method, path, body=None, query=None):
         url = self.base + path
@@ -288,13 +254,10 @@ class BrokerTransport:
         return [self.hydrate(repo, item) for item in issues[:limit]]
 
     def hydrate(self, repo, data):
-        """gh's `--json` payload for one listed issue.
+        """REST lists carry no comments or sub-issues; only features need them.
 
-        REST's issue list has no comments or sub-issues field, so features get
-        them from their own endpoints; the CLI only reads those fields for
-        features, and hydrating every issue would be one request each.
-        Blockers are skipped here: nothing that consumes a list result reads
-        them, and `sub_tasks` refetches by id when it needs the real graph.
+        Blockers are skipped: no list consumer reads them, and `sub_tasks`
+        refetches when it needs the real graph.
         """
         issue = rest_issue(data)
         if "type:feature" in labels_of(issue):
@@ -408,18 +371,16 @@ class BrokerTransport:
         url = created.get("html_url") or ""
         if not url:
             raise CliError("broker POST /repos/%s/issues returned no issue URL" % repo)
-        # `parse_created_url` reads the number out of this URL, as it does `gh`.
+        # Mirror `gh issue create`, which prints only the URL.
         return url + "\n"
 
     def issue_id(self, repo, number):
-        """REST dependency links name the blocking issue by database id."""
         issue = self.json_call("GET", repo_path(repo, "/issues/%d" % int(number))) or {}
         if "id" not in issue:
             raise CliError("issue #%s not found in %s" % (number, repo))
         return int(issue["id"])
 
     def comment(self, repo, number, body=None, editor=False, body_file=False):
-        # `body_file` is a gh-ism (stdin); the broker sends JSON either way.
         if editor:
             body = edit_message()
             if not body:
@@ -431,50 +392,22 @@ class BrokerTransport:
         ) or {}
         return posted.get("html_url") or ""
 
-
-class HookBrokerTransport(BrokerTransport):
-    """`BrokerTransport` bound to the broker's `github-hooks` logical host.
-
-    That host proxies `POST /repos/{owner}/{repo}/hooks` and nothing else: the
-    injected installation token carries `repository_hooks: write`, and every
-    read, edit or delete is refused. Reusing `call`/`json_call` keeps the URL
-    and auth story in one place.
-    """
-
-    @classmethod
-    def from_env(cls, env=None):
-        return cls(broker_base(env) + HOOKS_PATH)
-
     def create_hook(self, repo, body):
         return self.json_call("POST", repo_path(repo, "/hooks"), body=body) or {}
 
 
-def transport():
-    """The GitHub backend named by $SDLC_TRANSPORT: `gh` unless told otherwise."""
+def transport(broker_path=BROKER_PATH):
     name = os.environ.get("SDLC_TRANSPORT") or "gh"
     if name == "gh":
         return GhTransport()
     if name == "broker":
-        return BrokerTransport.from_env()
-    raise CliError(
-        "SDLC_TRANSPORT=%r is not a transport; expected 'gh' or 'broker'" % name
-    )
-
-
-def hook_transport():
-    """The backend for `sdlc hook`: `gh`, or the broker's github-hooks host."""
-    name = os.environ.get("SDLC_TRANSPORT") or "gh"
-    if name == "gh":
-        return GhTransport()
-    if name == "broker":
-        return HookBrokerTransport.from_env()
+        return BrokerTransport(broker_base() + broker_path)
     raise CliError(
         "SDLC_TRANSPORT=%r is not a transport; expected 'gh' or 'broker'" % name
     )
 
 
 def agent_hook_url(value):
-    """The capability URL, or a refusal before the broker can answer 403."""
     url = (value or "").strip()
     if not url.startswith(AGENT_HOOKS_URL) or not url[len(AGENT_HOOKS_URL) :]:
         raise CliError(
@@ -522,13 +455,12 @@ def path_quote(value):
 
 
 def repo_path(repo, suffix=""):
-    """The api.github.com path for a repo, as the broker proxies it."""
     owner, name = split_repo(repo)
     return "/repos/%s/%s%s" % (path_quote(owner), path_quote(name), suffix)
 
 
 def rest_issue(data):
-    """Project a REST issue onto gh's `--json` shape so parsing is unchanged."""
+    """Project a REST issue onto gh's `--json` shape."""
     return {
         "number": int(data["number"]),
         "title": data.get("title") or "",
@@ -553,7 +485,6 @@ def http_error_detail(exc):
 
 
 def edit_message():
-    """Read a comment body from $GIT_EDITOR/$VISUAL/$EDITOR; empty aborts."""
     editor = (
         os.environ.get("GIT_EDITOR")
         or os.environ.get("VISUAL")
@@ -575,7 +506,6 @@ def edit_message():
 
 
 def feature_graph_issue(payload, repo, number):
-    """Unwrap one GraphQL feature payload into the shape the CLI reads."""
     try:
         issue = payload["data"]["repository"]["issue"]
     except (KeyError, TypeError):
@@ -592,17 +522,12 @@ def feature_graph_issue(payload, repo, number):
     return issue
 
 
-def fetch_feature_graph(repo, number):
-    """One GraphQL round trip: the feature, its comments, and its task graph."""
-    return transport().feature_graph(repo, number)
-
-
 def registry_repo():
     return os.environ.get("SDLC_REPO") or DEFAULT_REPO
 
 
 def node_list(value):
-    """GitHub returns {nodes,totalCount}; tolerate plain arrays too."""
+    """Accept both GraphQL's {nodes,totalCount} and plain arrays."""
     if isinstance(value, dict):
         return value.get("nodes") or []
     return value or []
@@ -621,16 +546,12 @@ def lifecycle_of(issue):
 
 
 def display_status(issue):
-    status = lifecycle_of(issue)
-    if status is None:
-        status = "closed" if issue.get("state") == "CLOSED" else "open"
-    return status
+    return lifecycle_of(issue) or ("closed" if issue.get("state") == "CLOSED" else "open")
 
 
 def repo_names(issue):
     names = sorted(name[len("repo:") :] for name in labels_of(issue) if name.startswith("repo:"))
     return ",".join(names)
-
 
 
 DESIGN_HEADER_RE = re.compile(r"(?ms)^## Design[ \t]*\n(.*?)(?=^## |\Z)")
@@ -640,9 +561,8 @@ ANNOTATION_PREFIX = "> Sam:"
 def design_section(body):
     """Canonical `## Design` content, or None.
 
-    Rules (T1): LF line endings, trailing whitespace stripped, annotation lines
-    dropped, leading/trailing blank lines removed, joined with LF, no final
-    newline.
+    LF line endings, no trailing whitespace, annotation lines dropped, no blank
+    edges, no final newline: edits that keep the meaning keep the hash.
     """
     if not body:
         return None
@@ -707,8 +627,6 @@ def comment_date(comment):
     return comment.get("createdAt") or "-"
 
 
-
-
 def feature_issues(repo, all_states=False):
     issues = transport().list_issues(
         repo, state="all" if all_states else "open", limit=500
@@ -747,8 +665,6 @@ def resolve_number(repo, ref):
 
 
 def resolve_feature(repo, ref):
-    if str(ref).isdigit():
-        return fetch_issue(repo, int(ref))
     return fetch_issue(repo, resolve_number(repo, ref))
 
 
@@ -782,6 +698,13 @@ def task_counts(tasks):
     return open_count, ready, blocked
 
 
+def run_tv(cable, name):
+    proc = subprocess.run(
+        ["tv", "--cable-dir", cable, name], stdout=subprocess.PIPE, text=True
+    )
+    if proc.returncode != 0 or not proc.stdout.strip():
+        raise CliError("selection canceled")
+    return proc.stdout.splitlines()[0].strip()
 
 
 def pick(candidates, header="sdlc features"):
@@ -838,7 +761,6 @@ def pick(candidates, header="sdlc features"):
 
 
 def summary(feature):
-    """The number/title/status/repo projection every list format shares."""
     return (
         feature["number"],
         one_line(feature.get("title") or ""),
@@ -864,7 +786,6 @@ def preview_text(feature):
 
 
 def excerpt(value, lines=20, chars=1600):
-    """Truncate untrusted body text to a preview-sized excerpt."""
     text = clean(value or "").strip("\n")
     if not text.strip():
         return "(none)"
@@ -905,7 +826,6 @@ def task_lines(feature):
 
 
 def action_preview(feature, action):
-    """Describe one action against a feature, from local payload data only."""
     lines = [
         "#%d %s" % (feature["number"], one_line(feature.get("title") or "")),
         "[%s] %s" % (display_status(feature), repo_names(feature) or "-"),
@@ -942,10 +862,9 @@ def action_preview(feature, action):
 
 
 def write_picker_channel(tmp, name, rows, previews, display, output="{split:\\t:0}"):
-    """Write a tv channel whose previews are precomputed files, with no live gh calls.
+    """Write a tv channel whose previews are precomputed files read by `cat`.
 
-    The preview command is a bare `cat` so it never blocks on the network; tv
-    resolves {split:\t:0} from the row to choose the file.
+    A live `gh` preview would block the picker on the network for every row.
     """
     cable = os.path.join(tmp, "cable")
     previews_dir = os.path.join(tmp, "previews")
@@ -971,7 +890,6 @@ def write_picker_channel(tmp, name, rows, previews, display, output="{split:\\t:
 
 
 def write_picker_cable(tmp, features):
-    """Write the feature list and its previews for tv, with no live gh calls."""
     return write_picker_channel(
         tmp,
         "sdlc-features",
@@ -979,8 +897,6 @@ def write_picker_cable(tmp, features):
         {str(feature["number"]): preview_text(feature) for feature in features},
         display="#{split:\\t:0} #{split:\\t:1} [#{split:\\t:2}] {split:\\t:3}",
     )
-
-
 
 
 def parse_revdiff_annotations(text):
@@ -1073,8 +989,6 @@ def render_review(feature_number, title, body, notes, markers=()):
     return "\n\n".join([header] + blocks) + "\n"
 
 
-
-
 def cwd_repo_name(cwd=None):
     def run(*args):
         return subprocess.run(
@@ -1097,11 +1011,6 @@ def cwd_repo_name(cwd=None):
 
 
 def pick_action(feature=None):
-    """Pick an action. With a feature, each action previews what it will do.
-
-    The feature payload is already in hand (or fetched once by cmd_ui), so the
-    previews are precomputed files read by `cat`; the picker never runs gh.
-    """
     if feature is None or not shutil.which("tv"):
         return pick(list(ACTIONS), header="sdlc actions").strip()
     rows = ["%s\t%s" % (action, ACTION_HELP[action]) for action in ACTIONS]
@@ -1113,14 +1022,7 @@ def pick_action(feature=None):
             {action: action_preview(feature, action) for action in ACTIONS},
             display="#{split:\\t:0} {split:\\t:1}",
         )
-        proc = subprocess.run(
-            ["tv", "--cable-dir", cable, "sdlc-actions"],
-            stdout=subprocess.PIPE,
-            text=True,
-        )
-    if proc.returncode != 0 or not proc.stdout.strip():
-        raise CliError("selection canceled")
-    return proc.stdout.splitlines()[0].strip()
+        return run_tv(cable, "sdlc-actions")
 
 
 def pick_feature(repo, all_states=False, features=None):
@@ -1135,15 +1037,7 @@ def pick_feature(repo, all_states=False, features=None):
         return int(pick(rows).split("\t")[0])
 
     with tempfile.TemporaryDirectory(prefix="sdlc-cable-") as tmp:
-        cable = write_picker_cable(tmp, features)
-        proc = subprocess.run(
-            ["tv", "--cable-dir", cable, "sdlc-features"],
-            stdout=subprocess.PIPE,
-            text=True,
-        )
-    if proc.returncode != 0 or not proc.stdout.strip():
-        raise CliError("selection canceled")
-    selected = proc.stdout.splitlines()[0].strip()
+        selected = run_tv(write_picker_cable(tmp, features), "sdlc-features")
     try:
         return int(selected)
     except ValueError:
@@ -1154,8 +1048,6 @@ def confirm(prompt):
     sys.stderr.write("%s? [y/N] " % prompt)
     sys.stderr.flush()
     return sys.stdin.readline().strip().lower() in ("y", "yes")
-
-
 
 
 def cmd_list(args):
@@ -1224,7 +1116,7 @@ def cmd_show(args):
 
 def cmd_status(args):
     repo = registry_repo()
-    feature = fetch_feature_graph(repo, resolve_number(repo, args.feature))
+    feature = transport().feature_graph(repo, resolve_number(repo, args.feature))
     approval = approval_state(feature)
     tasks = sub_tasks(repo, feature)
     open_count, ready_count, blocked_count = task_counts(tasks)
@@ -1268,7 +1160,7 @@ def cmd_next(args):
         if not features:
             raise CliError("no active features in %s" % repo)
         number = pick_feature(repo, features=features) if args.pick else features[0]["number"]
-    feature = fetch_feature_graph(repo, number)
+    feature = transport().feature_graph(repo, number)
     approval = approval_state(feature)
     if approval.state == "stale":
         raise CliError(
@@ -1316,16 +1208,11 @@ def cmd_approve(args):
     digest = design_hash(feature.get("body"))
     if digest is None:
         raise CliError("#%d has no '## Design' section; refusing to approve" % feature["number"])
-    prompts = (
-        "approve #%d %r design sha256:%s? [y/N] "
-        % (feature["number"], one_line(feature.get("title") or ""), digest)
+    prompt = "approve #%d %r design sha256:%s" % (
+        feature["number"], one_line(feature.get("title") or ""), digest
     )
-    if not args.yes:
-        sys.stderr.write(prompts)
-        sys.stderr.flush()
-        answer = sys.stdin.readline().strip().lower()
-        if answer not in ("y", "yes"):
-            raise CliError("not approved")
+    if not args.yes and not confirm(prompt):
+        raise CliError("not approved")
     remove = ["status:needs-reapproval"] if "status:needs-reapproval" in labels_of(feature) else []
     backend = transport()
     backend.edit_labels(repo, feature["number"], add=["status:approved"], remove=remove)
@@ -1334,8 +1221,7 @@ def cmd_approve(args):
 
 
 def parse_created_url(output):
-    # `gh issue create` has no --json; the printed URL is the only handle. The
-    # broker transport prints the same URL from the REST response.
+    # `gh issue create` has no --json; the printed URL is the only handle.
     match = re.search(r"https?://\S+/issues/(\d+)", output)
     if match is None:
         raise CliError("could not parse the issue URL from gh output: %r" % output.strip())
@@ -1446,7 +1332,7 @@ def cmd_feature_transition(terminal):
     def run(args):
         repo = registry_repo()
         if terminal == "done":
-            feature = fetch_feature_graph(repo, resolve_number(repo, args.feature))
+            feature = transport().feature_graph(repo, resolve_number(repo, args.feature))
             open_tasks = [task for task in sub_tasks(repo, feature) if task.get("state") != "CLOSED"]
             if open_tasks:
                 raise CliError(
@@ -1514,11 +1400,8 @@ def cmd_review(args):
         print(comment, end="")
         return
     url = transport().comment(repo, feature["number"], body=comment, body_file=True)
-    print(
-        "posted review notes to #%d %s"
-        % (feature["number"], url.strip() or "")
-    )
-    print('tell the agent: read #%d' % feature["number"])
+    print("posted review notes to #%d %s" % (feature["number"], url.strip()))
+    print("tell the agent: read #%d" % feature["number"])
 
 
 def cmd_comment(args):
@@ -1536,7 +1419,7 @@ def cmd_hook_add(args):
     payload = hook_payload(
         url, hook_events(args.events), hook_secret(args.secret_file)
     )
-    created = hook_transport().create_hook(args.repo, payload)
+    created = transport(HOOKS_PATH).create_hook(args.repo, payload)
     if not isinstance(created, dict) or created.get("id") is None:
         raise CliError("POST /repos/%s/hooks returned no hook id" % args.repo)
     print("created hook %s on %s" % (created["id"], args.repo))
@@ -1562,7 +1445,7 @@ def cmd_ui(args):
 
     if features:
         ref = features[0]
-        # One fetch, only when the action picker will actually show previews.
+        # Fetch only when the action picker will show previews.
         feature = None if actions else resolve_feature(repo, ref)
     else:
         pool = feature_issues(repo, all_states=args.all)
@@ -1570,41 +1453,28 @@ def cmd_ui(args):
         ref = str(number)
         feature = next((item for item in pool if item["number"] == number), None)
     action = actions[0] if actions else pick_action(feature)
-    if action == "show":
-        cmd_show(argparse.Namespace(feature=ref))
-    elif action == "status":
-        cmd_status(argparse.Namespace(feature=ref))
-    elif action == "review":
-        cmd_review(argparse.Namespace(feature=ref, dry_run=False))
-    elif action == "comment":
-        cmd_comment(argparse.Namespace(feature=ref))
-    elif action == "next":
-        cmd_next(argparse.Namespace(feature=ref, pick=False))
-    elif action == "approve":
-        cmd_approve(argparse.Namespace(feature=ref, pick=False, yes=False))
-    elif action in ("complete", "cancel"):
-        if confirm("%s #%s" % (action, ref)):
-            cmd_feature_transition("done" if action == "complete" else "canceled")(
-                argparse.Namespace(feature=ref)
-            )
-        else:
+    command = argparse.Namespace(feature=ref, dry_run=False, pick=False, yes=False)
+    if action in ("complete", "cancel"):
+        if not confirm("%s #%s" % (action, ref)):
             print("not %s" % ("completed" if action == "complete" else "canceled"))
-    else:
+            return
+        cmd_feature_transition("done" if action == "complete" else "canceled")(command)
+        return
+    commands = {
+        "show": cmd_show,
+        "status": cmd_status,
+        "review": cmd_review,
+        "comment": cmd_comment,
+        "next": cmd_next,
+        "approve": cmd_approve,
+    }
+    if action not in commands:
         raise CliError("unknown action %r" % action)
-
-
+    commands[action](command)
 
 
 def feature_arg(parser, required=True, help_text="issue number or title substring"):
     parser.add_argument("feature", nargs=None if required else "?", help=help_text)
-
-
-def pick_arg(parser, help_text="pick an active feature"):
-    parser.add_argument("--pick", action="store_true", help=help_text)
-
-
-def all_arg(parser, help_text="include terminal features"):
-    parser.add_argument("--all", action="store_true", help=help_text)
 
 
 def build_parser():
@@ -1615,10 +1485,10 @@ def build_parser():
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("list", help="list features")
-    all_arg(p, "include closed, done, and canceled")
+    p.add_argument("--all", action="store_true", help="include closed, done, and canceled")
     p.add_argument("--repo", help="registry repo (default $SDLC_REPO)")
     p.add_argument("--format", choices=("human", "path", "json"), default="human")
-    pick_arg(p, "pick one feature and print its number")
+    p.add_argument("--pick", action="store_true", help="pick one feature and print its number")
     p.set_defaults(fn=cmd_list)
 
     p = sub.add_parser("show", help="print a feature body and comments")
@@ -1631,13 +1501,13 @@ def build_parser():
 
     p = sub.add_parser("next", help="print the next ready task")
     feature_arg(p, required=False)
-    pick_arg(p)
+    p.add_argument("--pick", action="store_true", help="pick an active feature")
     p.set_defaults(fn=cmd_next)
 
     p = sub.add_parser("approve", help="record human approval of the design")
     feature_arg(p, required=False)
     p.add_argument("--yes", action="store_true", help="skip the TTY confirmation")
-    pick_arg(p)
+    p.add_argument("--pick", action="store_true", help="pick an active feature")
     p.set_defaults(fn=cmd_approve)
 
     p = sub.add_parser("new", help="create a feature issue")
@@ -1672,7 +1542,7 @@ def build_parser():
 
     p = sub.add_parser("ui", help="pick a feature and an action")
     p.add_argument("items", nargs="*", help="action and/or feature")
-    all_arg(p)
+    p.add_argument("--all", action="store_true", help="include terminal features")
     p.add_argument("--repo", help="registry repo (default $SDLC_REPO)")
     p.set_defaults(fn=cmd_ui)
 
@@ -1724,7 +1594,6 @@ def build_parser():
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    # A bare `sdlc` is the human entry point: the picker.
     args = build_parser().parse_args(argv or ["ui"])
     try:
         args.fn(args)

@@ -1,12 +1,7 @@
 # Tools only machines with a display need.
 [tools]
-# copy/paste on every desktop.
 "github:Slackadays/Clipboard" = "0.10.0"
-# `ct` empties the trash with gtrash on Linux; macOS uses ~/.Trash directly.
 "aqua:umlx5h/gtrash" = { version = "0.0.6", os = ["linux"] }
-# The wallpaper sync mirrors over HTTPS; a mise tool replaces host rsync.
 "aqua:rclone/rclone" = { version = "1.76.0", os = ["linux"] }
-# The SSH transport to smortress (called from ~/.local/bin/smortress-ssh). Only
-# the Linux desktop needs the pin: the work Mac takes the same client from
-# Homebrew in mise.work.toml, because a brew pin has no checksums to lock.
+# The work Mac takes cloudflared from Homebrew: a brew pin has no checksums to lock.
 "aqua:cloudflare/cloudflared" = { version = "2026.11.0", os = ["linux"] }

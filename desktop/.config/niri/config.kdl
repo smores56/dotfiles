@@ -1,7 +1,5 @@
-// smorespro niri config. Noctalia owns the bar, launcher, notifications, lock,
-// idle and wallpaper; this file owns the session, layout, input and binds.
-// Colors are the Rose Pine Moon palette, hardcoded because niri cannot read
-// Noctalia's palette JSON.
+// Noctalia owns the bar, launcher, notifications, lock, idle and wallpaper.
+// Rose Pine Moon colors are hardcoded: niri cannot read Noctalia's palette.
 
 input {
     keyboard {

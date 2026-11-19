@@ -1,20 +1,12 @@
 #!/usr/bin/env bash
-# Behavioural tests for ~/.local/bin/sops-age-key, the identity sops reads
-# through SOPS_AGE_KEY_CMD: the YubiKey handle wins when it is provisioned, the
-# passphrase-wrapped admin identity is the fallback, and a retired plaintext
-# identity stops the command.
+# ~/.local/bin/sops-age-key, the identity sops reads through SOPS_AGE_KEY_CMD:
+# the YubiKey handle wins when provisioned, the passphrase-wrapped admin
+# identity is the fallback, and a retired plaintext identity stops the command.
 set -uo pipefail
+# shellcheck source=tests/lib.sh
+. "$(dirname -- "$0")/lib.sh"
 
-root=$(cd -- "$(dirname -- "$0")/.." && pwd)
 script=$root/home/.local/bin/sops-age-key
-tmp=$(mktemp -d) || exit 1
-trap 'rm -rf "$tmp"' EXIT
-
-pass=0
-fail=0
-ok() { pass=$((pass + 1)); printf 'ok   %s\n' "$*"; }
-no() { fail=$((fail + 1)); printf 'FAIL %s\n' "$*" >&2; }
-
 home=$tmp/home
 config=$home/.config
 mkdir -p "$config/sops" "$tmp/bin"
@@ -34,68 +26,30 @@ run() {
 fido2=$config/sops/fido2-identity.txt
 admin=$config/sops/keys.age
 
-# 1. The YubiKey identity wins, and nothing is decrypted with a passphrase.
 printf '# public key: age1test\nAGE-PLUGIN-FIDO2-HMAC-1TEST\n' >"$fido2"
 chmod 600 "$fido2"
 : >"$tmp/log"
-if got=$(run); then
-    ok "a provisioned YubiKey identity is exported"
-else
-    no "a provisioned YubiKey identity is exported"
-    sed 's/^/     /' "$tmp/err" >&2
-fi
-[ "$got" = '# public key: age1test
-AGE-PLUGIN-FIDO2-HMAC-1TEST' ] && ok "the plugin handle reaches sops verbatim" \
-    || no "the plugin handle reaches sops verbatim (got '$got')"
-[ ! -s "$tmp/log" ] && ok "the admin key is not decrypted when the token is enrolled" \
-    || no "the admin key is not decrypted when the token is enrolled"
+assert "a provisioned YubiKey identity is exported" run
+expect "the plugin handle reaches sops verbatim" '# public key: age1test
+AGE-PLUGIN-FIDO2-HMAC-1TEST' "$out"
+assert_not "the admin key is not decrypted when the token is enrolled" test -s "$tmp/log"
 
-# 2. Without it, the passphrase-wrapped admin identity is unwrapped by age.
 rm "$fido2"
 : >"$admin"
 : >"$tmp/log"
-if got=$(run); then
-    ok "the admin identity is decrypted on request"
-else
-    no "the admin identity is decrypted on request"
-fi
-[ "$got" = 'FAKE-ADMIN-IDENTITY' ] && ok "age's identity is what sops reads" \
-    || no "age's identity is what sops reads (got '$got')"
-grep -qx "age --decrypt $admin" "$tmp/log" \
-    && ok "age decrypts the wrapped admin identity" \
-    || no "age decrypts the wrapped admin identity ($(cat "$tmp/log"))"
+assert "the admin identity is decrypted on request" run
+expect "age's identity is what sops reads" FAKE-ADMIN-IDENTITY "$out"
+expect "age decrypts the wrapped admin identity" "age --decrypt $admin" "$(cat "$tmp/log")"
 
-# 3. Neither identity: fail, naming both files.
 rm "$admin"
-if run >/dev/null; then
-    no "a machine with no identity fails"
-else
-    ok "a machine with no identity fails"
-fi
-out=$(cat "$tmp/err")
-case $out in
-    *"$admin is missing or unreadable"*) ok "the failure names the admin identity" ;;
-    *) no "the failure names the admin identity (got '$out')" ;;
-esac
-case $out in
-    *"$fido2"*) ok "the failure names the YubiKey identity" ;;
-    *) no "the failure names the YubiKey identity (got '$out')" ;;
-esac
+assert_not "a machine with no identity fails" run
+contains "the failure names the admin identity" "$admin is missing or unreadable" "$(cat "$tmp/err")"
+contains "the failure names the YubiKey identity" "$fido2" "$(cat "$tmp/err")"
 
-# 4. A retired plaintext identity stops the command before anything decrypts.
 mkdir -p "$config/sops/age"
 : >"$config/sops/age/keys.txt"
 printf 'AGE-PLUGIN-FIDO2-HMAC-1TEST\n' >"$fido2"
-if run >/dev/null; then
-    no "a retired plaintext identity fails"
-else
-    ok "a retired plaintext identity fails"
-fi
-out=$(cat "$tmp/err")
-case $out in
-    *'remove the retired plaintext identity'*) ok "the failure names the retired file" ;;
-    *) no "the failure names the retired file (got '$out')" ;;
-esac
+assert_not "a retired plaintext identity fails" run
+contains "the failure names the retired file" 'remove the retired plaintext identity' "$(cat "$tmp/err")"
 
-printf '\n%d passed, %d failed\n' "$pass" "$fail"
-[ "$fail" -eq 0 ]
+finish

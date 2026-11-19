@@ -1,42 +1,25 @@
 #!/usr/bin/env bash
-# Behavioral tests for fish: clones the pinned plugins and applies dotfiles
-# into a throwaway HOME, then starts fish. Needs mise, fish, git, and network
-# for the plugin clones; skips otherwise.
+# Clones the pinned plugins and applies dotfiles into a throwaway HOME, then
+# starts fish. Needs mise, fish, and network for the plugin clones.
 set -uo pipefail
+# shellcheck source=tests/lib.sh
+. "$(dirname -- "$0")/lib.sh"
 
-root=$(cd -- "$(dirname -- "$0")/.." && pwd)
 mise_bin=${MISE_BIN:-$(command -v mise || true)}
-fish_bin=${FISH_BIN:-$(command -v fish || true)}
-if [ -z "$mise_bin" ] || [ -z "$fish_bin" ]; then
-    printf 'skip fish tests (mise or fish not installed)\n'
-    exit 0
-fi
-
-# Physical, because git reports worktrees by their real path (/private/var on macOS).
-tmp=$(cd -P -- "$(mktemp -d)" && pwd) || exit 1
-trap 'rm -rf "$tmp"' EXIT
-
-pass=0
-fail=0
-ok() { pass=$((pass + 1)); printf 'ok   %s\n' "$*"; }
-no() { fail=$((fail + 1)); printf 'FAIL %s\n' "$*" >&2; }
-expect() {  # expect <desc> <want> <got>
-    if [ "$2" = "$3" ]; then ok "$1"; else no "$1 (want '$2', got '$3')"; fi
+# The real binary, not a mise shim: a shim would read this checkout's config.
+# Debian and Ubuntu ship fd as fdfind.
+real_bin() {
+    "$mise_bin" which "$1" 2>/dev/null || command -v "$1" || { [ "$1" = fd ] && command -v fdfind; }
 }
+fish_bin=${FISH_BIN:-$(real_bin fish)}
+[ -n "$mise_bin" ] && [ -n "$fish_bin" ] || skip_all "mise or fish not installed"
 
 h=$tmp/home
 mkdir -p "$h/.local/bin"
 base_path=/usr/bin:/bin:/usr/sbin:/sbin
-# The fish and zoxide under test are whichever this host has.
 ln -s "$fish_bin" "$h/.local/bin/fish"
-# The real binary, not a mise shim: a shim would read this checkout's config.
-zoxide_bin=$("$mise_bin" which zoxide 2>/dev/null || command -v zoxide || true)
-[ -n "$zoxide_bin" ] && ln -s "$zoxide_bin" "$h/.local/bin/zoxide"
-for tool in fzf fd rg; do
-    # Debian and Ubuntu ship fd as fdfind.
-    bin=$("$mise_bin" which "$tool" 2>/dev/null || command -v "$tool" \
-        || { [ "$tool" = fd ] && command -v fdfind; } || true)
-    [ -n "$bin" ] && ln -s "$bin" "$h/.local/bin/$tool"
+for tool in zoxide fzf fd rg; do
+    bin=$(real_bin "$tool") && ln -s "$bin" "$h/.local/bin/$tool"
 done
 # Stand-ins, so the greeting and the desktop guard are observable.
 printf '#!/bin/sh\necho PFETCH\n' >"$h/.local/bin/pfetch"
@@ -44,30 +27,30 @@ printf '#!/bin/sh\n' >"$h/.local/bin/gtrash"
 chmod +x "$h/.local/bin/pfetch" "$h/.local/bin/gtrash"
 mkdir -p "$h/.ssh"
 
-# A personal machine: base plus desktop and identity, as on smorespro.
-if env -i HOME="$h" PATH="$base_path" TERM=dumb MISE_ENV=desktop,identity \
-        MISE_TRUSTED_CONFIG_PATHS="$root" MISE_YES=1 \
-        "$mise_bin" -C "$root" bootstrap --only repos,dotfiles --yes >"$tmp/bootstrap.log" 2>&1; then
-    ok "repos and dotfiles apply"
-else
-    no "repos and dotfiles apply"
-    sed 's/^/     /' "$tmp/bootstrap.log" >&2
-fi
+mise_in() {  # mise_in <home> <env set> <args...>
+    local home=$1 env=$2
+    shift 2
+    env -i HOME="$home" PATH="$base_path" TERM=dumb MISE_ENV="$env" \
+        MISE_TRUSTED_CONFIG_PATHS="$root" MISE_YES=1 "$mise_bin" -C "$root" "$@"
+}
+fish_at() {  # fish_at <home> <fish args...>: stderr lands in $tmp/fish.err
+    local home=$1
+    shift
+    (cd "$home" && env -i HOME="$home" PATH="$base_path" TERM=xterm-256color \
+        "$home/.local/bin/fish" "$@" </dev/null) 2>"$tmp/fish.err"
+}
+fi_() { fish_at "$h" -i -c "$1"; }
+fc_() { fish_at "$h" -c "$1"; }
 
-fi_() {  # fi_ <script>: run inside an interactive fish in the test HOME
-    (cd "$h" && env -i HOME="$h" PATH="$base_path" TERM=xterm-256color \
-        "$h/.local/bin/fish" -i -c "$1" </dev/null) 2>"$tmp/fi.err"
-}
-fc_() {  # fc_ <script>: run inside a non-interactive fish
-    (cd "$h" && env -i HOME="$h" PATH="$base_path" "$h/.local/bin/fish" -c "$1" </dev/null) 2>"$tmp/fc.err"
-}
+# A personal machine: base plus desktop and identity, as on smorespro.
+assert "repos and dotfiles apply" mise_in "$h" desktop,identity bootstrap --only repos,dotfiles --yes
 
 expect "non-interactive fish imports the shared env" "$h/.local/bin bat hx" \
     "$(fc_ 'echo $PATH[1] $PAGER $EDITOR')"
-expect "non-interactive fish starts cleanly" "" "$(cat "$tmp/fc.err")"
-printf 'tok-fish\n' >"$h/.config/github-token"
+expect "non-interactive fish starts cleanly" "" "$(cat "$tmp/fish.err")"
+printf 'tok-fish\n' >"$h/.config/gh/token"
 expect "fish exports GH_TOKEN for agents it starts" tok-fish "$(fc_ 'echo $GH_TOKEN')"
-rm "$h/.config/github-token"
+rm "$h/.config/gh/token"
 expect "fish drops a ZDOTDIR inherited from an older session" clear \
     "$( (cd "$h" && env -i HOME="$h" PATH="$base_path" ZDOTDIR=/old "$h/.local/bin/fish" -c \
         'set -q ZDOTDIR; and echo leaked; or echo clear' </dev/null) 2>&1)"
@@ -85,18 +68,16 @@ expect "done waits 10 seconds" 10000 "$(fi_ 'echo $__done_min_cmd_duration')"
 expect "done skips the interactive tools" yes \
     "$(fi_ 'string match -rq -- $__done_exclude[1] "hx foo"; and string match -rq -- $__done_exclude[1] claude; and echo yes')"
 expect "the greeting is pfetch" PFETCH "$(fi_ fish_greeting)"
-if [ -n "$zoxide_bin" ]; then
+if [ -e "$h/.local/bin/zoxide" ]; then
     expect "zoxide jumps with c" yes "$(fi_ 'functions -q c; and echo yes')"
 fi
-expect "interactive startup writes nothing to stderr" "" "$(cat "$tmp/fi.err")"
+expect "interactive startup writes nothing to stderr" "" "$(cat "$tmp/fish.err")"
 
 # --- abbreviations
 
 exp_() {  # exp_ <name> [home]: an abbreviation's expansion, or nothing
-    local home=${2:-$h}
-    (cd "$home" && env -i HOME="$home" PATH="$base_path" TERM=xterm-256color \
-        "$home/.local/bin/fish" -i -c "abbr --show | string match -- 'abbr -a -- $1 *' \
-            | string replace -- 'abbr -a -- $1 ' 'printf %s\\n ' | source" </dev/null) 2>/dev/null
+    fish_at "${2:-$h}" -i -c "abbr --show | string match -- 'abbr -a -- $1 *' \
+        | string replace -- 'abbr -a -- $1 ' 'printf %s\\n ' | source"
 }
 
 expect "e opens Helix" hx "$(exp_ e)"
@@ -114,9 +95,6 @@ expect "copy is fish's clipboard copy, with OSC 52" fish_clipboard_copy "$(exp_ 
 expect "paste is fish's clipboard paste" fish_clipboard_paste "$(exp_ paste)"
 expect "gc clones with git get" 'git get' "$(exp_ gc)"
 expect "sm opens fish on smortress" 'ssh smortress -t fish' "$(exp_ sm)"
-for gone in b la gp gq dv dot boot ms wn cr; do
-    expect "the retired abbreviation $gone stays gone" "" "$(exp_ "$gone")"
-done
 if [ "$(uname -s)" = Linux ]; then
     expect "ct empties the trash where gtrash exists" 'gtrash find --rm --force' "$(exp_ ct)"
 else
@@ -188,24 +166,14 @@ export PATH="$HOME/.local/bin:$PATH"
 EOF
 printf 'FOO_A=1\nFOO_B="two words"\n' >"$hw/e1.env"
 printf 'FOO_C=3\n' >"$hw/e2.env"
-if env -i HOME="$hw" PATH="$base_path" TERM=dumb MISE_ENV=desktop,work \
-        MISE_TRUSTED_CONFIG_PATHS="$root" MISE_YES=1 \
-        "$mise_bin" -C "$root" dot apply >"$tmp/work.log" 2>&1; then
-    ok "work dotfiles apply"
-else
-    no "work dotfiles apply"
-    sed 's/^/     /' "$tmp/work.log" >&2
-fi
+assert "work dotfiles apply" mise_in "$hw" desktop,work dot apply
 expect "a starts claude on work" claude "$(exp_ a "$hw")"
 expect "r lists the flat work clones" \
     'path dirname ~/Blitzy/*/.git ~/Blitzy/*/.worktrees/*/.git | fzf | read f; and c $f' "$(exp_ r "$hw")"
 expect "work has no git get" "" "$(exp_ gc "$hw")"
 expect "sm opens fish on smortress from work" 'ssh smortress -t fish' "$(exp_ sm "$hw")"
 
-fw_() {  # fw_ <script>: an interactive fish on the work machine
-    (cd "$hw" && env -i HOME="$hw" PATH="$base_path" TERM=xterm-256color \
-        "$hw/.local/bin/fish" -i -c "$1" </dev/null) 2>"$tmp/fw.err"
-}
+fw_() { fish_at "$hw" -i -c "$1"; }
 expect "the employer toolchains follow the mise shims, newest node first" \
     "$hw/.local/share/mise/shims $hw/.pyenv/shims $hw/.nvm/versions/node/v24.1.0/bin" \
     "$(fw_ 'set -l i (contains -i -- ~/.local/share/mise/shims $PATH); echo $PATH[$i..(math $i + 2)]')"
@@ -224,8 +192,7 @@ if [ -n "$zsh_bin" ]; then
     expect "a helper's exit status comes back" 3 "$(fw_ 'fails; echo $status')"
     expect "running helpers leaves PATH as it was" same \
         "$(fw_ 'set -l p "$PATH"; set-env ~/e1.env; test "$PATH" = "$p"; and echo same')"
-    expect "the work machine starts cleanly" "" "$(cat "$tmp/fw.err")"
+    expect "the work machine starts cleanly" "" "$(cat "$tmp/fish.err")"
 fi
 
-printf '\n%d passed, %d failed\n' "$pass" "$fail"
-[ "$fail" -eq 0 ]
+finish

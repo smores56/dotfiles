@@ -1,26 +1,20 @@
 #!/bin/sh
-# Materialize the single SOPS secrets file: the agent provider keys go to
-# ~/.config/secrets.env, the machine's one GitHub token to
-# ~/.config/github-token, which zsh exports as GH_TOKEN, and the Cloudflare
-# Access service token to ~/.config/cloudflare/access.env, which only the
-# smortress-ssh wrapper reads. One decrypt covers all three, so bootstrap
-# prompts for the age passphrase once.
-#
-# The Access pair is a credential for the SSH route, not a provider key: it
-# stays out of ~/.config/secrets.env so that nothing which reads the Maki cache
+# Decrypt sops.yaml once (one passphrase prompt) into three mode-600 files: the
+# Maki provider keys, the machine's GitHub token, and the Cloudflare Access
+# token. The Access pair has its own file so nothing that reads the Maki cache
 # ever holds it.
 set -eu
 
 root=$(cd -- "$(dirname -- "$0")/.." && pwd)
 cipher=${DOTFILES_SECRETS:-$root/sops.yaml}
 config=${XDG_CONFIG_HOME:-$HOME/.config}
-secrets=$config/secrets.env
-token=$config/github-token
+secrets=$config/maki/secrets.env
+token=$config/gh/token
 access=$config/cloudflare/access.env
 key=$config/sops/keys.age
 state=${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/secrets.sha256
 
-log() { printf 'secrets: %s\n' "$*"; }
+log() { printf 'secrets: %s\n' "$*" >&2; }
 
 # An absent key in the cipher is not proof the credential should go: a checkout
 # that is behind carries an older cipher than the one that delivered the file,
@@ -51,8 +45,6 @@ if [ -z "${MISE_ENV+x}" ]; then
     }
 fi
 
-# One token per machine: the work PAT where the work environment is applied,
-# the personal PAT everywhere else.
 case ",${MISE_ENV-}," in
     *,work,*) pat_name=GITHUB_WORK_PAT ;;
     *) pat_name=GITHUB_PERSONAL_PAT ;;
@@ -64,9 +56,7 @@ have=
 token_marker=
 access_marker=
 if [ -n "$state_line" ]; then
-    # <cipher sha> <token marker> <access marker>. A state file written before
-    # the Access token existed carries two fields, so the empty access marker
-    # makes this run decrypt once more and deliver the token.
+    # <cipher sha> <token marker> <access marker>; a missing marker forces a decrypt.
     read -r have token_marker access_marker _rest <<EOF
 $state_line
 EOF
@@ -122,20 +112,20 @@ if [ -z "$neuralwatt" ] || [ -z "$tinyfish" ]; then
 fi
 
 umask 077
-mkdir -p "$(dirname "$secrets")"
-tmp_env=$secrets.tmp.$$
-{
-    printf 'NEURALWATT_API_KEY=%s\n' "$neuralwatt"
-    printf 'TINYFISH_API_KEY=%s\n' "$tinyfish"
-} >"$tmp_env"
-mv "$tmp_env" "$secrets"
-chmod 600 "$secrets"
+write_private() {  # write_private <path> <line>...: atomic, mode 600
+    f=$1
+    shift
+    mkdir -p "$(dirname "$f")"
+    printf '%s\n' "$@" >"$f.tmp.$$"
+    mv "$f.tmp.$$" "$f"
+    chmod 600 "$f"
+}
+
+write_private "$secrets" "NEURALWATT_API_KEY=$neuralwatt" "TINYFISH_API_KEY=$tinyfish"
 
 token_marker=$pat_name:none
 if [ -n "$pat" ]; then
-    printf '%s\n' "$pat" >"$token.tmp.$$"
-    mv "$token.tmp.$$" "$token"
-    chmod 600 "$token"
+    write_private "$token" "$pat"
     token_marker=$pat_name
 elif $prune; then
     rm -f "$token"
@@ -146,13 +136,8 @@ fi
 
 access_marker=none
 if [ -n "$access_id" ] && [ -n "$access_secret" ]; then
-    mkdir -p "$(dirname "$access")"
-    {
-        printf 'CLOUDFLARE_ACCESS_CLIENT_ID=%s\n' "$access_id"
-        printf 'CLOUDFLARE_ACCESS_CLIENT_SECRET=%s\n' "$access_secret"
-    } >"$access.tmp.$$"
-    mv "$access.tmp.$$" "$access"
-    chmod 600 "$access"
+    write_private "$access" "CLOUDFLARE_ACCESS_CLIENT_ID=$access_id" \
+        "CLOUDFLARE_ACCESS_CLIENT_SECRET=$access_secret"
     access_marker=yes
 elif $prune; then
     rm -f "$access"

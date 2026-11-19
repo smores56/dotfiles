@@ -1,15 +1,10 @@
-# Machine definition for every host. `mise bootstrap` applies it from this
-# checkout; the global tool set lives in global/, which `--config-dir global`
-# links to ~/.config/mise. Environments only add entries:
-#   smortress   identity
-#   smorespro   desktop,identity
-#   smoreswork  desktop,work
+# Every host. Tools live in global/ (~/.config/mise); environments only add:
+# smortress identity, smorespro desktop,identity, smoreswork desktop,work.
 min_version = "2026.11.9"
 
-# fish plugins, each at a pinned commit (tags move; commits do not).
-# Bump one at a time: change the ref, `mise bootstrap --only repos`.
+# fish plugins at pinned commits, loaded by config.fish from these paths:
+# pure v4.19.2, async-prompt v1.3.0, done 1.21.1.
 [bootstrap.repos]
-# config.fish loads them from these paths, so there is no plugin manager. pure v4.19.2, async-prompt v1.3.0, done 1.21.1.
 "~/.local/share/fish-plugins/pure" = { url = "https://github.com/pure-fish/pure.git", ref = "39ef70d91421322d1f90828d1838f19891f7772c" }
 "~/.local/share/fish-plugins/async-prompt" = { url = "https://github.com/acomagu/fish-async-prompt.git", ref = "b90e8a8c6d1634d8f04f1532b164b99530445159" }
 "~/.local/share/fish-plugins/done" = { url = "https://github.com/franciscolourenco/done.git", ref = "998ad4f5fc9cee36c09840a7e635b56428e554f9" }
@@ -17,16 +12,12 @@ min_version = "2026.11.9"
 [dotfiles]
 "~/.zshenv" = { source = "home/.zshenv" }
 "~/.config/fish" = { source = "home/.config/fish", mode = "symlink-each" }
-# The environment every shell shares: zsh, bash, fish, and agents' `zsh -c`.
 "~/.config/shell" = { source = "home/.config/shell", mode = "symlink-each" }
-# Linux logs in with bash: a login reads only ~/.bash_profile and an interactive
-# non-login bash only ~/.bashrc, so both source the shared file. Blocks take no
-# os variant, and the line is just as correct for the odd bash on macOS.
+# A bash login reads only ~/.bash_profile, a non-login one only ~/.bashrc.
 "~/.bash_profile/shell-env" = { block = '[ -r "$HOME/.config/shell/env.sh" ] && . "$HOME/.config/shell/env.sh"' }
 "~/.bashrc/shell-env" = { block = '[ -r "$HOME/.config/shell/env.sh" ] && . "$HOME/.config/shell/env.sh"' }
-# Login zsh: macOS /etc/zprofile runs path_helper after ~/.zshenv and moves the
-# system directories back in front; sourcing the file again restores the order.
-# A block, because installers (Docker Desktop) append their own lines here.
+# macOS /etc/zprofile's path_helper reorders PATH after ~/.zshenv; a block
+# because installers append their own lines here.
 "~/.zprofile/shell-env" = { block = '''emulate sh -c 'f=${XDG_CONFIG_HOME:-$HOME/.config}/shell/env.sh; [ -r "$f" ] && . "$f"; unset f'''' }
 "~/.config/gh" = { source = "home/.config/gh", mode = "symlink-each" }
 "~/.config/git" = { source = "home/.config/git", mode = "symlink-each" }
@@ -38,28 +29,19 @@ min_version = "2026.11.9"
 ] }
 "~/.config/yazi" = { source = "home/.config/yazi", mode = "symlink-each" }
 "~/.config/zellij" = { source = "home/.config/zellij", mode = "symlink-each" }
-# Servers have no kitty package, so helix, less and the rest would have no
-# xterm-kitty entry over SSH from kitty; the compiled entry comes from here.
+# Servers lack kitty's terminfo for SSH sessions from kitty.
 "~/.terminfo" = { source = "home/.terminfo", mode = "symlink-each" }
 "~/.local/bin" = { source = "home/.local/bin", mode = "symlink-each" }
-# The stdlib sdlc CLI; $SDLC_REPO selects the personal or work registry.
 "~/.local/bin/sdlc" = { source = "sdlc/sdlc_issues.py" }
 "~/.config/maki" = { source = "home/.config/maki", mode = "symlink-each" }
 "~/.agents/skills" = { source = "sdlc/skills", mode = "symlink-each" }
-# Claude Code: one CLAUDE.md for every machine (it imports ~/.claude/work.md,
-# which only the work environment deploys), the shared skills, and only the
-# settings keys this repository owns; Claude Code writes the rest itself.
+# Claude Code rewrites settings.json, so only the keys this repo owns merge in.
 "~/.claude/CLAUDE.md" = { source = "home/.claude/CLAUDE.md" }
-# A placeholder, so the import always resolves; the work environment replaces it.
+# Placeholder for CLAUDE.md's import; the work environment replaces it.
 "~/.claude/work.md" = { source = "home/.claude/work.md" }
 "~/.claude/agents/Explore.md" = { source = "home/.claude/agents/Explore.md" }
 "~/.claude/skills" = { source = "sdlc/skills", mode = "symlink-each" }
 "~/.claude/settings.json/shared" = { source = "home/.claude-merge/settings.json", merge = true }
-
-# ssh writes known_hosts under ~/.config/ssh but never creates the directory.
-[bootstrap.hooks.post-dotfiles]
-description = "create the ssh known_hosts directory"
-run = "mkdir -p -m 700 \"$HOME/.config/ssh\""
 
 [tasks.bootstrap]
 description = "Install the pieces mise does not manage declaratively"

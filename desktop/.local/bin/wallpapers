@@ -1,23 +1,15 @@
 #!/bin/sh
-# Sync the canonical wallpaper tree into a local cache, then give every display
-# an image that matches its measured aspect, set through Noctalia's IPC.
-#
-# Noctalia owns the wallpaper surfaces; its own rotation stays disabled in
-# config.toml because this script tracks which images each aspect has already
-# shown, and Noctalia's state file would outrank the setting.
-#
-# smortress serves /srv/wallpapers through `tailscale serve --bg --set-path
-# /wallpapers /srv/wallpapers`, authenticated by the device: the sync carries no
-# credential at all, and rclone pulls the directory index it serves. rclone is a
-# mise tool; ImageMagick and jq come from the image. WALLPAPERS_SOURCE overrides
-# the URL, WALLPAPERS_RCLONE and WALLPAPERS_CACHE the defaults below, which is
-# also how the tests drive it.
+# Mirror smortress's wallpapers (`tailscale serve` at /wallpapers, device-
+# authenticated, so no credential) into a cache, then give every display an
+# unshown image of its aspect through Noctalia's IPC. Noctalia's own rotation
+# stays off because its state file would outrank this queue.
+# WALLPAPERS_SOURCE, WALLPAPERS_RCLONE and WALLPAPERS_CACHE override the defaults.
 set -eu
 
 source=${WALLPAPERS_SOURCE:-}
 cache=${WALLPAPERS_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/wallpapers}
 dest=$cache/Wallpapers
-state=$cache/state
+state=${XDG_STATE_HOME:-$HOME/.local/state}/wallpapers
 
 log() { printf 'wallpapers: %s\n' "$*" >&2; }
 usage() {
@@ -42,7 +34,7 @@ bucket_of() {
 find_rclone() {
     [ -n "${WALLPAPERS_RCLONE:-}" ] && { printf '%s\n' "$WALLPAPERS_RCLONE"; return 0; }
     for candidate in "$(command -v rclone 2>/dev/null || true)" \
-            "$HOME/.local/bin/rclone" "$HOME/.local/share/mise/shims/rclone"; do
+            "$HOME/.local/bin/rclone" "${XDG_DATA_HOME:-$HOME/.local/share}/mise/shims/rclone"; do
         if [ -n "$candidate" ] && [ -x "$candidate" ]; then
             printf '%s\n' "$candidate"
             return 0
@@ -51,9 +43,7 @@ find_rclone() {
     return 1
 }
 
-# tailscale serve publishes https://<node>.<tailnet>.ts.net/<path>. The tailnet
-# suffix is per-tailnet and this checkout pins none, so it is read from
-# tailscaled's own node rather than hardcoded.
+# The tailnet suffix is read from tailscaled rather than pinned here.
 source_url() {
     if [ -n "$source" ]; then
         printf '%s\n' "$source"
@@ -76,8 +66,6 @@ source_url() {
     printf 'https://smortress.%s/wallpapers/\n' "$suffix"
 }
 
-# rclone's HTTP backend reads the HTML index the file server emits; the URL is
-# the whole remote, so no key, host key or user can be involved.
 remote_url() {
     url=$1
     case $url in
@@ -120,9 +108,7 @@ sync_cache() {
         --contimeout 20s --timeout 780s --retries 2 --stats 0
 }
 
-# Bucket by measured pixels, not folder: images get misfiled and the display's
-# mode is what matters. The identify(1) shell-out is ImageMagick, which the
-# image installs for exactly this.
+# Bucket by measured pixels, not folder: images get misfiled.
 classify_cache() {
     dir=$1
     out=$2
@@ -180,11 +166,10 @@ next_pick() {
     if [ -s "$queue" ]; then
         : >"$queue.new"
         while IFS= read -r file; do
-            if [ -z "$picked" ] && grep -Fxq -e "$file" "$candidates"; then
+            grep -Fxq -e "$file" "$candidates" || continue
+            if [ -z "$picked" ]; then
                 picked=$file
-                continue
-            fi
-            if grep -Fxq -e "$file" "$candidates"; then
+            else
                 printf '%s\n' "$file" >>"$queue.new"
             fi
         done <"$queue"

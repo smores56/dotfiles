@@ -3,26 +3,20 @@
 "~/.config/shell/env.d/work.sh" = { source = "work/.config/shell/env.d/work.sh" }
 "~/.config/fish/conf.d/90-work.fish" = { source = "work/.config/fish/conf.d/90-work.fish" }
 "~/.claude/work.md" = { source = "work/.claude/work.md" }
-"~/.gitconfig" = { source = "identity/.gitconfig" }
+"~/.config/git/config" = { source = "identity/.config/git/config" }
 "~/.ssh/config" = { source = "work/.ssh/config" }
-# The same smortress route the personal machines use, from one copy.
 "~/.ssh/smortress.conf" = { source = "home/.ssh/smortress.conf" }
 "~/.config/git/machine.inc" = { source = "work/.config/git/machine.inc.tera", mode = "template" }
 "~/.cargo/config.toml" = { source = "work/.cargo/config.toml" }
 
-# macOS ships zsh 5.9 in /etc/shells already, so no sudo; chsh asks for the
-# password, so this part runs on its own: `mise bootstrap --only user`.
+# chsh prompts for the password: `mise bootstrap --only user`.
 [bootstrap.user]
 login_shell = "/bin/zsh"
 
-# Apps for a fresh laptop. ~/Applications: mise refuses a group-writable
-# /Applications. Copies already installed elsewhere stay where they are.
-# AeroSpace comes from a tap that mise can only evaluate with Ruby 3, so it
-# is installed by hand: brew install --cask nikitabobko/tap/aerospace
+# mise refuses the group-writable /Applications. AeroSpace's tap needs Ruby 3
+# to evaluate, so it is by hand: brew install --cask nikitabobko/tap/aerospace
 [bootstrap.packages]
-# The Cloudflare tunnel client is the SSH transport to smortress, called from
-# ~/.local/bin/smortress-ssh. Homebrew is the only backend on this laptop; the
-# Linux desktops pin the same client in global/config.desktop.toml.
+# smortress-ssh's transport; Linux pins it in global/config.desktop.toml.
 "brew:cloudflared" = "latest"
 "brew-cask:brave-browser" = { version = "latest", appdir = "~/Applications" }
 "brew-cask:docker-desktop" = { version = "latest", appdir = "~/Applications" }
@@ -31,6 +25,33 @@ login_shell = "/bin/zsh"
 "brew-cask:steam" = { version = "latest", appdir = "~/Applications" }
 "brew-cask:nvidia-geforce-now" = { version = "latest", appdir = "~/Applications" }
 
+# AeroSpace binds Ctrl with the arrows and digits, so macOS's Mission Control
+# and Spaces shortcuts on those chords are turned off; the screenshot shortcuts
+# move to Ctrl+Shift+Cmd+3/4/5.
+[bootstrap.settings.macos]
+defaults_entries = [
+  { domain = "com.apple.symbolichotkeys", key = "AppleSymbolicHotKeys", path = ["32", "enabled"], value = false },
+  { domain = "com.apple.symbolichotkeys", key = "AppleSymbolicHotKeys", path = ["33", "enabled"], value = false },
+  { domain = "com.apple.symbolichotkeys", key = "AppleSymbolicHotKeys", path = ["34", "enabled"], value = false },
+  { domain = "com.apple.symbolichotkeys", key = "AppleSymbolicHotKeys", path = ["35", "enabled"], value = false },
+  { domain = "com.apple.symbolichotkeys", key = "AppleSymbolicHotKeys", path = ["79", "enabled"], value = false },
+  { domain = "com.apple.symbolichotkeys", key = "AppleSymbolicHotKeys", path = ["80", "enabled"], value = false },
+  { domain = "com.apple.symbolichotkeys", key = "AppleSymbolicHotKeys", path = ["81", "enabled"], value = false },
+  { domain = "com.apple.symbolichotkeys", key = "AppleSymbolicHotKeys", path = ["82", "enabled"], value = false },
+  { domain = "com.apple.symbolichotkeys", key = "AppleSymbolicHotKeys", path = ["118", "enabled"], value = false },
+  { domain = "com.apple.symbolichotkeys", key = "AppleSymbolicHotKeys", path = ["119", "enabled"], value = false },
+  { domain = "com.apple.symbolichotkeys", key = "AppleSymbolicHotKeys", path = ["120", "enabled"], value = false },
+  { domain = "com.apple.symbolichotkeys", key = "AppleSymbolicHotKeys", path = ["121", "enabled"], value = false },
+  { domain = "com.apple.symbolichotkeys", key = "AppleSymbolicHotKeys", path = ["122", "enabled"], value = false },
+  { domain = "com.apple.symbolichotkeys", key = "AppleSymbolicHotKeys", path = ["123", "enabled"], value = false },
+  { domain = "com.apple.symbolichotkeys", key = "AppleSymbolicHotKeys", path = ["124", "enabled"], value = false },
+  { domain = "com.apple.symbolichotkeys", key = "AppleSymbolicHotKeys", path = ["125", "enabled"], value = false },
+  { domain = "com.apple.symbolichotkeys", key = "AppleSymbolicHotKeys", path = ["126", "enabled"], value = false },
+  { domain = "com.apple.symbolichotkeys", key = "AppleSymbolicHotKeys", path = ["28"], value = { enabled = true, value = { parameters = [65535, 105, 8388608], type = "standard" } } },
+  { domain = "com.apple.symbolichotkeys", key = "AppleSymbolicHotKeys", path = ["30"], value = { enabled = true, value = { parameters = [65535, 105, 8650752], type = "standard" } } },
+  { domain = "com.apple.symbolichotkeys", key = "AppleSymbolicHotKeys", path = ["184"], value = { enabled = true, value = { parameters = [65535, 105, 8912896], type = "standard" } } },
+]
+
 [bootstrap.settings.macos.keyboard]
 key_repeat = 2
 initial_key_repeat = 13
@@ -38,129 +59,6 @@ initial_key_repeat = 13
 [bootstrap.settings.macos.defaults.NSGlobalDomain]
 "com.apple.swipescrolldirection" = false
 "com.apple.scrollwheel.scaling" = 0.5
-
-# AeroSpace binds Ctrl with the arrows and digits, so macOS's own Mission Control
-# and Spaces shortcuts on those chords are turned off; the screenshot shortcuts
-# move to Ctrl+Shift+Cmd+3/4/5. Each entry changes one shortcut and keeps the rest.
-[[bootstrap.settings.macos.defaults_entries]]
-domain = "com.apple.symbolichotkeys"
-key = "AppleSymbolicHotKeys"
-path = ["32", "enabled"]
-value = false
-
-[[bootstrap.settings.macos.defaults_entries]]
-domain = "com.apple.symbolichotkeys"
-key = "AppleSymbolicHotKeys"
-path = ["33", "enabled"]
-value = false
-
-[[bootstrap.settings.macos.defaults_entries]]
-domain = "com.apple.symbolichotkeys"
-key = "AppleSymbolicHotKeys"
-path = ["34", "enabled"]
-value = false
-
-[[bootstrap.settings.macos.defaults_entries]]
-domain = "com.apple.symbolichotkeys"
-key = "AppleSymbolicHotKeys"
-path = ["35", "enabled"]
-value = false
-
-[[bootstrap.settings.macos.defaults_entries]]
-domain = "com.apple.symbolichotkeys"
-key = "AppleSymbolicHotKeys"
-path = ["79", "enabled"]
-value = false
-
-[[bootstrap.settings.macos.defaults_entries]]
-domain = "com.apple.symbolichotkeys"
-key = "AppleSymbolicHotKeys"
-path = ["80", "enabled"]
-value = false
-
-[[bootstrap.settings.macos.defaults_entries]]
-domain = "com.apple.symbolichotkeys"
-key = "AppleSymbolicHotKeys"
-path = ["81", "enabled"]
-value = false
-
-[[bootstrap.settings.macos.defaults_entries]]
-domain = "com.apple.symbolichotkeys"
-key = "AppleSymbolicHotKeys"
-path = ["82", "enabled"]
-value = false
-
-[[bootstrap.settings.macos.defaults_entries]]
-domain = "com.apple.symbolichotkeys"
-key = "AppleSymbolicHotKeys"
-path = ["118", "enabled"]
-value = false
-
-[[bootstrap.settings.macos.defaults_entries]]
-domain = "com.apple.symbolichotkeys"
-key = "AppleSymbolicHotKeys"
-path = ["119", "enabled"]
-value = false
-
-[[bootstrap.settings.macos.defaults_entries]]
-domain = "com.apple.symbolichotkeys"
-key = "AppleSymbolicHotKeys"
-path = ["120", "enabled"]
-value = false
-
-[[bootstrap.settings.macos.defaults_entries]]
-domain = "com.apple.symbolichotkeys"
-key = "AppleSymbolicHotKeys"
-path = ["121", "enabled"]
-value = false
-
-[[bootstrap.settings.macos.defaults_entries]]
-domain = "com.apple.symbolichotkeys"
-key = "AppleSymbolicHotKeys"
-path = ["122", "enabled"]
-value = false
-
-[[bootstrap.settings.macos.defaults_entries]]
-domain = "com.apple.symbolichotkeys"
-key = "AppleSymbolicHotKeys"
-path = ["123", "enabled"]
-value = false
-
-[[bootstrap.settings.macos.defaults_entries]]
-domain = "com.apple.symbolichotkeys"
-key = "AppleSymbolicHotKeys"
-path = ["124", "enabled"]
-value = false
-
-[[bootstrap.settings.macos.defaults_entries]]
-domain = "com.apple.symbolichotkeys"
-key = "AppleSymbolicHotKeys"
-path = ["125", "enabled"]
-value = false
-
-[[bootstrap.settings.macos.defaults_entries]]
-domain = "com.apple.symbolichotkeys"
-key = "AppleSymbolicHotKeys"
-path = ["126", "enabled"]
-value = false
-
-[[bootstrap.settings.macos.defaults_entries]]
-domain = "com.apple.symbolichotkeys"
-key = "AppleSymbolicHotKeys"
-path = ["28"]
-value = { enabled = true, value = { parameters = [65535, 105, 8388608], type = "standard" } }
-
-[[bootstrap.settings.macos.defaults_entries]]
-domain = "com.apple.symbolichotkeys"
-key = "AppleSymbolicHotKeys"
-path = ["30"]
-value = { enabled = true, value = { parameters = [65535, 105, 8650752], type = "standard" } }
-
-[[bootstrap.settings.macos.defaults_entries]]
-domain = "com.apple.symbolichotkeys"
-key = "AppleSymbolicHotKeys"
-path = ["184"]
-value = { enabled = true, value = { parameters = [65535, 105, 8912896], type = "standard" } }
 
 # The session caches shortcuts; without a reload they wait for the next login.
 [bootstrap.hooks.post-defaults]

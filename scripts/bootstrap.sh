@@ -1,26 +1,12 @@
 #!/bin/sh
-# bootstrap.sh: bring a fresh personal Linux machine to a dotfiles checkout.
-#
-# Served as https://bootstrap.sammohr.dev (a Cloudflare redirect to this file
-# on main), so it must run without a checkout, without mise, and without any
-# repo config:
-#
-#   1. create the checkout root (the one sudo prompt)
-#   2. install mise, the same official installer install-mise.sh uses
-#   3. clone the dotfiles clean-bare, the layout `git get` makes once the
-#      dotfiles are applied: <root>/<host>/<owner>/<repo>/.git
-#   4. add the default worktree and point ~/.dotfiles at it
-#   5. hand off to the checkout's install-mise.sh
-#
-# The work laptop is macOS and keeps a normal clone, so it is refused here.
-#
-# Overrides exist for the behavioural test; the defaults are the real ones.
+# Bring a fresh personal Linux machine to a clean-bare dotfiles checkout, then
+# hand off to its install-mise.sh. Served as https://bootstrap.sammohr.dev, so it
+# runs without a checkout or mise. The BOOTSTRAP_* overrides exist for the test.
 set -eu
 
 REMOTE=${BOOTSTRAP_REMOTE:-https://github.com/smores56/dotfiles.git}
 ROOT=${BOOTSTRAP_ROOT:-/srv/git}
 CHECKOUT=${BOOTSTRAP_CHECKOUT:-$HOME/.dotfiles}
-MISE=$HOME/.local/bin/mise
 
 die() { printf 'bootstrap: %s\n' "$*" >&2; exit 1; }
 log() { printf 'bootstrap: %s\n' "$*"; }
@@ -56,9 +42,8 @@ checkout_target=$repo/main
 # moves the running checkout, so it is a human step (docs/manual-steps.md).
 if [ -e "$CHECKOUT" ] || [ -L "$CHECKOUT" ]; then
     [ -L "$CHECKOUT" ] || die "$CHECKOUT is a real directory; see the migration note in docs/manual-steps.md"
-    # A broken link whose target is the expected worktree is repaired below,
-    # so compare the raw target as well as the resolved one: readlink -f
-    # fails for both when the root or the worktree is missing.
+    # readlink -f fails while the worktree is missing, so a broken link to the
+    # expected target also passes; the link script repairs it below.
     raw=$(readlink "$CHECKOUT")
     resolved=$(readlink -f "$CHECKOUT" 2>/dev/null || printf '%s' "$CHECKOUT")
     want=$(readlink -f "$checkout_target" 2>/dev/null || printf '%s' "$checkout_target")
@@ -74,20 +59,7 @@ elif [ ! -w "$ROOT" ]; then
     sudo chown "$(id -un):$(id -gn)" "$ROOT" || die "could not take ownership of $ROOT"
 fi
 
-if [ ! -x "$MISE" ]; then
-    log "installing mise"
-    curl -fsSL --proto '=https' --tlsv1.2 https://mise.run \
-        | MISE_VERSION='' MISE_MINIMUM_RELEASE_AGE=0s MISE_INSTALL_HELP=0 sh \
-        || die "the official mise installer failed"
-    [ -x "$MISE" ] || die "the official installer did not write $MISE"
-fi
-# install-mise.sh runs below and must not download mise a second time; it still
-# upgrades when invoked directly.
-SKIP_MISE_INSTALL=1
-export SKIP_MISE_INSTALL
-
-# The fetch refspec at clone time fills origin/* in the same pass, so main can
-# track it. A re-run keeps the clone it finds.
+# The refspec at clone time fills origin/* in the same pass, so main can track it.
 refspec='+refs/heads/*:refs/remotes/origin/*'
 if [ ! -e "$repo/.git" ]; then
     log "cloning $REMOTE"

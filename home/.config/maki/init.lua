@@ -1,15 +1,10 @@
--- Maki talks directly to Neuralwatt (models); TinyFish search arrives over
--- MCP from mcp.toml. Keys come from ~/.config/secrets.env.
-
 maki.setup({
   always_yolo = true,
   always_thinking = "max",
-  -- Follow the terminal's ANSI palette so Maki inherits the desktop theme.
   ui = {
     theme = "system",
   },
-  -- Only the declared Neuralwatt models. allowed_models wins for selectors,
-  -- CLI/API model changes, delegation, and `maki models`.
+  -- allowed_models also bounds CLI/API model changes and delegation.
   provider = {
     default_model = "neuralwatt/deepseek-v4.1-flash",
     allowed_models = {
@@ -19,9 +14,7 @@ maki.setup({
     },
   },
   plugins = {
-    -- The bundled websearch only speaks Exa/You.com/Kagi/SearXNG; TinyFish
-    -- arrives as MCP tools instead (mcp.toml). Memory keeps its bundled
-    -- default, so leaving it out enables it.
+    -- The bundled websearch cannot speak TinyFish, which mcp.toml provides.
     websearch = { enabled = false },
   },
 })

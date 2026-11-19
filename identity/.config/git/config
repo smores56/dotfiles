@@ -1,8 +1,5 @@
-# Machine identity lives in ~/.config/git/machine.inc, which each environment
-# renders (mise.identity.toml with includeIf routing, mise.work.toml).
-#
-# The include stays last: an include is read where it appears, so a section
-# below it would override the identity its conditional includes chose.
+# The machine.inc include stays last: an include is read where it appears, so a
+# section below it would override the identity it chose.
 [init]
     defaultBranch = main
 

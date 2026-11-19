@@ -1,11 +1,9 @@
 #!/bin/sh
-# maki with its provider keys. ~/.config/secrets.env (mode 600, NAME=value
-# lines) holds them; they reach only the maki process tree, never the shell
-# that started it, and nothing prints a value. The binary lives off PATH in
-# ~/.local/libexec, where scripts/install-maki.sh puts it, so this wrapper is
-# the only `maki` any shell or agent finds.
+# maki with its provider keys from ~/.config/maki/secrets.env, passed to the maki
+# process alone and never printed. The binary sits off PATH in ~/.local/libexec,
+# so this wrapper is the only `maki` a shell or agent finds.
 bin=${MAKI_BIN:-$HOME/.local/libexec/maki}
-secrets=${XDG_CONFIG_HOME:-$HOME/.config}/secrets.env
+secrets=${XDG_CONFIG_HOME:-$HOME/.config}/maki/secrets.env
 
 warn() { printf 'maki: %s\n' "$*" >&2; }
 ltrim() { printf '%s' "${1#"${1%%[![:space:]]*}"}"; }

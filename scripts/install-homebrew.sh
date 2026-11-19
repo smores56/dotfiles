@@ -1,8 +1,6 @@
 #!/bin/sh
-# install-homebrew.sh: install Homebrew with its official installer on a fresh
-# macOS machine. Run it once, in a terminal, before scripts/install-mise.sh:
-# the installer needs sudo and the Xcode Command Line Tools, so it cannot run
-# unattended inside `mise bootstrap`.
+# Install Homebrew on a fresh Mac, once, in a terminal, before install-mise.sh:
+# the official installer needs sudo, so it cannot run inside `mise bootstrap`.
 set -eu
 
 die() { printf 'install-homebrew: %s\n' "$*" >&2; exit 1; }
@@ -15,9 +13,7 @@ if command -v brew >/dev/null 2>&1; then
     exit 0
 fi
 
-# Fetch first: a failed command substitution would otherwise run `bash -c ''`
-# and report success. The official installer checks for the Command Line Tools
-# and prompts for the sudo password it needs to create /opt/homebrew.
+# Fetch first: a failed command substitution would run `bash -c ''` and succeed.
 tmp=$(mktemp) || die "cannot create a temporary file"
 trap 'rm -f "$tmp"' EXIT HUP INT TERM
 curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh -o "$tmp" \

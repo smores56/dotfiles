@@ -1,20 +1,12 @@
-# CLI tools for every machine, resolved only from mise.lock (`locked = true`).
-#
-# Bump one tool at a time: edit the pin, then
+# CLI tools for every machine. Bump one at a time, then once per environment
+# set (plain, then MISE_ENV=desktop):
 #   mise lock --global --platform linux-x64,linux-arm64,macos-arm64
-# once per environment set (plain, then MISE_ENV=desktop), use it for a day,
-# and commit the config and lockfiles together.
-#
-# git is not listed: mise has no portable git backend, and the host's git is
-# what bootstraps mise. Project-only tools (kubeconform, actionlint, yamllint,
-# deno) belong in the repositories that use them.
+# git is the host's: it bootstraps mise.
 [settings]
 locked = true
-# mise's bootstrap and dotfiles features are experimental.
 experimental = true
 
 [tools]
-# python runs the sdlc CLI and the repository checks.
 python = "3.14.10"
 gh = "2.104.0"
 jq = "1.8.2"
@@ -22,17 +14,12 @@ yq = "4.54.3"
 ripgrep = "15.2.0"
 fd = "10.5.2"
 bat = "0.26.1"
-# eza stays on the vfox backend: the aqua registry has no darwin asset and
-# compiles from source with cargo there, which the work Mac has no toolchain
-# for. The registry-migration warning at install time is expected until aqua
-# ships a darwin-arm64 binary.
+# vfox, not aqua: aqua has no darwin asset and would need cargo on the work Mac.
 eza = "0.23.5"
 just = "1.59.0"
 uv = "0.13.8"
 shellcheck = "0.11.0"
-# The interactive shell: kitty and zellij start it through the mise shim.
 "aqua:fish-shell/fish-shell" = "4.9.3"
-# fish's greeting.
 "github:Gobidev/pfetch-rs" = "3.1.1"
 "aqua:junegunn/fzf" = "0.75.0"
 "aqua:helix-editor/helix" = "25.07.1"
@@ -41,25 +28,18 @@ shellcheck = "0.11.0"
 "aqua:sxyazi/yazi" = "26.9.1"
 "aqua:ajeetdsouza/zoxide" = "0.10.0"
 "aqua:dandavison/delta" = "0.20.1"
-# sops decrypts the repos' secret files; age unwraps the passphrase-protected
-# identity through ~/.local/bin/sops-age-key.
 "aqua:getsops/sops" = "3.13.3"
 "aqua:FiloSottile/age" = "1.3.2"
-# The FIDO2 hmac-secret plugin gives sops a YubiKey identity beside the admin
-# key (see .sops.yaml). Upstream publishes no linux-arm64 binary, so the pin
-# names the platforms that exist; mise skips the rest and `platforms` is what
-# the lockfile coverage check reads.
+# Upstream publishes no linux-arm64 binary; the lockfile check reads `platforms`.
 "github:olastor/age-plugin-fido2-hmac" = { version = "0.5.0", platforms = ["linux-x64", "macos-arm64"] }
-# Helix language servers and formatters. npm-based servers are left out: they
-# would need a mise node, which shadows the employer's nvm node on smoreswork;
-# mdformat is left out because its plugins cannot be dependency-locked.
-# pipx tools lock by version only (PyPI hashes them); the rest lock checksums.
+# Helix language servers. No npm servers: a mise node would shadow the work
+# Mac's nvm node. No mdformat: its plugins cannot be dependency-locked.
 "aqua:astral-sh/ruff" = "0.17.5"
 "github:Feel-ix-343/markdown-oxide" = "0.25.12"
 "github:Automattic/harper" = { version = "3.2.0", bin = "harper-ls" }
 "github:LuaLS/lua-language-server" = "3.19.2"
 "pipx:basedpyright" = "1.40.2"
-# The terminal diff reviewer.
 "github:umputun/revdiff" = "1.15.0"
+"github:agynio/gh-pr-review" = { version = "1.6.2", bin = "gh-pr-review" }
 "aqua:tamasfe/taplo" = "0.10.0"
 "aqua:artempyanykh/marksman" = "2026-02-08"
