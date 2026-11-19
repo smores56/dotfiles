@@ -133,8 +133,24 @@ ln -s "$repo/main" ~/.dotfiles
 
 Cloning from the GitHub URL, not from the local checkout, is what leaves
 `origin` pointing at GitHub; a bare clone of `~/.dotfiles` would leave it
-pointing at the directory that is about to be deleted. Then run
-`mise -C ~/.dotfiles dot apply --prune` and remove `~/.dotfiles.old`.
+pointing at the directory that is about to be deleted.
+
+A bare clone also carries only tracked files, and the machine set lives in an
+ignored local file (`global/miserc.local.toml`, written by `--save-env` in the
+old checkout). Restore it first, or the apply below runs only the base
+environment: `machine.inc` keeps its old content, `ghq.root` is never set, and
+the new tools stay uninstalled.
+
+```sh
+cp ~/.dotfiles.old/global/miserc.local.toml ~/.config/mise/miserc.local.toml
+mise -C ~/.dotfiles install
+mise -C ~/.dotfiles dot apply --prune
+```
+
+`mise -C ~/.dotfiles ls --missing` and `git config --global ghq.root` should
+both come back empty, `ghq root` should print `/srv/git`, and
+`~/.config/git/machine.inc` should contain the `[ghq]` section. Then remove
+`~/.dotfiles.old`.
 
 Other repositories were also left as normal clones by the old `repos get`.
 `ghq get --clean-bare` is a no-op on an existing path, so remove each old
