@@ -84,6 +84,23 @@ else
     skip "syntax home/.config/zsh (zsh not installed)"
 fi
 
+# --- fish
+
+if command -v fish >/dev/null 2>&1; then
+    for fish_file in "$root"/home/.config/fish/*.fish \
+            "$root"/*/.config/fish/conf.d/*.fish "$root"/*/.config/fish/conf.d/*.fish.tera; do
+        [ -f "$fish_file" ] || continue
+        if fish --no-config -n "$fish_file" 2>"$tmp/err"; then
+            ok "syntax $(rel "$fish_file") (fish)"
+        else
+            no "syntax $(rel "$fish_file") (fish)"
+            sed 's/^/     /' "$tmp/err" >&2
+        fi
+    done
+else
+    skip "syntax home/.config/fish (fish not installed)"
+fi
+
 # --- TOML
 
 toml() {
@@ -261,6 +278,18 @@ else
     ok "every zsh plugin repo is pinned to a full commit"
 fi
 
+if grep -E '^"~/.local/share/fish-plugins/' "$root/mise.toml" | grep -qvE 'ref = "[0-9a-f]{40}"( |,)'; then
+    no "every fish plugin repo is pinned to a full commit"
+else
+    ok "every fish plugin repo is pinned to a full commit"
+fi
+
+if grep -rE 'curl|wget' "$root/home/.config/fish" "$root/home/.config/shell" >/dev/null 2>&1; then
+    no "fish startup downloads at shell start"
+else
+    ok "no downloader in fish startup or the shared env"
+fi
+
 # --- cross-file consistency
 
 if grep -qF '"aqua:x-motemen/ghq" = { version = "1.12.0", os = ["linux"] }' \
@@ -433,6 +462,16 @@ if command -v git >/dev/null 2>&1 && command -v bash >/dev/null 2>&1; then
     else
         no "behavioral tests (tests/shell-test.sh)"
         sed 's/^/     /' "$tmp/shell.log" >&2
+    fi
+    if bash "$root/tests/fish-test.sh" >"$tmp/fish.log" 2>&1; then
+        if grep -q '^skip fish tests' "$tmp/fish.log"; then
+            skip "behavioral tests (tests/fish-test.sh: mise or fish not installed)"
+        else
+            ok "behavioral tests (tests/fish-test.sh)"
+        fi
+    else
+        no "behavioral tests (tests/fish-test.sh)"
+        sed 's/^/     /' "$tmp/fish.log" >&2
     fi
 
     if bash "$root/tests/wallpapers-test.sh" >"$tmp/wallpapers.log" 2>&1; then

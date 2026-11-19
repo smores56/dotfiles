@@ -23,10 +23,16 @@ min_version = "2026.11.9"
 "~/.local/share/zsh-plugins/pure" = { url = "https://github.com/sindresorhus/pure.git", ref = "cac55d0b531a0db72294c9bba9453dfa6374c59d" }
 "~/.local/share/zsh-plugins/fast-syntax-highlighting" = { url = "https://github.com/zdharma-continuum/fast-syntax-highlighting.git", ref = "5ecd353c81214f82bdeca5483fab6ccc5a2d5494" }
 "~/.local/share/zsh-plugins/fast-abbr-highlighting" = { url = "https://github.com/5A6F65/fast-abbr-highlighting.git", ref = "ca6ac66b419dab40fea9a41ee27f26a7e032abe0" }
+# fish plugins, the same way: config.fish loads them from these paths, so
+# there is no plugin manager. pure v4.19.2, async-prompt v1.3.0, done 1.21.1.
+"~/.local/share/fish-plugins/pure" = { url = "https://github.com/pure-fish/pure.git", ref = "39ef70d91421322d1f90828d1838f19891f7772c" }
+"~/.local/share/fish-plugins/async-prompt" = { url = "https://github.com/acomagu/fish-async-prompt.git", ref = "b90e8a8c6d1634d8f04f1532b164b99530445159" }
+"~/.local/share/fish-plugins/done" = { url = "https://github.com/franciscolourenco/done.git", ref = "998ad4f5fc9cee36c09840a7e635b56428e554f9" }
 
 [dotfiles]
 "~/.zshenv" = { source = "home/.zshenv" }
 "~/.config/zsh" = { source = "home/.config/zsh", mode = "symlink-each" }
+"~/.config/fish" = { source = "home/.config/fish", mode = "symlink-each" }
 # The environment every shell shares: zsh, bash, fish, and agents' `zsh -c`.
 "~/.config/shell" = { source = "home/.config/shell", mode = "symlink-each" }
 # Linux logs in with bash: a login reads only ~/.bash_profile and an interactive

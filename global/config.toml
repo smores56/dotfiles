@@ -37,6 +37,10 @@ eza = "0.23.5"
 just = "1.59.0"
 uv = "0.13.8"
 shellcheck = "0.11.0"
+# The interactive shell: kitty and zellij start it through the mise shim.
+"aqua:fish-shell/fish-shell" = "4.9.3"
+# fish's greeting.
+"github:Gobidev/pfetch-rs" = "3.1.1"
 "aqua:junegunn/fzf" = "0.75.0"
 "aqua:atuinsh/atuin" = "18.24.8"
 "aqua:helix-editor/helix" = "25.07.1"
