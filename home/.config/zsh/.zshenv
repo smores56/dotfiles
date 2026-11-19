@@ -18,8 +18,8 @@ export PAGER=less
 export LESS=-FRX
 export BAT_THEME=ansi
 
-# The employer's flat checkout root, when it exists (see `repos` and the work
-# includeIf in ~/.config/git/machine.inc).
+# The employer's flat checkout root, when it exists (see the work rules in
+# ~/.claude/work.md).
 [[ -d $HOME/Blitzy ]] && export BLITZY_REPOS_DIR=$HOME/Blitzy
 
 # sops unwraps the passphrase-protected age identity through this wrapper, so

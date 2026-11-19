@@ -44,7 +44,8 @@ checkout_target=$repo/main
 if [ -e "$CHECKOUT" ] || [ -L "$CHECKOUT" ]; then
     [ -L "$CHECKOUT" ] || die "$CHECKOUT is a real directory; see the migration note in docs/manual-steps.md"
     resolved=$(readlink -f "$CHECKOUT" 2>/dev/null || printf '%s' "$CHECKOUT")
-    [ "$resolved" = "$checkout_target" ] \
+    want=$(readlink -f "$checkout_target" 2>/dev/null || printf '%s' "$checkout_target")
+    [ "$resolved" = "$want" ] \
         || die "$CHECKOUT points at $resolved, expected $checkout_target; resolve it by hand"
 fi
 

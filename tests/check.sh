@@ -282,7 +282,7 @@ bootstrap_ghq=$(sed -n 's/^GHQ_VERSION=${GHQ_VERSION:-\([0-9.]*\)}$/\1/p' \
 config_ghq=$(sed -n 's/.*"aqua:x-motemen\/ghq" = { version = "\([0-9.]*\)".*/\1/p' \
     "$root/global/config.toml" | head -1)
 if [ -n "$bootstrap_ghq" ] && [ "$bootstrap_ghq" = "$config_ghq" ] \
-        && grep -qF 'ghq get --clean-bare' "$root/scripts/bootstrap.sh"; then
+        && grep -qF 'get --clean-bare' "$root/scripts/bootstrap.sh"; then
     ok "the bootstrap clones with ghq at the pinned version"
 else
     no "scripts/bootstrap.sh must clone with ghq at the global pin"

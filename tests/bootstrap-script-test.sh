@@ -88,7 +88,7 @@ assert "the fetch refspec is configured" \
     test "$(git -C "$repo" config --get remote.origin.fetch)" = '+refs/heads/*:refs/remotes/origin/*'
 assert "main tracks origin/main" \
     test "$(git -C "$repo/main" rev-parse --abbrev-ref --symbolic-full-name '@{u}')" = origin/main
-assert "~/.dotfiles is a symlink to the main worktree" \
+assert "$HOME/.dotfiles is a symlink to the main worktree" \
     test "$(readlink "$home/.dotfiles")" = "$repo/main"
 assert "the checkout's installer runs" test -e "$tmp/marker"
 
