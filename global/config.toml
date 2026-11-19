@@ -25,6 +25,10 @@ yq = "4.54.3"
 ripgrep = "15.2.0"
 fd = "10.5.2"
 bat = "0.26.1"
+# eza stays on the vfox backend: the aqua registry has no darwin asset and
+# compiles from source with cargo there, which the work Mac has no toolchain
+# for. The registry-migration warning at install time is expected until aqua
+# ships a darwin-arm64 binary.
 eza = "0.23.5"
 just = "1.59.0"
 uv = "0.13.8"
