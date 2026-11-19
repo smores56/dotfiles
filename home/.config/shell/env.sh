@@ -2,6 +2,10 @@
 # it exports, and agents' `zsh -c` sees the same values. POSIX sh only; nothing
 # here forks a process or touches the network.
 
+# A ZDOTDIR inherited from a session older than this file would make every
+# later zsh skip ~/.zshenv, and with it this environment.
+unset ZDOTDIR
+
 # Move an entry to the front of PATH. Login zsh on macOS reorders PATH with
 # path_helper after ~/.zshenv, so ~/.zprofile sources this file again and the
 # entries must move, not merely be present.
@@ -40,7 +44,8 @@ export SDLC_REPO=smores56/sdlc
 
 # The machine's one GitHub token, for gh and git's credential helper alike.
 _env_f=${XDG_CONFIG_HOME:-$HOME/.config}/github-token
-[ -r "$_env_f" ] && read -r GH_TOKEN <"$_env_f" && export GH_TOKEN
+# read fails at a missing final newline, but the token is still read.
+[ -r "$_env_f" ] && { read -r GH_TOKEN <"$_env_f" || [ -n "$GH_TOKEN" ]; } && export GH_TOKEN
 
 # Per-environment additions (the work environment drops a file here).
 for _env_f in "${XDG_CONFIG_HOME:-$HOME/.config}"/shell/env.d/*.sh; do

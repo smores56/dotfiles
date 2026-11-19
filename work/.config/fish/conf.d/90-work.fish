@@ -6,11 +6,16 @@ set -l shims (contains -i -- $HOME/.local/share/mise/shims $PATH)
 set -l nodes ~/.nvm/versions/node/v*
 set -l node
 set -q nodes[1]; and set node (printf '%s\n' $nodes | sort -V | tail -1)/bin
-set -l extra (path filter -d ~/.pyenv/shims $node /opt/homebrew/share/google-cloud-sdk/bin)
+set -l extra
+for dir in (path filter -d ~/.pyenv/shims $node /opt/homebrew/share/google-cloud-sdk/bin)
+    contains -- $dir $PATH; or set -a extra $dir
+end
 if set -q shims[1]; and set -q extra[1]
     set -gx PATH $PATH[1..$shims] $extra $PATH[(math $shims + 1)..]
 end
 set -gx OP_BIOMETRIC_UNLOCK_ENABLED true
+test -d ~/.pyenv; and set -gx PYENV_ROOT ~/.pyenv
+test -d ~/.nvm; and set -gx NVM_DIR ~/.nvm
 
 status is-interactive; or return
 

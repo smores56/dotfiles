@@ -56,7 +56,7 @@ done
 # --- zsh
 
 if command -v zsh >/dev/null 2>&1; then
-    for zsh_file in "$root"/home/.zshenv "$root"/home/.zprofile; do
+    for zsh_file in "$root"/home/.zshenv; do
         [ -f "$zsh_file" ] || continue
         if zsh -n "$zsh_file" 2>"$tmp/err"; then
             ok "syntax $(rel "$zsh_file") (zsh)"

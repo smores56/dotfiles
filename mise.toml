@@ -16,15 +16,18 @@ min_version = "2026.11.9"
 
 [dotfiles]
 "~/.zshenv" = { source = "home/.zshenv" }
-"~/.zprofile" = { source = "home/.zprofile" }
 "~/.config/fish" = { source = "home/.config/fish", mode = "symlink-each" }
 # The environment every shell shares: zsh, bash, fish, and agents' `zsh -c`.
 "~/.config/shell" = { source = "home/.config/shell", mode = "symlink-each" }
 # Linux logs in with bash: a login reads only ~/.bash_profile and an interactive
 # non-login bash only ~/.bashrc, so both source the shared file. Blocks take no
 # os variant, and the line is just as correct for the odd bash on macOS.
-"~/.bash_profile/shell-env" = { block = '. "$HOME/.config/shell/env.sh"' }
-"~/.bashrc/shell-env" = { block = '. "$HOME/.config/shell/env.sh"' }
+"~/.bash_profile/shell-env" = { block = '[ -r "$HOME/.config/shell/env.sh" ] && . "$HOME/.config/shell/env.sh"' }
+"~/.bashrc/shell-env" = { block = '[ -r "$HOME/.config/shell/env.sh" ] && . "$HOME/.config/shell/env.sh"' }
+# Login zsh: macOS /etc/zprofile runs path_helper after ~/.zshenv and moves the
+# system directories back in front; sourcing the file again restores the order.
+# A block, because installers (Docker Desktop) append their own lines here.
+"~/.zprofile/shell-env" = { block = '''emulate sh -c 'f=${XDG_CONFIG_HOME:-$HOME/.config}/shell/env.sh; [ -r "$f" ] && . "$f"; unset f'''' }
 "~/.config/gh" = { source = "home/.config/gh", mode = "symlink-each" }
 "~/.config/git" = { source = "home/.config/git", mode = "symlink-each" }
 "~/.config/helix" = { source = "home/.config/helix", mode = "symlink-each" }

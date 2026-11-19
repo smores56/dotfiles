@@ -63,6 +63,15 @@ fc_() {  # fc_ <script>: run inside a non-interactive fish
 expect "non-interactive fish imports the shared env" "$h/.local/bin bat hx" \
     "$(fc_ 'echo $PATH[1] $PAGER $EDITOR')"
 expect "non-interactive fish starts cleanly" "" "$(cat "$tmp/fc.err")"
+printf 'tok-fish\n' >"$h/.config/github-token"
+expect "fish exports GH_TOKEN for agents it starts" tok-fish "$(fc_ 'echo $GH_TOKEN')"
+rm "$h/.config/github-token"
+expect "fish drops a ZDOTDIR inherited from an older session" clear \
+    "$( (cd "$h" && env -i HOME="$h" PATH="$base_path" ZDOTDIR=/old "$h/.local/bin/fish" -c \
+        'set -q ZDOTDIR; and echo leaked; or echo clear' </dev/null) 2>&1)"
+expect "names fish cannot hold are skipped quietly" started \
+    "$( (cd "$h" && env -i HOME="$h" PATH="$base_path" 'a.b=1' 'BASH_FUNC_x%%=() { :; }' \
+        "$h/.local/bin/fish" -c 'echo started' </dev/null) 2>&1)"
 
 expect "pure is the prompt" yes \
     "$(fi_ 'string match -q "*/fish-plugins/pure/*" (functions --details fish_prompt); and echo yes; or echo no')"
@@ -97,7 +106,7 @@ expect "t attaches the main zellij session" 'zellij a -c main' "$(exp_ t)"
 expect "a starts maki" maki "$(exp_ a)"
 expect "s opens sdlc" sdlc "$(exp_ s)"
 expect "d pulls and bootstraps the dotfiles" \
-    'git -C ~/.dotfiles pull --ff-only --no-rebase --autostash && mise -C ~/.dotfiles bootstrap' "$(exp_ d)"
+    'git -C ~/.dotfiles pull --ff-only --no-rebase --autostash && mise -C ~/.dotfiles bootstrap --prune-dotfiles' "$(exp_ d)"
 expect "gw is git worktree" 'git worktree' "$(exp_ gw)"
 expect "copy is fish's clipboard copy, with OSC 52" fish_clipboard_copy "$(exp_ copy)"
 expect "paste is fish's clipboard paste" fish_clipboard_paste "$(exp_ paste)"
@@ -140,7 +149,7 @@ expect "r lists every worktree of every repo" "JUMP $repo_root/github.com/o/r/fe
 expect "w jumps to a worktree of this repo" "JUMP $repo_root/github.com/o/r/feat" \
     "$(pick_ w feat "$repo_root/github.com/o/r/main")"
 expect "w never offers the bare gitdir" "" \
-    "$(pick_ w "'$repo_root/github.com/o/r\$" "$repo_root/github.com/o/r/main")"
+    "$(pick_ w "'(bare)" "$repo_root/github.com/o/r/main")"
 expect "ef opens the picked file" "OPEN src/hay.txt" "$(pick_ ef hay "$tmp/proj")"
 expect "et opens Helix at the matching line" "OPEN src/hay.txt:2" "$(pick_ et needle "$tmp/proj")"
 expect "a cancelled pick runs nothing" "" "$(pick_ ef zzz-no-match "$tmp/proj")"
@@ -194,6 +203,9 @@ expect "the employer toolchains follow the mise shims, newest node first" \
     "$hw/.local/share/mise/shims $hw/.pyenv/shims $hw/.nvm/versions/node/v24.1.0/bin" \
     "$(fw_ 'set -l i (contains -i -- ~/.local/share/mise/shims $PATH); echo $PATH[$i..(math $i + 2)]')"
 expect "1Password unlocks with biometrics" true "$(fw_ 'echo $OP_BIOMETRIC_UNLOCK_ENABLED')"
+expect "a nested work fish adds each toolchain entry once" 1 \
+    "$(fw_ 'fish -i -c "count (string match -- ~/.pyenv/shims \$PATH)"')"
+expect "pyenv and nvm find their roots" "$hw/.pyenv $hw/.nvm" "$(fw_ 'echo $PYENV_ROOT $NVM_DIR')"
 if [ -n "$zsh_bin" ]; then
     expect "every blitzy helper and alias gets a wrapper, private ones excepted" yes \
         "$(fw_ 'functions -q set_env set-env blitzy_switch_env fails; and not functions -q _BLITZY_CURRENT_ENV_FILE; and echo yes')"

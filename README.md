@@ -122,7 +122,7 @@ the `dotfiles` clone in `~/.dotfiles`.
 
 Every dotfile target is absolute or starts with `~/`, and application
 directories deploy in `symlink-each` mode. Files that tools rewrite in place
-stay local: fish's `fish_variables` and history. `~/.bashrc` and
+stay local: fish's `fish_variables` and history. `~/.zprofile`, `~/.bashrc` and
 `~/.bash_profile` get a managed block, not a whole-file entry.
 Deployment keeps no history: `mise dot unapply` removes what mise created, and
 a re-apply restores it. Without

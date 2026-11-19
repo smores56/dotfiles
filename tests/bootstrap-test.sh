@@ -69,7 +69,6 @@ fi
 
 for target in \
     .zshenv \
-    .zprofile \
     .config/shell/env.sh \
     .config/fish/config.fish \
     .config/fish/conf.d/20-abbreviations.fish \
@@ -164,6 +163,24 @@ resourced=$(env -i HOME="$h" PATH=/usr/bin:/bin sh -c \
 assert "re-sourcing the env keeps one copy of each entry, in order" \
     test "$resourced" = "$h/.local/bin:$h/.local/share/mise/shims:/usr/bin:/bin"
 
+if [ -n "$zsh_bin" ]; then
+    assert "login zsh gets the env from the ~/.zprofile block" grep -q 'shell/env.sh' "$h/.zprofile"
+    printf 'tok-nonl' >"$h/.config/github-token"
+    assert "a token file without a final newline still exports GH_TOKEN" \
+        test "$(env -i HOME="$h" PATH=/usr/bin:/bin "$zsh_bin" -c 'print -r -- ${GH_TOKEN-unset}')" = tok-nonl
+    rm "$h/.config/github-token"
+    assert "the env drops a ZDOTDIR inherited from an older session" \
+        test "$(env -i HOME="$h" PATH=/usr/bin:/bin ZDOTDIR=/old sh -c '. "$HOME/.config/shell/env.sh"; printf %s "${ZDOTDIR-unset}"')" = unset
+    mv "$h/.config/shell/env.sh" "$h/env.sh.away"
+    assert "zsh -c still runs while env.sh is not linked yet" \
+        test "$(env -i HOME="$h" PATH=/usr/bin:/bin "$zsh_bin" -c 'print ok' 2>/dev/null)" = ok
+    assert "a login zsh still runs while env.sh is not linked yet" \
+        test "$(env -i HOME="$h" PATH=/usr/bin:/bin "$zsh_bin" -lc 'print ok' 2>/dev/null)" = ok
+    assert "bash still runs while env.sh is not linked yet" \
+        test "$(env -i HOME="$h" PATH=/usr/bin:/bin bash -lc 'echo ok' 2>/dev/null)" = ok
+    mv "$h/env.sh.away" "$h/.config/shell/env.sh"
+fi
+
 for login in -lc -ic; do
     assert "bash $login reads the shared env" \
         test "$(env -i HOME="$h" PATH=/usr/bin:/bin TERM=dumb bash "$login" 'printf %s "${PATH%%:*}:$PAGER"' 2>/dev/null)" = "$h/.local/bin:bat"
@@ -176,6 +193,19 @@ else
     sed 's/^/     /' "$tmp/unapply.log" >&2
 fi
 assert_not "unapply removes the links it created" test -L "$h/.config/helix/config.toml"
+
+# --- files other installers own stay theirs ---------------------------------
+
+h=$(new_home installer-owned)
+printf 'export PATH="$PATH:$HOME/.docker/bin"\n' >"$h/.zprofile"
+if run_mise "$h" "" dot apply >"$tmp/installer-owned.log" 2>&1; then
+    ok "an existing ~/.zprofile does not block the apply"
+else
+    no "an existing ~/.zprofile does not block the apply"
+    sed 's/^/     /' "$tmp/installer-owned.log" >&2
+fi
+assert "the installer's ~/.zprofile line survives" grep -qF '.docker/bin' "$h/.zprofile"
+assert "the env block joins it" grep -q 'shell/env.sh' "$h/.zprofile"
 
 # --- conflicts are refused, never overwritten --------------------------------
 
