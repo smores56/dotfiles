@@ -147,10 +147,19 @@ mise -C ~/.dotfiles install
 mise -C ~/.dotfiles dot apply --prune
 ```
 
-`mise -C ~/.dotfiles ls --missing` and `git config --global ghq.root` should
-both come back empty, `ghq root` should print `/srv/git`, and
-`~/.config/git/machine.inc` should contain the `[ghq]` section. Then remove
-`~/.dotfiles.old`.
+Run the apply twice: the first one after the move can prune the old links
+without recreating them, and the second converges. Use the diff as the gate —
+it must end with `all files are applied` and `all edits are applied`:
+
+```sh
+mise -C ~/.dotfiles dot apply --yes --prune
+mise -C ~/.dotfiles dot diff
+```
+
+`mise -C ~/.dotfiles ls --missing` should be empty, `git config ghq.root` (no
+`--global`, which ignores includes) should print `/srv/git`, `ghq root` should
+print it too, and `~/.config/git/machine.inc` should contain the `[ghq]`
+section. Then remove `~/.dotfiles.old`.
 
 Other repositories were also left as normal clones by the old `repos get`.
 `ghq get --clean-bare` is a no-op on an existing path, so remove each old
