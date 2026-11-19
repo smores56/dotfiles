@@ -15,7 +15,10 @@
     gp    'gh pr create'
     a     'maki'
     s     'sdlc ui'
-    dot   'git -C ~/.dotfiles pull --ff-only --no-rebase --autostash && mise -C ~/.dotfiles dot apply --yes'
+    # Two applies: the first after the checkout moves (or a dotfile group's
+    # source path changes) prunes the old links without recreating them, and
+    # the second converges. See docs/manual-steps.md.
+    dot   'git -C ~/.dotfiles pull --ff-only --no-rebase --autostash && mise -C ~/.dotfiles dot apply --yes && mise -C ~/.dotfiles dot apply --yes'
     boot  'mise -C ~/.dotfiles bootstrap'
     dv    'dev'
     gq    'ghq'

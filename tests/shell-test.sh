@@ -118,8 +118,10 @@ expect "zim state stays out of ZDOTDIR" no \
     "$(zi 'ls -A $ZDOTDIR | grep -qE "zcompdump|^\\.zim$|init\\.zsh|\\.zwc$" && print yes || print no')"
 expect "interactive startup writes nothing to stderr" "" "$(cat "$tmp/zi.err")"
 expect "abbreviation dot keeps its && and ~ literal" \
-    'git -C ~/.dotfiles pull --ff-only --no-rebase --autostash && mise -C ~/.dotfiles dot apply --yes' \
+    'git -C ~/.dotfiles pull --ff-only --no-rebase --autostash && mise -C ~/.dotfiles dot apply --yes && mise -C ~/.dotfiles dot apply --yes' \
     "$(zi 'abbr expand dot')"
+expect "dot applies twice so a moved checkout converges" yes \
+    "$(zi 'abbr expand dot | grep -cq "dot apply --yes.*dot apply --yes" && print yes || print no')"
 # A renamed conf.d file leaves its old link behind until `mise dot apply --prune`.
 ln -s "$tmp/renamed-away.zsh" "$h/.config/zsh/conf.d/50-renamed-away.zsh"
 zi : >/dev/null
