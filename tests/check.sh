@@ -56,15 +56,12 @@ done
 # --- zsh
 
 if command -v zsh >/dev/null 2>&1; then
-    for zsh_file in "$root"/home/.zshenv; do
-        [ -f "$zsh_file" ] || continue
-        if zsh -n "$zsh_file" 2>"$tmp/err"; then
-            ok "syntax $(rel "$zsh_file") (zsh)"
-        else
-            no "syntax $(rel "$zsh_file") (zsh)"
-            sed 's/^/     /' "$tmp/err" >&2
-        fi
-    done
+    if zsh -n "$root/home/.zshenv" 2>"$tmp/err"; then
+        ok "syntax home/.zshenv (zsh)"
+    else
+        no "syntax home/.zshenv (zsh)"
+        sed 's/^/     /' "$tmp/err" >&2
+    fi
 else
     skip "syntax home/.zshenv (zsh not installed)"
 fi

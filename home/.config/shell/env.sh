@@ -49,6 +49,7 @@ _env_f=${XDG_CONFIG_HOME:-$HOME/.config}/github-token
 
 # Per-environment additions (the work environment drops a file here).
 for _env_f in "${XDG_CONFIG_HOME:-$HOME/.config}"/shell/env.d/*.sh; do
+    # shellcheck source=/dev/null
     [ -r "$_env_f" ] && . "$_env_f"
 done
 

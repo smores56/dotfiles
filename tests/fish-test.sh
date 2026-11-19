@@ -33,7 +33,9 @@ ln -s "$fish_bin" "$h/.local/bin/fish"
 zoxide_bin=$("$mise_bin" which zoxide 2>/dev/null || command -v zoxide || true)
 [ -n "$zoxide_bin" ] && ln -s "$zoxide_bin" "$h/.local/bin/zoxide"
 for tool in fzf fd rg; do
-    bin=$("$mise_bin" which "$tool" 2>/dev/null || command -v "$tool" || true)
+    # Debian and Ubuntu ship fd as fdfind.
+    bin=$("$mise_bin" which "$tool" 2>/dev/null || command -v "$tool" \
+        || { [ "$tool" = fd ] && command -v fdfind; } || true)
     [ -n "$bin" ] && ln -s "$bin" "$h/.local/bin/$tool"
 done
 # Stand-ins, so the greeting and the desktop guard are observable.
@@ -144,16 +146,20 @@ pick_() {  # pick_ <abbr> <query> <dir> [from] [to]: run the picker non-interact
         $(printf '%s' "$exp" | sed "s/fzf/fzf --filter=$2/")" </dev/null) 2>"$tmp/pick.err"
 }
 
-expect "r lists every worktree of every repo" "JUMP $repo_root/github.com/o/r/feat" \
-    "$(pick_ r feat "$h" /srv/git "$repo_root")"
-expect "w jumps to a worktree of this repo" "JUMP $repo_root/github.com/o/r/feat" \
-    "$(pick_ w feat "$repo_root/github.com/o/r/main")"
-expect "w never offers the bare gitdir" "" \
-    "$(pick_ w "'(bare)" "$repo_root/github.com/o/r/main")"
-expect "ef opens the picked file" "OPEN src/hay.txt" "$(pick_ ef hay "$tmp/proj")"
-expect "et opens Helix at the matching line" "OPEN src/hay.txt:2" "$(pick_ et needle "$tmp/proj")"
-expect "a cancelled pick runs nothing" "" "$(pick_ ef zzz-no-match "$tmp/proj")"
-expect "a cancelled pick prints nothing" "" "$(cat "$tmp/pick.err")"
+if [ -e "$h/.local/bin/fzf" ] && [ -e "$h/.local/bin/fd" ] && [ -e "$h/.local/bin/rg" ]; then
+    expect "r lists every worktree of every repo" "JUMP $repo_root/github.com/o/r/feat" \
+        "$(pick_ r feat "$h" /srv/git "$repo_root")"
+    expect "w jumps to a worktree of this repo" "JUMP $repo_root/github.com/o/r/feat" \
+        "$(pick_ w feat "$repo_root/github.com/o/r/main")"
+    expect "w never offers the bare gitdir" "" \
+        "$(pick_ w "'(bare)" "$repo_root/github.com/o/r/main")"
+    expect "ef opens the picked file" "OPEN src/hay.txt" "$(pick_ ef hay "$tmp/proj")"
+    expect "et opens Helix at the matching line" "OPEN src/hay.txt:2" "$(pick_ et needle "$tmp/proj")"
+    expect "a cancelled pick runs nothing" "" "$(pick_ ef zzz-no-match "$tmp/proj")"
+    expect "a cancelled pick prints nothing" "" "$(cat "$tmp/pick.err")"
+else
+    printf 'skip picker runs (fzf, fd or rg not installed)\n'
+fi
 
 # --- work machine
 
