@@ -6,16 +6,15 @@
 # file is removed. Homelab secrets stay in homelab-platform.
 keys:
   - &admin age1skuwunreduvw8gtkzyf9atsyjnku388ly8c252h3qger84fg5d7q4kf6xs
-  # The YubiKey's recipient comes from `age-plugin-fido2-hmac -g`, which needs
-  # the physical token: paste the `# public key: age1...` line it prints here,
-  # keep the identity it prints at ~/.config/sops/fido2-identity.txt (mode 600),
-  # then run `sops updatekeys sops.yaml`. Both lines stay commented until then —
-  # a placeholder recipient would encrypt to a key nobody holds. The full
-  # sequence is docs/manual-steps.md, step 6b.
-  # - &yubikey age1...
+  # The YubiKey's recipient is `age-plugin-fido2-hmac -g`'s output, enrolled
+  # with its identity at ~/.config/sops/fido2-identity.txt (mode 600). Re-run
+  # the generation and this line only when the token is reset: a reset erases
+  # the credential the identity names, and the old recipient then decrypts
+  # nothing. Sequence: docs/manual-steps.md, step 6b.
+  - &yubikey age18suc3usnfah6g3fldvhhvmchyupg3tp2p5vgzfuprvcn6untva9qem4lf0
 creation_rules:
   - path_regex: ^sops\.yaml$
     key_groups:
       - age:
           - *admin
-          # - *yubikey
+          - *yubikey
