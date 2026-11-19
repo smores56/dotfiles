@@ -149,8 +149,30 @@ expect "a cancelled pick prints nothing" "" "$(cat "$tmp/pick.err")"
 # --- work machine
 
 hw=$tmp/work
-mkdir -p "$hw/.local/bin"
+mkdir -p "$hw/.local/bin" "$hw/.pyenv/shims" "$hw/.nvm/versions/node/v9.0.0/bin" \
+    "$hw/.nvm/versions/node/v24.1.0/bin"
 ln -s "$fish_bin" "$hw/.local/bin/fish"
+zsh_bin=$(command -v zsh || true)
+[ -n "$zsh_bin" ] && ln -s "$zsh_bin" "$hw/.local/bin/zsh"
+# blitzy-dev's helpers in the real file's shape: top-level resets, a switch
+# that unsets the previous env file's variables, hyphenated aliases.
+cat >"$hw/blitzy_env_functions.sh" <<'EOF'
+_BLITZY_CURRENT_ENV_FILE=""
+export BLITZY_ENV=""
+set_env() { set -a; . "$1"; set +a; }
+blitzy_unload_env() { while IFS= read -r l; do unset "${l%%=*}"; done <"$1"; }
+blitzy_switch_env() {
+    [ -n "$_BLITZY_CURRENT_ENV_FILE" ] && blitzy_unload_env "$_BLITZY_CURRENT_ENV_FILE"
+    _BLITZY_CURRENT_ENV_FILE=$2
+    set_env "$2"
+    export BLITZY_ENV=$1
+}
+fails() { return 3; }
+alias set-env='set_env'
+export PATH="$HOME/.local/bin:$PATH"
+EOF
+printf 'FOO_A=1\nFOO_B="two words"\n' >"$hw/e1.env"
+printf 'FOO_C=3\n' >"$hw/e2.env"
 if env -i HOME="$hw" PATH="$base_path" TERM=dumb MISE_ENV=desktop,work \
         MISE_TRUSTED_CONFIG_PATHS="$root" MISE_YES=1 \
         "$mise_bin" -C "$root" dot apply >"$tmp/work.log" 2>&1; then
@@ -163,6 +185,28 @@ expect "a starts claude on work" claude "$(exp_ a "$hw")"
 expect "r lists the flat work clones" \
     'path dirname ~/Blitzy/*/.git ~/Blitzy/*/.worktrees/*/.git | fzf | read f; and c $f' "$(exp_ r "$hw")"
 expect "work has no git get" "" "$(exp_ gc "$hw")"
+
+fw_() {  # fw_ <script>: an interactive fish on the work machine
+    (cd "$hw" && env -i HOME="$hw" PATH="$base_path" TERM=xterm-256color \
+        "$hw/.local/bin/fish" -i -c "$1" </dev/null) 2>"$tmp/fw.err"
+}
+expect "the employer toolchains follow the mise shims, newest node first" \
+    "$hw/.local/share/mise/shims $hw/.pyenv/shims $hw/.nvm/versions/node/v24.1.0/bin" \
+    "$(fw_ 'set -l i (contains -i -- ~/.local/share/mise/shims $PATH); echo $PATH[$i..(math $i + 2)]')"
+expect "1Password unlocks with biometrics" true "$(fw_ 'echo $OP_BIOMETRIC_UNLOCK_ENABLED')"
+if [ -n "$zsh_bin" ]; then
+    expect "every blitzy helper and alias gets a wrapper, private ones excepted" yes \
+        "$(fw_ 'functions -q set_env set-env blitzy_switch_env fails; and not functions -q _BLITZY_CURRENT_ENV_FILE; and echo yes')"
+    expect "a helper's exports reach fish" "1|two words" \
+        "$(fw_ 'set-env ~/e1.env; echo "$FOO_A|$FOO_B"')"
+    expect "switching envs unsets the previous env's variables" "unset 3 local" \
+        "$(fw_ 'blitzy_switch_env local ~/e1.env; blitzy_switch_env local ~/e2.env
+                set -q FOO_A; and echo set; or echo unset; echo $FOO_C $BLITZY_ENV' | tr '\n' ' ' | sed 's/ $//')"
+    expect "a helper's exit status comes back" 3 "$(fw_ 'fails; echo $status')"
+    expect "running helpers leaves PATH as it was" same \
+        "$(fw_ 'set -l p "$PATH"; set-env ~/e1.env; test "$PATH" = "$p"; and echo same')"
+    expect "the work machine starts cleanly" "" "$(cat "$tmp/fw.err")"
+fi
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
