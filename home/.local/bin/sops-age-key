@@ -2,9 +2,8 @@
 # SOPS_AGE_KEY_CMD: answer one stanza's recipient with one identity. sops runs
 # this once per recipient stanza and passes the stanza's recipient in
 # SOPS_AGE_RECIPIENT, so reply for that recipient alone: the matching YubiKey
-# handle, the passphrase-wrapped admin identity for the admin recipient, or
-# nothing for a recipient this machine cannot read. Nothing secret lands in
-# argv or the environment.
+# handle, or the passphrase-wrapped admin identity when no token is usable.
+# Nothing secret lands in argv or the environment.
 set -eu
 
 # sops captures the command's stderr and drops it; the tty copy is the only
@@ -15,35 +14,56 @@ fail() {
     exit 1
 }
 
+note() {
+    printf 'sops-age-key: %s\n' "$*" >&2
+    { printf 'sops-age-key: %s\n' "$*" >/dev/tty; } 2>/dev/null || true
+}
+
+# The recipient comes from the ciphertext, so it is untrusted bytes on a tty.
+safe() { printf '%s' "$1" | LC_ALL=C tr -c '[:print:]' '?'; }
+
 config=${XDG_CONFIG_HOME:-$HOME/.config}
 fido2=$config/sops/fido2-identity.txt
 key=$config/sops/keys.age
 legacy=$config/sops/age/keys.txt
 recipient=${SOPS_AGE_RECIPIENT:-}
+# A project mise config can put a hostile `age` first on PATH; SOPS_AGE_BIN is
+# resolved once from the global config by the shell env and pins this exec.
+age_bin=${SOPS_AGE_BIN:-age}
 
 # A root process must never execute this user-writable command. $EUID is a bash
-# builtin, so a planted `id` cannot skip the check. sops then falls through to
-# its own default identity file, which root stages at $legacy.
+# builtin, so a planted `id` cannot skip the check. Root's identity path is
+# fixed, never derived from an environment root could inherit.
 if [ "$EUID" -eq 0 ]; then
+    legacy=/root/.config/sops/age/keys.txt
     if [ "${1:-}" = --check ]; then
-        [ -s "$legacy" ] || exit 1
-        # Split so the tree's secret scan does not read a key prefix here.
-        secret_prefix='AGE-SECRET-'
-        grep -Eq "^${secret_prefix}KEY-(1|PQ-1)" "$legacy" && exit 0
+        if [ ! -s "$legacy" ]; then
+            printf 'sops-age-key: root identity %s is missing\n' "$legacy" >&2
+            exit 1
+        fi
+        IFS= read -r first <"$legacy" || first=
+        prefix='AGE-SECRET-'
+        case $first in
+            "${prefix}KEY-1"* | "${prefix}KEY-PQ-1"*) exit 0 ;;
+        esac
+        printf 'sops-age-key: %s is not a plaintext age identity\n' "$legacy" >&2
         exit 1
     fi
     exit 0
 fi
 
-# sops loads these independently of SOPS_AGE_KEY_CMD; either would bypass this
-# wrapper and the retired-plaintext guard.
-if [ -n "${SOPS_AGE_KEY:-}" ] || [ -n "${SOPS_AGE_KEY_FILE:-}" ]; then
-    fail "unset SOPS_AGE_KEY and SOPS_AGE_KEY_FILE; sops-age-key owns the identity"
+# sops loads these independently of SOPS_AGE_KEY_CMD; any of them would bypass
+# this wrapper and the retired-plaintext guard.
+if [ -n "${SOPS_AGE_KEY:-}" ] || [ -n "${SOPS_AGE_KEY_FILE:-}" ] \
+        || [ -n "${SOPS_AGE_SSH_PRIVATE_KEY_CMD:-}" ] \
+        || [ -n "${SOPS_AGE_SSH_PRIVATE_KEY_FILE:-}" ]; then
+    fail "unset SOPS_AGE_KEY, SOPS_AGE_KEY_FILE and the SOPS_AGE_SSH_PRIVATE_KEY_* vars;" \
+        "sops-age-key owns the identity"
 fi
 
 # sops loads this plaintext default even when SOPS_AGE_KEY_CMD is set, so a
 # leftover key would decrypt without ever asking for the passphrase.
-if [ -e "$legacy" ]; then
+if [ -s "$legacy" ]; then
     fail "remove the retired plaintext identity $legacy"
 fi
 
@@ -52,8 +72,14 @@ fi
 # usable, and the plugin would otherwise poll for 50 s instead of failing fast.
 fido2_present() {
     case ${SOPS_AGE_FIDO2_PRESENT:-} in
-        0) return 1 ;;
-        1) return 0 ;;
+        0)
+            note "SOPS_AGE_FIDO2_PRESENT=0; using the passphrase identity"
+            return 1
+            ;;
+        1)
+            note "SOPS_AGE_FIDO2_PRESENT=1; assuming a token is attached"
+            return 0
+            ;;
     esac
     if command -v systemd-cryptenroll >/dev/null 2>&1; then
         systemd-cryptenroll --fido2-device=list 2>/dev/null | grep -q '^/dev/hidraw'
@@ -64,12 +90,13 @@ fido2_present() {
         ioreg -p IOUSB -l -w 0 2>/dev/null | grep -qi yubico
         return
     fi
+    note "no FIDO probe available; using the passphrase identity"
     return 1
 }
 
 valid_key() {
-    [ -s "$key" ] || return 1
-    [ "$(head -c 14 "$key" 2>/dev/null)" = "age-encryption" ]
+    [ -f "$key" ] && [ -s "$key" ] \
+        && [ "$(head -c 14 "$key" 2>/dev/null)" = "age-encryption" ]
 }
 
 # identity_for <recipient>: print the one identity line whose block names the
@@ -80,6 +107,7 @@ identity_for() {
     [ -r "$fido2" ] || return 1
     found=$(RECIPIENT="$recip" awk '
         BEGIN { r = ENVIRON["RECIPIENT"] }
+        { sub(/\r$/, "") }
         /^# public key: / { pk = $4; next }
         /^AGE-PLUGIN-/ {
             if (pk == "") { bad = 1; exit }
@@ -92,32 +120,19 @@ identity_for() {
     printf '%s\n' "$found"
 }
 
+# Emitting a handle set is only safe when every line validates: sops discards
+# every identity from a location that fails to parse.
 all_handles() {
     [ -r "$fido2" ] || return 1
     awk '
+        { sub(/\r$/, "") }
         /^# public key: / { pk = $4; next }
         /^AGE-PLUGIN-/ {
             if (pk == "") { bad = 1; exit }
             if ($0 !~ /^AGE-PLUGIN-FIDO2-HMAC-1[0-9A-Za-z]+$/) { bad = 1; exit }
             print; n++; pk = ""
         }
-        END { if (bad || n == 0) exit 1 }
-    ' "$fido2"
-}
-
-# 0 none, 1 exactly one (printed), 2 more than one. A trailing space, CRLF, or
-# a second line must not silently disable the passphrase fallback.
-admin_recipient() {
-    [ -r "$fido2" ] || return 0
-    awk '
-        /^# admin:/ {
-            sub(/\r$/, "")
-            sub(/^# admin:[[:space:]]*/, "")
-            sub(/[[:space:]]+$/, "")
-            print
-            n++
-        }
-        END { if (n > 1) exit 2; if (n == 0) exit 1 }
+        END { if (bad) exit 2; if (n == 0) exit 1 }
     ' "$fido2"
 }
 
@@ -127,13 +142,20 @@ admin_identity() {
             "provision the passphrase-wrapped admin age identity there," \
             "or a YubiKey identity in $fido2"
     fi
-    exec age --decrypt "$key"
+    exec "$age_bin" --decrypt "$key"
 }
 
 # Shared identity predicate for scripts/secrets.sh: can this machine produce an
 # identity, and can the helper it needs actually run? No age call.
 if [ "${1:-}" = --check ]; then
-    if valid_key && command -v age >/dev/null 2>&1; then
+    # A readable handle file must validate, or every stanza that names a handle
+    # hard-fails even while the predicate reports ready.
+    if [ -r "$fido2" ]; then
+        hs=0
+        all_handles >/dev/null 2>&1 || hs=$?
+        [ "$hs" -eq 2 ] && exit 1
+    fi
+    if valid_key && command -v "$age_bin" >/dev/null 2>&1; then
         exit 0
     fi
     if fido2_present && command -v age-plugin-fido2-hmac >/dev/null 2>&1 \
@@ -144,50 +166,38 @@ if [ "${1:-}" = --check ]; then
     exit 1
 fi
 
-admin_status=0
-admin=$(admin_recipient) || admin_status=$?
-if [ "$admin_status" -eq 2 ]; then
-    fail "$fido2 has more than one # admin: line"
-fi
-if [ -n "$admin" ]; then
-    printf '%s\n' "$admin" | grep -Eq '^age1[0-9a-z]+$' \
-        || fail "$fido2 has a malformed # admin: line"
-fi
-
 status=0
 found=$(identity_for "$recipient") || status=$?
 case $status in
     0)
         fido2_present \
-            || fail "$recipient needs an attached YubiKey; plug one in," \
-                "or set SOPS_AGE_FIDO2_PRESENT=0 for the passphrase"
+            || fail "$(safe "$recipient") needs an attached YubiKey; plug one in," \
+                "or unplug it and let the admin stanza ask for the passphrase"
         printf '%s\n' "$found"
         exit 0
         ;;
     1) ;;
-    2) fail "$fido2 has a malformed or duplicated identity for $recipient" ;;
+    2) fail "$fido2 has a malformed or duplicated identity for $(safe "$recipient")" ;;
     3) fail "$fido2 has an AGE-PLUGIN line with no # public key: comment" ;;
-    *) fail "identity lookup failed with status $status for $recipient" ;;
+    *) fail "identity lookup failed with status $status for $(safe "$recipient")" ;;
 esac
 
 if [ -n "$recipient" ]; then
-    if [ "$recipient" = "$admin" ]; then
-        # A usable token is preferred: emit nothing and let sops try the keys.
-        fido2_present && exit 0
-        admin_identity
-    fi
-    # Before T2 adds the # admin: comment, a non-handle recipient with no token
-    # is the admin stanza; with &admin first this prompts once.
-    if [ -z "$admin" ]; then
-        fido2_present && exit 0
-        admin_identity
-    fi
-    # A recipient this machine has no identity for: sops moves to the next one.
-    exit 0
+    # A token is preferred; emit nothing and let sops try the keys. With no
+    # token, a recipient with no local handle is the admin stanza, and every
+    # rule lists &admin first, so this prompts once.
+    fido2_present && exit 0
+    admin_identity
 fi
 
 # No recipient: older sops, or a manual run. Prefer the token, else the key.
-if fido2_present && all_handles; then
-    exit 0
+if fido2_present; then
+    hs=0
+    handles=$(all_handles) || hs=$?
+    [ "$hs" -eq 2 ] && fail "$fido2 has an invalid handle"
+    if [ "$hs" -eq 0 ]; then
+        printf '%s\n' "$handles"
+        exit 0
+    fi
 fi
 admin_identity

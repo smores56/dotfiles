@@ -47,7 +47,6 @@ write_handles() {
 AGE-PLUGIN-FIDO2-HMAC-1ONE
 # public key: age1two
 AGE-PLUGIN-FIDO2-HMAC-1TWO
-# admin: age1admin
 EOF
     chmod 600 "$fido2"
 }
@@ -62,6 +61,8 @@ run() {
         FAKE_FIDO="${FIDO-}" \
         SOPS_AGE_KEY="${SKEY-}" \
         SOPS_AGE_KEY_FILE="${SKEYFILE-}" \
+        SOPS_AGE_SSH_PRIVATE_KEY_FILE="${SSHKEY-}" \
+        SOPS_AGE_BIN="${SBIN-}" \
         bash "$script" "$@" 2>"$tmp/err"
 }
 
@@ -131,9 +132,14 @@ reset_log
 PRESENT=0 assert "--check accepts a readable admin identity" run --check
 expect "--check prints nothing" '' "$out"
 expect "--check does not read the passphrase" 0 "$(age_calls)"
-FIDO=1 assert "--check accepts a usable token" run --check
+rm "$admin"
+FIDO=1 assert "--check accepts a usable token without the admin key" run --check
+expect "the token path needs no passphrase" '' "$out"
+valid_admin
 : >"$admin"
 PRESENT=0 assert_not "--check rejects an empty admin identity" run --check
+printf 'not-an-age-file\n' >"$admin"
+PRESENT=0 assert_not "--check rejects a non-age admin file" run --check
 valid_admin
 PRESENT=0 RUN_PATH="$tmp/bin-noage:/usr/bin:/bin" assert_not "--check rejects a missing age helper" run --check
 rm "$admin"
@@ -142,8 +148,9 @@ expect "--check is silent on stdout when it rejects" '' "$out"
 contains "--check explains the rejection on stderr" 'no usable SOPS identity' "$(cat "$tmp/err")"
 
 # 10. The retired plaintext identity still stops a user, including --check.
+valid_admin
 mkdir -p "$config/sops/age"
-: >"$config/sops/age/keys.txt"
+printf 'legacy\n' >"$config/sops/age/keys.txt"
 assert_not "a retired plaintext identity fails" run
 contains "the failure names the retired file" 'remove the retired plaintext identity' "$(cat "$tmp/err")"
 assert_not "--check refuses a retired plaintext identity" run --check
@@ -155,8 +162,11 @@ valid_admin
 SKEYFILE=$tmp/elsewhere assert_not "SOPS_AGE_KEY_FILE is refused" run
 contains "the failure names the variable" 'SOPS_AGE_KEY_FILE' "$(cat "$tmp/err")"
 SKEY=$tmp/not-an-identity assert_not "SOPS_AGE_KEY is refused" run
+SSHKEY=$tmp/ssh-key assert_not "SOPS_AGE_SSH_PRIVATE_KEY_FILE is refused" run
+contains "the SSH failure names the variable" 'SOPS_AGE_SSH_PRIVATE_KEY' "$(cat "$tmp/err")"
 
 # 12. The probe uses systemd-cryptenroll's usable-device list.
+write_handles
 reset_log
 RECIP=age1one FIDO=1 assert "a listed FIDO device counts as usable" run
 expect "the handle is selected through the real probe" 'AGE-PLUGIN-FIDO2-HMAC-1ONE' "$out"
@@ -197,28 +207,10 @@ EOF
 RECIP=age1one FIDO=1 assert_not "an unowned handle fails" run
 contains "the unowned-handle failure names the file" "$fido2" "$(cat "$tmp/err")"
 
-# 15. The admin comment tolerates whitespace and CRLF, and duplicates or a bad
-#     recipient fail loudly.
-cat >"$fido2" <<'EOF'
-# public key: age1one
-AGE-PLUGIN-FIDO2-HMAC-1ONE
-# admin: age1admin  
-EOF
+# 15. A pinned age path is both testable and outside a project's PATH.
+write_handles
 valid_admin
-RECIP=age1admin PRESENT=0 assert "an admin line with trailing space still routes" run
-expect "the trimmed admin recipient reaches age" FAKE-ADMIN-IDENTITY "$out"
-
-cat >"$fido2" <<'EOF'
-# admin: age1admin
-# admin: age1other
-EOF
-PRESENT=0 assert_not "duplicate admin lines fail" run
-contains "the duplicate-admin failure names the file" 'more than one # admin:' "$(cat "$tmp/err")"
-
-cat >"$fido2" <<'EOF'
-# admin: not-a-recipient
-EOF
-PRESENT=0 assert_not "a malformed admin recipient fails" run
-contains "the malformed-admin failure names the file" 'malformed # admin:' "$(cat "$tmp/err")"
+SBIN=$tmp/bin/age PRESENT=0 assert "--check accepts a pinned age" run --check
+SBIN=$tmp/no-such-age PRESENT=0 assert_not "--check rejects a missing pinned age" run --check
 
 finish

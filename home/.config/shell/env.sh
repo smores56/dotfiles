@@ -37,7 +37,12 @@ export SDLC_REPO=smores56/sdlc
 [ -d "$HOME/Blitzy" ] && export BLITZY_REPOS_DIR="$HOME/Blitzy"
 
 # sops unwraps the passphrase-protected age identity through this wrapper, so
-# no plaintext identity is ever on disk.
+# no plaintext identity is ever on disk. Pin the reader: a project mise config
+# can put a hostile age first on PATH, and this exec gets the passphrase.
+if command -v mise >/dev/null 2>&1; then
+    SOPS_AGE_BIN=$(mise -C "$HOME" which age 2>/dev/null) || SOPS_AGE_BIN=
+    [ -x "$SOPS_AGE_BIN" ] && export SOPS_AGE_BIN
+fi
 [ -x "$HOME/.local/bin/sops-age-key" ] && export SOPS_AGE_KEY_CMD="$HOME/.local/bin/sops-age-key"
 
 _env_f=${XDG_CONFIG_HOME:-$HOME/.config}/gh/token

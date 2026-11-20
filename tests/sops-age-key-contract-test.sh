@@ -23,7 +23,8 @@ creation_rules:
           - $recip
 EOF
 printf 'secret: value\n' >"$work/plain.yaml"
-if ! (cd "$work" && sops --encrypt --input-type yaml --output-type yaml plain.yaml >enc.yaml 2>enc.err); then
+if ! (cd "$work" && env -i HOME="$work" XDG_CONFIG_HOME="$work/.config" PATH="$PATH" \
+        sops --encrypt --input-type yaml --output-type yaml plain.yaml >enc.yaml 2>enc.err); then
     skip_all "sops encrypt failed: $(tr '\n' ' ' <"$work/enc.err")"
 fi
 
@@ -35,7 +36,8 @@ EOF
 chmod +x "$work/keycmd"
 
 : >"$work/log"
-if ! got=$(cd "$work" && SOPS_AGE_KEY_CMD="$work/keycmd" sops --decrypt \
+if ! got=$(cd "$work" && env -i HOME="$work" XDG_CONFIG_HOME="$work/.config" PATH="$PATH" \
+        SOPS_AGE_KEY_CMD="$work/keycmd" sops --decrypt \
         --input-type yaml --output-type yaml enc.yaml 2>"$work/err"); then
     no "sops decrypts through SOPS_AGE_KEY_CMD"
     indent <"$work/err"
