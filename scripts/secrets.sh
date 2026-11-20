@@ -28,7 +28,17 @@ case ${1:-} in
 esac
 
 [ -f "$cipher" ] || exit 0
-[ -r "$key" ] || { log "no $key on this machine; leaving the secrets alone"; exit 0; }
+keycmd=$HOME/.local/bin/sops-age-key
+if [ -x "$keycmd" ]; then
+    if ! reason=$("$keycmd" --check 2>&1); then
+        log "no usable SOPS identity: ${reason:-unknown}"
+        log "leaving the secrets alone"
+        exit 0
+    fi
+elif [ ! -r "$key" ]; then
+    log "no $key on this machine; leaving the secrets alone"
+    exit 0
+fi
 
 sha256_of() {
     if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d' ' -f1
@@ -89,7 +99,7 @@ if ! $prune && [ "$want" = "$have" ] && [ -s "$secrets" ]; then
 fi
 
 if [ -x "$HOME/.local/bin/sops-age-key" ]; then
-    SOPS_AGE_KEY_CMD=$HOME/.local/bin/sops-age-key
+    : "${SOPS_AGE_KEY_CMD:=$HOME/.local/bin/sops-age-key}"
     export SOPS_AGE_KEY_CMD
 fi
 

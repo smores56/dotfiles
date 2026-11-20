@@ -90,9 +90,15 @@ files that only their one consumer reads.
 `NEURALWATT_API_KEY`, `TINYFISH_API_KEY` and `SMORTRESS_SSH_KEY` are required:
 a cipher without one of them fails the run and leaves the files alone.
 
-Decrypting uses the YubiKey (`~/.config/sops/fido2-identity.txt`) when its
-handle is present, with no fallback; otherwise the passphrase-protected admin
-key (`~/.config/sops/keys.age`). Neither is ever committed. Other Access apps
+Decrypting uses any enrolled YubiKey (`~/.config/sops/fido2-identity.txt`): sops
+asks the identity command for each stanza's recipient, so one matching key costs
+one touch and no PIN. With no key attached the passphrase-protected admin key
+(`~/.config/sops/keys.age`) is offered instead. Neither file is ever committed.
+
+A touch is a bearer grant: with a token attached, the handle file is enough to
+derive that key for as long as the attacker keeps it. Keep the tokens with you
+and treat the handle file as sensitive metadata. It holds one block per key, a
+`# public key: age1…` comment followed by its `AGE-PLUGIN-FIDO2-HMAC-1…` line. Other Access apps
 still accept any service token until their policies name their own.
 
 ## Rebuild a machine
@@ -109,17 +115,24 @@ cp -a ~/.ssh ~/.config/sops /media/<usb>/
 Then install the OS ([smorespro-image](https://github.com/smores56/smorespro-image/blob/main/docs/switch.md)
 for the desktop), restore those two directories, and run the setup above.
 
-On a new machine or after a YubiKey reset, regenerate the YubiKey handle
-(answer yes to "separate identity"). After a reset, also re-encrypt and check
-that each identity decrypts on its own; the admin key stays enrolled as a
-backup because the plugin is pre-1.0.
+On a new machine or after a YubiKey reset, add that key's block and re-encrypt.
+Answer no to "require a PIN for decryption" and yes to "separate identity"; a
+PIN-requiring credential prompts on every unwrap and shares the retry counter
+with the login stack.
 
 ```sh
-age-plugin-fido2-hmac -g > ~/.config/sops/fido2-identity.txt && chmod 600 ~/.config/sops/fido2-identity.txt
-# after a reset: put its "# public key:" in .sops.yaml as &yubikey, then
+age-plugin-fido2-hmac -g >> ~/.config/sops/fido2-identity.txt
+chmod 600 ~/.config/sops/fido2-identity.txt
+grep '^# public key:' ~/.config/sops/fido2-identity.txt   # the recipients
 sops updatekeys sops.yaml
-mv ~/.config/sops/fido2-identity.txt{,.off}; sops -d sops.yaml >/dev/null && echo admin-ok
-mv ~/.config/sops/fido2-identity.txt{.off,}; sops -d sops.yaml >/dev/null && echo yubikey-ok
+```
+
+With every key unplugged, this asks for the passphrase exactly once; with one
+key attached, it asks for one touch and no PIN:
+
+```sh
+sops -d sops.yaml >/dev/null && echo admin-ok
+sops -d sops.yaml >/dev/null && echo yubikey-ok   # touch the one key
 ```
 
 A few things are set once per host, outside the repository:

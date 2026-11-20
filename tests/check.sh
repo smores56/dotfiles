@@ -148,6 +148,16 @@ for hit in $(grep -rIlE "$secret_pattern" "$root/home" "$root/identity" "$root/d
 done
 expect "no secret material in managed files" "" "$offenders"
 
+# Every ciphertext carries exactly the recipients its creation rule names: a
+# stale updatekeys or a hand-added recipient is a silent extra reader.
+assert "sops ciphertext recipients match .sops.yaml" python3 - "$root" <<'PY'
+import pathlib, re, sys
+root = pathlib.Path(sys.argv[1])
+want = set(re.findall(r"age1[0-9a-z]+", (root / ".sops.yaml").read_text()))
+have = set(re.findall(r"recipient: (age1[0-9a-z]+)", (root / "sops.yaml").read_text()))
+sys.exit(1 if want != have else 0)
+PY
+
 # The key is one file per machine, out of sops; nothing may ship a copy.
 assert_not "the tree carries no smortress key" \
     sh -c "test -e '$root/identity/.ssh/id_smortress' || test -e '$root/home/.ssh/id_smortress'"
