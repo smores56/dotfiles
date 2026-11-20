@@ -84,13 +84,17 @@ if command -v ssh >/dev/null 2>&1; then
     # A ProxyCommand here would route the tailnet name back through Cloudflare.
     assert_not "the tailnet block needs no tunnel" grep -q '^proxycommand ' <<<"$resolved"
 
-    # The tunnel block stays until the cutover: both keys, and the wrapper.
+    # The tunnel block stays until the cutover: the one key secrets.sh delivers,
+    # and the wrapper. A second IdentityFile here would only warn that the file
+    # is missing.
     legacy=$(ssh -G -F "$conf" ssh.sammohr.dev 2>/dev/null)
     legacy_identities=$(sed -n 's/^identityfile //p' <<<"$legacy")
-    # shellcheck disable=SC2088
-    for key in "$sk" '~/.ssh/id_smortress-access'; do
-        assert "the tunnel block still offers $key" grep -qxF "$key" <<<"$legacy_identities"
-    done
+    expect "the tunnel block offers only the key secrets.sh delivers" \
+        "$sk" "$legacy_identities"
+    assert "the tunnel block offers nothing beyond its own keys" \
+        grep -qx 'identitiesonly yes' <<<"$legacy"
+    assert "the tunnel host still uses the wrapper" \
+        grep -qxF 'proxycommand $HOME/.local/bin/smortress-ssh %h' <<<"$legacy"
 else
     printf 'skip identity assertions: ssh is not installed\n'
 fi
