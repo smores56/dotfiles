@@ -13,6 +13,11 @@ end
 if set -q shims[1]; and set -q extra[1]
     set -gx PATH $PATH[1..$shims] $extra $PATH[(math $shims + 1)..]
 end
+# Same socket as work/.config/shell/env.d/work.sh: the LaunchAgent's agent is
+# what smortress's pam_rssh asks for a touch, and fish must not start without it.
+if test -S "$HOME/.local/state/ssh/agent.sock"
+    set -gx SSH_AUTH_SOCK "$HOME/.local/state/ssh/agent.sock"
+end
 set -gx OP_BIOMETRIC_UNLOCK_ENABLED true
 test -d ~/.pyenv; and set -gx PYENV_ROOT ~/.pyenv
 test -d ~/.nvm; and set -gx NVM_DIR ~/.nvm

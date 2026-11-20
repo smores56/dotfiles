@@ -159,6 +159,13 @@ A few things are set once per host, outside the repository:
   `~/.local/bin/tailscale` and `~/.local/bin/tailscaled`, each a wrapper that
   execs the binary `MISE_ENV=work mise which` resolved; the plist and the work
   `ProxyCommand` both exec those
+- the work Mac runs an OpenSSH agent the same way:
+  `~/Library/LaunchAgents/dev.sammohr.ssh-agent.plist` binds
+  `~/.local/state/ssh/agent.sock`, the bootstrap loads it and adds
+  `~/.ssh/id_smortress_sudo` (one touch), and both shells export
+  `SSH_AUTH_SOCK` to that socket. `ssh smortress` then forwards it, and
+  `pam_rssh` signs the sudo tap through it; after a reboot,
+  `ssh-add ~/.ssh/id_smortress_sudo` is the one touch that restores it
 - the work Mac also carries `ykman`: smorespro has no PC/SC stack by design, so
   the YubiKey's TOTP code is minted there (the bootstrap installs `ykman` with
   `uv`). Alt+o inserts a code into fish's edit buffer, which is all a binding

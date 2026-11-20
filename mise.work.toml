@@ -17,6 +17,7 @@ go = "1.27.4"
 "~/.ssh/config" = { source = "work/.ssh/config" }
 "~/.ssh/smortress.conf" = { source = "home/.ssh/smortress.conf" }
 "~/Library/LaunchAgents/dev.sammohr.tailscaled.plist" = { source = "work/.config/LaunchAgents/dev.sammohr.tailscaled.plist" }
+"~/Library/LaunchAgents/dev.sammohr.ssh-agent.plist" = { source = "work/.config/LaunchAgents/dev.sammohr.ssh-agent.plist" }
 "~/.config/git/machine.inc" = { source = "work/.config/git/machine.inc.tera", mode = "template" }
 "~/.cargo/config.toml" = { source = "work/.cargo/config.toml" }
 

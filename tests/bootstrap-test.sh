@@ -285,6 +285,19 @@ assert "the tailscaled agent launches the bootstrap's wrapper" \
     grep -qF 'exec "$HOME/.local/bin/tailscaled"' "$plist"
 assert "the tailscaled agent creates its state unreadable" \
     grep -qF 'umask 077 &amp;&amp; mkdir -p "$HOME/.local/state/tailscale"' "$plist"
+# The sudo tap on smortress asks the client's agent for a signature, so the Mac
+# needs an agent that outlives one terminal: a LaunchAgent on a fixed socket.
+agent=$h/Library/LaunchAgents/dev.sammohr.ssh-agent.plist
+assert "the ssh-agent is a LaunchAgent on a fixed socket" \
+    grep -qF 'exec /usr/bin/ssh-agent -a "$HOME/.local/state/ssh/agent.sock"' "$agent"
+assert "the ssh-agent clears a stale socket and creates its directory unreadable" \
+    grep -qF 'umask 077 &amp;&amp; mkdir -p "$HOME/.local/state/ssh" &amp;&amp; rm -f' "$agent"
+assert "the work shell env exports the agent socket" \
+    grep -q 'SSH_AUTH_SOCK=\$HOME/.local/state/ssh/agent.sock' "$h/.config/shell/env.d/work.sh"
+assert "the fish work hook exports the agent socket" \
+    grep -q 'SSH_AUTH_SOCK' "$h/.config/fish/conf.d/90-work.fish"
+assert "the bootstrap loads the agent and adds the sudo credential" \
+    grep -q 'add_sudo_credential' "$root/scripts/bootstrap-task.sh"
 expect "the work smortress route goes through the userspace tailscaled" \
     '$HOME/.local/bin/tailscale --socket=$HOME/.local/state/tailscale/tailscaled.sock nc %h %p' \
     "$(proxy_of smortress)"

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.sammohr.ssh-agent</string>
+  <!-- launchd expands nothing, so the shell resolves $HOME. The socket lives
+       under the login home rather than /tmp: another local user must not be
+       able to find the agent by watching a shared directory, and the directory
+       is 0700 before ssh-agent binds.
+       The stale socket is removed first: ssh-agent -a refuses to bind over a
+       file left behind by a crash, and KeepAlive would then restart it into the
+       same failure forever. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>-c</string>
+    <string>umask 077 &amp;&amp; mkdir -p "$HOME/.local/state/ssh" &amp;&amp; rm -f "$HOME/.local/state/ssh/agent.sock" &amp;&amp; exec /usr/bin/ssh-agent -a "$HOME/.local/state/ssh/agent.sock"</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+</dict>
+</plist>
