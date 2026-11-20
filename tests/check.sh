@@ -192,11 +192,13 @@ for side in "$root/scripts/secrets.sh" "$root/home/.local/bin/smortress-ssh"; do
         "grep -q 'cloudflare/access.env' '$side' && grep -q CLOUDFLARE_ACCESS_CLIENT_SECRET '$side'"
 done
 
-# smortress's sshd drop-in sets AllowAgentForwarding no, so a ForwardAgent line
-# would be a request the far end refuses, and sudo's second factor is a YubiKey
-# touch, not a signature from the client's agent (design #767).
-assert "no ssh config asks for agent forwarding" sh -c \
-    "! grep -rqi forwardagent '$root/home/.ssh' '$root/work/.ssh'"
+# sudo's touch factor is a signature from the client's agent, so the agent has to
+# travel with the session (design #767). Scoped to smortress's two routes and
+# never a global default: the forwarded socket is a signature oracle that any
+# process running as the login user on the far end can drive.
+assert "ForwardAgent is scoped to smortress's routes" sh -c \
+    "[ \"\$(grep -cx '    ForwardAgent yes' '$root/home/.ssh/smortress.conf')\" = 2 ] \
+     && ! grep -qi forwardagent '$root/work/.ssh/config'"
 
 # --- Maki guards
 
