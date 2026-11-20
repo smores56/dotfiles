@@ -8,6 +8,8 @@ if [ -S "$HOME/.local/state/ssh/agent.sock" ]; then
     SSH_AUTH_SOCK=$HOME/.local/state/ssh/agent.sock
     export SSH_AUTH_SOCK
 fi
+# Apple's OpenSSH has no built-in FIDO middleware; this is its own.
+export SSH_SK_PROVIDER=/usr/lib/ssh-keychain.dylib
 
 # The cc crate and native builds use Apple clang (see ~/.cargo/config.toml).
 export CC=/usr/bin/clang
