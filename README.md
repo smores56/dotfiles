@@ -130,6 +130,8 @@ with the login stack.
 age-plugin-fido2-hmac -g >> ~/.config/sops/fido2-identity.txt
 chmod 600 ~/.config/sops/fido2-identity.txt
 grep '^# public key:' ~/.config/sops/fido2-identity.txt   # the recipients
+# Put the new recipient in ~/.config/sops/sops.yaml in place of the reset key's
+# &yk anchor; every repo picks it up through SOPS_CONFIG.
 sops updatekeys sops.yaml
 ```
 
