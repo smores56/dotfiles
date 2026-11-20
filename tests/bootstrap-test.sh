@@ -288,14 +288,24 @@ assert "the tailscaled agent creates its state unreadable" \
 # The sudo tap on smortress asks the client's agent for a signature, so the Mac
 # needs an agent that outlives one terminal: a LaunchAgent on a fixed socket.
 agent=$h/Library/LaunchAgents/dev.sammohr.ssh-agent.plist
-assert "the ssh-agent is a LaunchAgent on a fixed socket" \
-    grep -qF 'exec /usr/bin/ssh-agent -a "$HOME/.local/state/ssh/agent.sock"' "$agent"
+# -D keeps it in the foreground: a forking agent exits 0, so KeepAlive respawns
+# it every throttle interval and each respawn deletes the live socket.
+assert "the ssh-agent is a foreground LaunchAgent on a fixed socket" \
+    grep -qF 'exec /usr/bin/ssh-agent -D -a "$HOME/.local/state/ssh/agent.sock"' "$agent"
 assert "the ssh-agent clears a stale socket and creates its directory unreadable" \
     grep -qF 'umask 077 &amp;&amp; mkdir -p "$HOME/.local/state/ssh" &amp;&amp; rm -f' "$agent"
 assert "the work shell env exports the agent socket" \
     grep -q 'SSH_AUTH_SOCK=\$HOME/.local/state/ssh/agent.sock' "$h/.config/shell/env.d/work.sh"
 assert "the fish work hook exports the agent socket" \
     grep -q 'SSH_AUTH_SOCK' "$h/.config/fish/conf.d/90-work.fish"
+# Apple's OpenSSH has no built-in FIDO middleware: without a provider, ssh-add
+# refuses the sk handle with "Cannot load FIDO key ... without provider".
+assert "the work shell env names Apple's security-key provider" \
+    grep -qF 'SSH_SK_PROVIDER=/usr/lib/ssh-keychain.dylib' "$h/.config/shell/env.d/work.sh"
+assert "the fish work hook names Apple's security-key provider" \
+    grep -qF 'SSH_SK_PROVIDER /usr/lib/ssh-keychain.dylib' "$h/.config/fish/conf.d/90-work.fish"
+assert "the bootstrap adds the sudo credential through the provider" \
+    grep -qF 'SSH_SK_PROVIDER=/usr/lib/ssh-keychain.dylib' "$root/scripts/bootstrap-task.sh"
 assert "the bootstrap loads the agent and adds the sudo credential" \
     grep -q 'add_sudo_credential' "$root/scripts/bootstrap-task.sh"
 expect "the work smortress route goes through the userspace tailscaled" \

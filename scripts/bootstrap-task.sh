@@ -98,7 +98,9 @@ add_sudo_credential() {
     key=$HOME/.ssh/id_smortress_sudo
     [ -f "$key" ] || return 0
     SSH_AUTH_SOCK=$HOME/.local/state/ssh/agent.sock
-    export SSH_AUTH_SOCK
+    # Apple's OpenSSH refuses an sk handle without a FIDO provider.
+    SSH_SK_PROVIDER=/usr/lib/ssh-keychain.dylib
+    export SSH_AUTH_SOCK SSH_SK_PROVIDER
     # launchctl bootstrap returns before ssh-agent has bound the socket.
     i=0
     while [ ! -S "$SSH_AUTH_SOCK" ] && [ "$i" -lt 20 ]; do

@@ -18,6 +18,7 @@ end
 if test -S "$HOME/.local/state/ssh/agent.sock"
     set -gx SSH_AUTH_SOCK "$HOME/.local/state/ssh/agent.sock"
 end
+set -gx SSH_SK_PROVIDER /usr/lib/ssh-keychain.dylib
 set -gx OP_BIOMETRIC_UNLOCK_ENABLED true
 test -d ~/.pyenv; and set -gx PYENV_ROOT ~/.pyenv
 test -d ~/.nvm; and set -gx NVM_DIR ~/.nvm
