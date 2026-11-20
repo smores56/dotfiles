@@ -98,8 +98,9 @@ expect "m makes parents" 'mkdir -p' "$(exp_ m)"
 expect "t attaches the main zellij session" 'zellij a -c main' "$(exp_ t)"
 expect "a starts maki" maki "$(exp_ a)"
 expect "s opens the sdlc picker" 'sdlc pick' "$(exp_ s)"
-expect "d pulls and bootstraps the dotfiles" \
-    'git -C ~/.dotfiles pull --ff-only --no-rebase --autostash && mise -C ~/.dotfiles bootstrap --prune-dotfiles' "$(exp_ d)"
+expect "d pulls, bootstraps, and fails when a dotfile ends up unapplied" \
+    "git -C ~/.dotfiles pull --ff-only --no-rebase --autostash && mise -C ~/.dotfiles bootstrap --prune-dotfiles && begin; mise -C ~/.dotfiles dot status --missing --json >/dev/null; or mise -C ~/.dotfiles dot status --missing; end" \
+    "$(exp_ d)"
 expect "gw is git worktree" 'git worktree' "$(exp_ gw)"
 expect "copy is fish's clipboard copy, with OSC 52" fish_clipboard_copy "$(exp_ copy)"
 expect "paste is fish's clipboard paste" fish_clipboard_paste "$(exp_ paste)"
