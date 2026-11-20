@@ -197,6 +197,14 @@ for side in "$root/scripts/secrets.sh" "$root/home/.local/bin/smortress-ssh"; do
         "grep -q 'cloudflare/access.env' '$side' && grep -q CLOUDFLARE_ACCESS_CLIENT_SECRET '$side'"
 done
 
+# sudo's touch factor is a signature from the client's agent, so the agent has to
+# travel with the session (design #767). Scoped to smortress's two routes and
+# never a global default: the forwarded socket is a signature oracle that any
+# process running as the login user on the far end can drive.
+assert "ForwardAgent is scoped to smortress's routes" sh -c \
+    "[ \"\$(grep -cx '    ForwardAgent yes' '$root/home/.ssh/smortress.conf')\" = 2 ] \
+     && ! grep -qi forwardagent '$root/work/.ssh/config'"
+
 # --- Maki guards
 
 assert "the TinyFish guard runs on every tool call" \
