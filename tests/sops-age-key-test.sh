@@ -96,6 +96,15 @@ RECIP=age1admin FIDO=1 assert "the admin recipient defers to a usable token" run
 expect "the admin stanza emits nothing when a token is usable" '' "$out"
 expect "the admin identity is not decrypted when a token is usable" 0 "$(age_calls)"
 
+# 4b. An attached token this machine has no handle for cannot answer any stanza,
+#     so the admin recipient still falls back to the passphrase.
+reset_log
+mv "$fido2" "$fido2.away"
+valid_admin
+RECIP=age1admin FIDO=1 assert "a token without handles falls back to the passphrase" run
+expect "the admin identity answers when no handle exists" FAKE-ADMIN-IDENTITY "$out"
+mv "$fido2.away" "$fido2"
+
 # 5. A handle whose token is absent fails loudly instead of silently emitting
 #    an identity the plugin cannot use.
 reset_log

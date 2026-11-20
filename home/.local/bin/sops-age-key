@@ -184,9 +184,9 @@ esac
 
 if [ -n "$recipient" ]; then
     # A token is preferred; emit nothing and let sops try the keys. With no
-    # token, a recipient with no local handle is the admin stanza, and every
-    # rule lists &admin first, so this prompts once.
-    fido2_present && exit 0
+    # token, or no handle to drive it, a recipient with no local handle is the
+    # admin stanza, and every rule lists &admin first, so this prompts once.
+    all_handles >/dev/null 2>&1 && fido2_present && exit 0
     admin_identity
 fi
 
