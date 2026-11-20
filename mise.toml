@@ -43,6 +43,13 @@ min_version = "2026.11.9"
 "~/.claude/skills" = { source = "sdlc/skills", mode = "symlink-each" }
 "~/.claude/settings.json/shared" = { source = "home/.claude-merge/settings.json", merge = true }
 
+# A checkout that moved leaves mise dotfile state keyed by the old source path;
+# --prune-dotfiles then deletes the links the live entries own, so every other
+# bootstrap undid half the dotfiles.
+[bootstrap.hooks.pre-dotfiles]
+description = "drop dotfile state from another checkout path"
+run = '''sh scripts/prune-dotfile-state.sh'''
+
 [tasks.bootstrap]
 description = "Install the pieces mise does not manage declaratively"
 run = "sh scripts/bootstrap-task.sh"

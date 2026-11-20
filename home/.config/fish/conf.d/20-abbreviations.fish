@@ -10,8 +10,9 @@ abbr -a m mkdir -p
 abbr -a t zellij a -c main
 abbr -a a maki
 abbr -a s 'sdlc pick'
-# pull.rebase is on, so --no-rebase keeps this a fast-forward or nothing.
-abbr -a d 'git -C ~/.dotfiles pull --ff-only --no-rebase --autostash && mise -C ~/.dotfiles bootstrap --prune-dotfiles'
+# pull.rebase is on, so --no-rebase keeps this a fast-forward or nothing. The
+# status guard catches bootstrap exiting 0 with dotfiles left unapplied.
+abbr -a d 'git -C ~/.dotfiles pull --ff-only --no-rebase --autostash && mise -C ~/.dotfiles bootstrap --prune-dotfiles && begin; mise -C ~/.dotfiles dot status --missing --json >/dev/null; or mise -C ~/.dotfiles dot status --missing; end'
 abbr -a gw git worktree
 abbr -a sm ssh smortress -t fish
 # fish's own clipboard functions: copy also sends OSC 52, so it works over SSH

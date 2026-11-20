@@ -336,4 +336,29 @@ assert_not "the work SSH config has no github.com entry" \
 # warning and exits 0.
 assert_not "every dotfile source exists" grep -E 'matched no files|ignoring entry' "$tmp/mise.log"
 
+# --- dotfile state from a checkout at another path ---------------------------
+
+# A moved checkout leaves state keyed by its old source path, and prune reads
+# that state: a record colliding with a live link made --prune-dotfiles delete
+# the link and the next bootstrap recreate it. The pre-dotfiles hook drops the
+# record before the apply, so prune never sees it.
+h6=$(new_home stale)
+state=$h6/.local/state/mise/dotfiles
+assert "the first dotfiles bootstrap applies" \
+    run_mise "$h6" "" bootstrap --only dotfiles
+mkdir -p "$state"
+cat >"$state/stale.toml" <<EOF
+version = 1
+source = "$h6/old/home/.config/gh"
+target = "$h6/.config/gh"
+
+[[links]]
+source = "$h6/old/home/.config/gh/config.yml"
+target = "$h6/.config/gh/config.yml"
+EOF
+assert "the bootstrap after a moved checkout exits 0" \
+    run_mise "$h6" "" bootstrap --only dotfiles --prune-dotfiles
+assert "state from the old checkout path is dropped" test ! -e "$state/stale.toml"
+assert "the prune leaves the live link alone" links_into_repo "$h6/.config/gh/config.yml"
+
 finish
