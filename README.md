@@ -161,7 +161,8 @@ A few things are set once per host, outside the repository:
   `ProxyCommand` both exec those
 - the work Mac also carries `ykman`: smorespro has no PC/SC stack by design, so
   the YubiKey's TOTP code is minted there (the bootstrap installs `ykman` with
-  `uv`), and alt+o inserts the code at the prompt
+  `uv`). Alt+o inserts a code into fish's edit buffer, which is all a binding
+  can do: sudo's own prompt is not fish's, so a code for it is typed by hand
 
 ## Maintenance
 

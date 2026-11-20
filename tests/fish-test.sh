@@ -72,12 +72,15 @@ expect "done waits 10 seconds" 10000 "$(fi_ 'echo $__done_min_cmd_duration')"
 expect "done skips the interactive tools" yes \
     "$(fi_ 'string match -rq -- $__done_exclude[1] "hx foo"; and string match -rq -- $__done_exclude[1] claude; and echo yes')"
 expect "the greeting is pfetch" PFETCH "$(fi_ fish_greeting)"
-# The smortress sudo second factor is a YubiKey TOTP: a key binding mines the
-# code into the prompt rather than running it.
+# The smortress sudo second factor is a YubiKey TOTP. A key binding can only
+# fill fish's edit buffer: sudo reads the terminal through its own prompt, so
+# the helper must not try to reach a tty of its own.
 expect "alt+o inserts the YubiKey TOTP code" yes \
     "$(fi_ 'functions -q smortress-totp; and bind \eo | string match -q "*smortress-totp"; and echo yes; or echo no')"
 expect "the TOTP helper asks ykman for the smortress code" yes \
     "$(fi_ 'functions smortress-totp | string match -q "*oath accounts code -s smortress*"; and echo yes; or echo no')"
+expect "the TOTP helper writes to no tty" yes \
+    "$(fi_ 'functions smortress-totp | string match -rq -- "(/dev/tty|stty)"; and echo no; or echo yes')"
 if [ -e "$h/.local/bin/zoxide" ]; then
     expect "zoxide jumps with c" yes "$(fi_ 'functions -q c; and echo yes')"
 fi
