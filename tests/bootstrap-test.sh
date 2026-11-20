@@ -278,8 +278,15 @@ h=$(new_home work)
 printf 'export EMPLOYER_RC_TEST=1\n' >"$h/.zshrc"
 assert "work apply exits 0" run_mise "$h" desktop,work dot apply
 assert "work links the shared smortress route" links_into_repo "$h/.ssh/smortress.conf"
+# launchd starts at `/` and ssh starts the ProxyCommand outside any checkout, so
+# neither can run a mise shim: the bootstrap writes wrappers next to them.
+plist=$h/Library/LaunchAgents/dev.sammohr.tailscaled.plist
+assert "the tailscaled agent launches the bootstrap's wrapper" \
+    grep -qF 'exec "$HOME/.local/bin/tailscaled"' "$plist"
+assert "the tailscaled agent creates its state unreadable" \
+    grep -qF 'umask 077 &amp;&amp; mkdir -p "$HOME/.local/state/tailscale"' "$plist"
 expect "the work smortress route goes through the userspace tailscaled" \
-    '$HOME/.local/share/mise/shims/tailscale --socket=$HOME/.local/state/tailscale/tailscaled.sock nc %h %p' \
+    '$HOME/.local/bin/tailscale --socket=$HOME/.local/state/tailscale/tailscaled.sock nc %h %p' \
     "$(proxy_of smortress)"
 expect "the work smortress route still resolves through MagicDNS" smortress "$(hostname_of smortress)"
 expect "the work tunnel route still proxies through the token wrapper" \

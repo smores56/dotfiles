@@ -153,6 +153,12 @@ A few things are set once per host, outside the repository:
   from `~/Library/LaunchAgents/dev.sammohr.tailscaled.plist` (the bootstrap
   loads it), and the one login is
   `tailscale --socket=$HOME/.local/state/tailscale/tailscaled.sock up`
+- `tailscale` and `tailscaled` are mise tools in `mise.work.toml`, and a mise
+  shim resolves a version only from a cwd inside this checkout, which launchd
+  (`/`) and ssh's ProxyCommand never have. The bootstrap therefore writes
+  `~/.local/bin/tailscale` and `~/.local/bin/tailscaled`, each a wrapper that
+  execs the binary `MISE_ENV=work mise which` resolved; the plist and the work
+  `ProxyCommand` both exec those
 - the work Mac also carries `ykman`: smorespro has no PC/SC stack by design, so
   the YubiKey's TOTP code is minted there (the bootstrap installs `ykman` with
   `uv`), and alt+o inserts the code at the prompt
