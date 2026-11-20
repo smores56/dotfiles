@@ -199,6 +199,11 @@ done
 assert "ForwardAgent is scoped to smortress's routes" sh -c \
     "[ \"\$(grep -cx '    ForwardAgent yes' '$root/home/.ssh/smortress.conf')\" = 2 ] \
      && ! grep -qi forwardagent '$root/work/.ssh/config'"
+# A session that joins an existing ControlMaster cannot add agent forwarding, and
+# the forwarded socket is what pam_rssh authenticates against, so multiplexing
+# here fails as a silent password prompt.
+assert "smortress never multiplexes, so the agent is really forwarded" sh -c \
+    "[ \"\$(grep -cx '    ControlMaster no' '$root/home/.ssh/smortress.conf')\" = 2 ]"
 
 # --- Maki guards
 
