@@ -289,6 +289,10 @@ expect "the work smortress route goes through the userspace tailscaled" \
     '$HOME/.local/bin/tailscale --socket=$HOME/.local/state/tailscale/tailscaled.sock nc %h %p' \
     "$(proxy_of smortress)"
 expect "the work smortress route still resolves through MagicDNS" smortress "$(hostname_of smortress)"
+# `accept-new` pins whatever the corporate resolver answered, so the alias keeps
+# one known-hosts identity instead of one per answer.
+expect "the work smortress route pins one known-hosts identity" smortress \
+    "$(in_h ssh -F "$h/.ssh/config" -G smortress 2>/dev/null | sed -n 's/^hostkeyalias //p')"
 expect "the work tunnel route still proxies through the token wrapper" \
     '$HOME/.local/bin/smortress-ssh %h' "$(proxy_of ssh.sammohr.dev)"
 assert "work links the shared environment additions" links_into_repo "$h/.config/shell/env.d/work.sh"
