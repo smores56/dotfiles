@@ -28,6 +28,7 @@ min_version = "2026.11.9"
   { default = true },
 ] }
 "~/.config/yazi" = { source = "home/.config/yazi", mode = "symlink-each" }
+"~/.config/sops/sops.yaml" = { source = "home/.config/sops/sops.yaml" }
 "~/.config/zellij" = { source = "home/.config/zellij", mode = "symlink-each" }
 # Servers lack kitty's terminfo for SSH sessions from kitty.
 "~/.terminfo" = { source = "home/.terminfo", mode = "symlink-each" }
@@ -53,3 +54,7 @@ run = '''sh scripts/prune-dotfile-state.sh'''
 [tasks.bootstrap]
 description = "Install the pieces mise does not manage declaratively"
 run = "sh scripts/bootstrap-task.sh"
+
+[tasks.sops-audit]
+description = "check the SOPS readers in the known checkouts"
+run = '''scripts/check-sops-recipients.sh "$PWD" "${HOMELAB_REPO:-$HOME/ghq/github.com/smores56/homelab-platform}"'''

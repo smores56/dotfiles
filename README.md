@@ -98,7 +98,13 @@ one touch and no PIN. With no key attached the passphrase-protected admin key
 A touch is a bearer grant: with a token attached, the handle file is enough to
 derive that key for as long as the attacker keeps it. Keep the tokens with you
 and treat the handle file as sensitive metadata. It holds one block per key, a
-`# public key: age1…` comment followed by its `AGE-PLUGIN-FIDO2-HMAC-1…` line. Other Access apps
+`# public key: age1…` comment followed by its `AGE-PLUGIN-FIDO2-HMAC-1…` line.
+
+`SOPS_CONFIG` points at `~/.config/sops/sops.yaml`, the one canonical reader set
+(admin, the shared machine key, and the three YubiKeys). A repository needs no
+`.sops.yaml` of its own; a copy there is only a fallback for a shell that does
+not source the dotfiles env. `mise run sops-audit` checks every tracked
+ciphertext in the known checkouts against that file. Other Access apps
 still accept any service token until their policies name their own.
 
 ## Rebuild a machine

@@ -45,6 +45,12 @@ if command -v mise >/dev/null 2>&1; then
 fi
 [ -x "$HOME/.local/bin/sops-age-key" ] && export SOPS_AGE_KEY_CMD="$HOME/.local/bin/sops-age-key"
 
+# One canonical reader set for every checkout: a repo's own .sops.yaml is only
+# a fallback for a shell that does not source this file.
+_sops_config=${XDG_CONFIG_HOME:-$HOME/.config}/sops/sops.yaml
+[ -r "$_sops_config" ] && export SOPS_CONFIG="$_sops_config"
+unset _sops_config
+
 _env_f=${XDG_CONFIG_HOME:-$HOME/.config}/gh/token
 # read fails at a missing final newline, but the token is still read.
 [ -r "$_env_f" ] && { read -r GH_TOKEN <"$_env_f" || [ -n "$GH_TOKEN" ]; } && export GH_TOKEN

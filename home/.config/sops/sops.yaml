@@ -1,0 +1,25 @@
+# The canonical SOPS readers for every repo. SOPS_CONFIG points here from the
+# shell env, so a checkout needs no .sops.yaml of its own; a repo file is only a
+# fallback for a shell that does not source the dotfiles env.
+#
+# A touch-only handle is a bearer grant: with a token attached, the handle file
+# derives that key for as long as an attacker keeps it. &admin is first so a
+# no-token decrypt prompts once.
+keys:
+  - &admin age1skuwunreduvw8gtkzyf9atsyjnku388ly8c252h3qger84fg5d7q4kf6xs
+  # Shared unattended machine identity (age-keygen); the private key is a
+  # Bitwarden attachment and a pending recovery-kit row.
+  - &machine age1dy66kuzcvu7tgl64pxrjymdt3ndk7g2ftsqc0nx4s8fhyv8zfyyq2h0756
+  # The three `age-plugin-fido2-hmac -g` recipients (no PIN, separate identity).
+  - &yk1 age18suc3usnfah6g3fldvhhvmchyupg3tp2p5vgzfuprvcn6untva9qem4lf0
+  - &yk2 age1zepedng5vqafu95hysrxl0kadreshg2yc07epfqky5fuq2nmy5fqg649lf
+  - &yk3 age1xqpw0qy2mk98ptvvh5y0sxtlrxs036nng2868zd6dc4wdcrrm5mqd6pnpf
+creation_rules:
+  - path_regex: .*
+    key_groups:
+      - age:
+          - *admin
+          - *machine
+          - *yk1
+          - *yk2
+          - *yk3
