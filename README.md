@@ -59,10 +59,10 @@ Everything builds on the base; each environment only adds.
 
 | Environment | Adds |
 | --- | --- |
-| base | fish, helix, zellij, yazi, lazygit, gh, `sdlc`, the shared env, global mise config, the YubiKey TOTP binding |
+| base | fish, helix, zellij, yazi, lazygit, gh, `sdlc`, the shared env, global mise config |
 | `identity` | personal git identity and `git get`, the tailnet `smortress` SSH route, the `r` and `gc` abbreviations |
 | `desktop` | kitty, fonts, clipboard and trash helpers, Flatpaks or casks, wallpapers |
-| `work` | work env and git identity, the github.com SSH entry, the userspace `tailscale` and `ykman`, Claude work rules, macOS defaults and casks |
+| `work` | work env and git identity, the github.com SSH entry, the userspace `tailscale`, Claude work rules, macOS defaults and casks |
 
 fish is the interactive shell. Login shells stay the system's own (bash on
 Fedora, zsh on macOS) and only load `~/.config/shell/env.sh`, which fish
@@ -166,10 +166,6 @@ A few things are set once per host, outside the repository:
   socket. `ssh smortress` then forwards it, and `pam_rssh` signs the sudo tap
   through it; after a reboot, `ssh-add ~/.ssh/id_smortress_sudo_*` is the one
   touch that restores them
-- the work Mac also carries `ykman`: smorespro has no PC/SC stack by design, so
-  the YubiKey's TOTP code is minted there (the bootstrap installs `ykman` with
-  `uv`). Alt+o inserts a code into fish's edit buffer, which is all a binding
-  can do: sudo's own prompt is not fish's, so a code for it is typed by hand
 
 ## Maintenance
 
@@ -190,15 +186,6 @@ MISE_ENV=work mise lock --platform macos-arm64
 
 The `go:` backend builds from source, so its lock entries carry the version and
 no checksum; the toolchain it builds with is the tool that does.
-
-`ykman` is the one tool mise cannot pin: its `pyscard` dependency publishes no
-wheel for the PC/SC build a locked Python graph needs, so mise can build no
-graph for it and a locked install refuses it. `scripts/bootstrap-task.sh`
-installs it with mise's `uv` on macOS only, from the version pinned there:
-
-```sh
-uv tool install yubikey-manager==5.9.2
-```
 
 Maki is pinned in `maki/pin.env`; bump it and re-run `scripts/install-maki.sh`.
 

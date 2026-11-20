@@ -95,18 +95,6 @@ load_ssh_agent() {
 # is why this runs from bootstrap (a hand at the keyboard) and never from a
 # login hook. The loader is its own file so the test drives it with stubs.
 
-# ykman is not a mise tool: its pyscard dependency ships no wheel for the PC/SC
-# build mise would need, so mise can build no dependency graph and a locked
-# install refuses it. uv is mise's, so the version is pinned here instead, and
-# only where a smartcard stack exists (macOS ships PC/SC; smorespro has none).
-ykman_version=5.9.2
-install_ykman() {
-    [ "$(uname -s)" = Darwin ] || return 0
-    command -v ykman >/dev/null 2>&1 && return 0
-    uv tool install --quiet "yubikey-manager==$ykman_version" \
-        || log "could not install ykman; run: uv tool install yubikey-manager==$ykman_version"
-}
-
 # A moved checkout root drops the ~/.dotfiles link, which every mise command needs.
 link_dotfiles_checkout() {
     [ "$(uname -s)" = Linux ] || return 0
@@ -124,4 +112,3 @@ install_tailscale_wrappers \
 load_tailscaled_agent
 load_ssh_agent
 sh "$(dirname "$0")/add-sudo-credential.sh"
-install_ykman
