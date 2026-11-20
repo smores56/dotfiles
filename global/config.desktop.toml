@@ -3,5 +3,3 @@
 "github:Slackadays/Clipboard" = "0.10.0"
 "aqua:umlx5h/gtrash" = { version = "0.0.6", os = ["linux"] }
 "aqua:rclone/rclone" = { version = "1.76.0", os = ["linux"] }
-# The work Mac takes cloudflared from Homebrew: a brew pin has no checksums to lock.
-"aqua:cloudflare/cloudflared" = { version = "2026.11.0", os = ["linux"] }

@@ -60,7 +60,6 @@ for target in \
     .config/zellij/themes/ansi.kdl \
     .config/yazi/yazi.toml \
     .config/gh/config.yml \
-    .local/bin/smortress-ssh \
     .local/bin/sops-age-key \
     .local/bin/maki \
     .config/maki/init.lua \
@@ -194,13 +193,11 @@ assert "identity apply exits 0" run_mise "$h" identity dot apply
 assert "identity links ~/.config/git/config" links_into_repo "$h/.config/git/config"
 assert "identity links ~/.ssh/config" links_into_repo "$h/.ssh/config"
 assert "identity links the shared smortress route" links_into_repo "$h/.ssh/smortress.conf"
-# The route is one file under home/, included by both ssh configs. Over the
-# tailnet it is ssh's own transport; the Cloudflare tunnel that still reads the
-# Access token is a separate host until the cutover removes it.
+# The route is one file under home/, included by both ssh configs: the tailnet is
+# the only route, so ssh's own transport carries it and nothing proxies.
 expect "the smortress route needs no proxy" '' "$(proxy_of smortress)"
 expect "the smortress route resolves through MagicDNS" smortress "$(hostname_of smortress)"
-expect "the tunnel route still proxies through the token wrapper" \
-    '$HOME/.local/bin/smortress-ssh %h' "$(proxy_of ssh.sammohr.dev)"
+expect "the retired tunnel host has no proxy" '' "$(proxy_of ssh.sammohr.dev)"
 assert "identity keeps the base links" links_into_repo "$h/.config/helix/config.toml"
 for inc in machine work; do
     assert "identity renders ~/.config/git/$inc.inc" test -f "$h/.config/git/$inc.inc"
@@ -244,7 +241,7 @@ assert "work.inc uses the fixed work email" \
 
 h=$(new_home desktop)
 assert "desktop apply exits 0" run_mise "$h" desktop dot apply
-assert "desktop keeps the base links" links_into_repo "$h/.local/bin/smortress-ssh"
+assert "desktop keeps the base links" links_into_repo "$h/.local/bin/maki"
 assert_not "desktop does not pull in identity" test -e "$h/.config/git/config"
 if [ "$os" = Darwin ]; then
     assert "desktop links ~/.config/aerospace/aerospace.toml on macOS" links_into_repo "$h/.config/aerospace/aerospace.toml"
@@ -316,8 +313,7 @@ expect "the work smortress route still resolves through MagicDNS" smortress "$(h
 # one known-hosts identity instead of one per answer.
 expect "the work smortress route pins one known-hosts identity" smortress \
     "$(in_h ssh -F "$h/.ssh/config" -G smortress 2>/dev/null | sed -n 's/^hostkeyalias //p')"
-expect "the work tunnel route still proxies through the token wrapper" \
-    '$HOME/.local/bin/smortress-ssh %h' "$(proxy_of ssh.sammohr.dev)"
+expect "the work tunnel host has no proxy" '' "$(proxy_of ssh.sammohr.dev)"
 assert "work links the shared environment additions" links_into_repo "$h/.config/shell/env.d/work.sh"
 assert "work links the fish work hook" links_into_repo "$h/.config/fish/conf.d/90-work.fish"
 assert "work links the Claude work rules" grep -q 'This is a work host' "$h/.claude/work.md"

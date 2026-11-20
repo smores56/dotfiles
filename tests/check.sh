@@ -185,25 +185,18 @@ assert "the personal SDLC registry is hardcoded" \
 assert "the work SDLC registry is hardcoded" \
     grep -q 'SDLC_REPO=smohr-blitzy/sdlc' "$root/work/.config/shell/env.d/work.sh"
 
-# One producer and one consumer: a rename on either side leaves the wrapper
-# without a credential.
-for side in "$root/scripts/secrets.sh" "$root/home/.local/bin/smortress-ssh"; do
-    assert "$(rel "$side") names the Access token file and secret" sh -c \
-        "grep -q 'cloudflare/access.env' '$side' && grep -q CLOUDFLARE_ACCESS_CLIENT_SECRET '$side'"
-done
-
 # sudo's touch factor is a signature from the client's agent, so the agent has to
-# travel with the session (design #767). Scoped to smortress's two routes and
-# never a global default: the forwarded socket is a signature oracle that any
-# process running as the login user on the far end can drive.
-assert "ForwardAgent is scoped to smortress's routes" sh -c \
-    "[ \"\$(grep -cx '    ForwardAgent yes' '$root/home/.ssh/smortress.conf')\" = 2 ] \
+# travel with the session (design #767). Scoped to the smortress host and never a
+# global default: the forwarded socket is a signature oracle that any process
+# running as the login user on the far end can drive.
+assert "ForwardAgent is scoped to the smortress route" sh -c \
+    "[ \"\$(grep -cx '    ForwardAgent yes' '$root/home/.ssh/smortress.conf')\" = 1 ] \
      && ! grep -qi forwardagent '$root/work/.ssh/config'"
 # A session that joins an existing ControlMaster cannot add agent forwarding, and
 # the forwarded socket is what pam_rssh authenticates against, so multiplexing
 # here fails as a silent password prompt.
 assert "smortress never multiplexes, so the agent is really forwarded" sh -c \
-    "[ \"\$(grep -cx '    ControlMaster no' '$root/home/.ssh/smortress.conf')\" = 2 ]"
+    "[ \"\$(grep -cx '    ControlMaster no' '$root/home/.ssh/smortress.conf')\" = 1 ]"
 
 # --- Maki guards
 

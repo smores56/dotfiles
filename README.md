@@ -84,7 +84,6 @@ files that only their one consumer reads.
 | `NEURALWATT_API_KEY`, `TINYFISH_API_KEY` | from Bitwarden | `~/.config/maki/secrets.env`, for Maki only |
 | `GITHUB_PERSONAL_PAT` | fine-grained: Contents read/write on my repos, Issues read/write on `smores56/sdlc` | `~/.config/gh/token` on personal machines |
 | `GITHUB_WORK_PAT` | `smohr-blitzy` classic, `repo` scope, at most 366 days (fine-grained can't reach both work orgs) | `~/.config/gh/token` on the work Mac |
-| `CLOUDFLARE_ACCESS_CLIENT_ID`, `_SECRET` | Zero Trust service token for the SSH app, one-year lifetime | `~/.config/cloudflare/access.env`, for `smortress-ssh` only |
 | `SMORTRESS_SSH_KEY` | one ed25519 private key for `ssh smortress`; revoking a laptop is a tailnet change, rotating the key one sops edit | `~/.ssh/id_smortress`, mode 600 |
 
 `NEURALWATT_API_KEY`, `TINYFISH_API_KEY` and `SMORTRESS_SSH_KEY` are required:
@@ -104,8 +103,7 @@ and treat the handle file as sensitive metadata. It holds one block per key, a
 (admin, the shared machine key, and the three YubiKeys). A repository needs no
 `.sops.yaml` of its own; a copy there is only a fallback for a shell that does
 not source the dotfiles env. `mise run sops-audit` checks every tracked
-ciphertext in the known checkouts against that file. Other Access apps
-still accept any service token until their policies name their own.
+ciphertext in the known checkouts against that file.
 
 ## Rebuild a machine
 

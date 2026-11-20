@@ -2,23 +2,6 @@
 
 lockfile_version = 4
 
-[[tools."aqua:cloudflare/cloudflared"]]
-version = "2026.11.0"
-backend = "aqua:cloudflare/cloudflared"
-specifiers = ["2026.11.0"]
-
-[tools."aqua:cloudflare/cloudflared"."platforms.linux-arm64"]
-checksum = "sha256:abe54a006acf9faf2d19ee9d953cb0d0804e92f59c5382a162e57b84d086f56f"
-checksum_source = "mise-versions"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.11.0/cloudflared-linux-arm64"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/739395569"
-
-[tools."aqua:cloudflare/cloudflared"."platforms.linux-x64"]
-checksum = "sha256:51f7c68b57ed7269164075d7e789efce5b59355982f06392deeb037d982a51fd"
-checksum_source = "mise-versions"
-url = "https://github.com/cloudflare/cloudflared/releases/download/2026.11.0/cloudflared-linux-amd64"
-url_api = "https://api.github.com/repos/cloudflare/cloudflared/releases/assets/739395030"
-
 [[tools."aqua:rclone/rclone"]]
 version = "1.76.0"
 backend = "aqua:rclone/rclone"

@@ -28,8 +28,6 @@ login_shell = "/bin/zsh"
 # mise refuses the group-writable /Applications. AeroSpace's tap needs Ruby 3
 # to evaluate, so it is by hand: brew install --cask nikitabobko/tap/aerospace
 [bootstrap.packages]
-# smortress-ssh's transport; Linux pins it in global/config.desktop.toml.
-"brew:cloudflared" = "latest"
 "brew-cask:brave-browser" = { version = "latest", appdir = "~/Applications" }
 "brew-cask:docker-desktop" = { version = "latest", appdir = "~/Applications" }
 "brew-cask:caffeine" = { version = "latest", appdir = "~/Applications" }

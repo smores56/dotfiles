@@ -16,8 +16,6 @@ printf 'NEURALWATT_API_KEY=%s\n' "$FAKE_NEURALWATT"
 printf 'TINYFISH_API_KEY=%s\n' "$FAKE_TINYFISH"
 [ -n "$FAKE_PAT" ] && printf 'GITHUB_PERSONAL_PAT=%s\n' "$FAKE_PAT"
 [ -n "$FAKE_WORK_PAT" ] && printf 'GITHUB_WORK_PAT=%s\n' "$FAKE_WORK_PAT"
-[ -n "$FAKE_ACCESS_ID" ] && printf 'CLOUDFLARE_ACCESS_CLIENT_ID=%s\n' "$FAKE_ACCESS_ID"
-[ -n "$FAKE_ACCESS_SECRET" ] && printf 'CLOUDFLARE_ACCESS_CLIENT_SECRET=%s\n' "$FAKE_ACCESS_SECRET"
 [ -n "$FAKE_SMORTRESS_SSH_KEY" ] && printf 'SMORTRESS_SSH_KEY=%s\n' "$FAKE_SMORTRESS_SSH_KEY"
 exit 0
 EOF
@@ -49,8 +47,6 @@ run() {
         FAKE_TINYFISH="${FAKE_TINYFISH-tf-test}" \
         FAKE_PAT="${FAKE_PAT-ghp_test}" \
         FAKE_WORK_PAT="${FAKE_WORK_PAT-ghp_work}" \
-        FAKE_ACCESS_ID="${FAKE_ACCESS_ID-cf-id-test}" \
-        FAKE_ACCESS_SECRET="${FAKE_ACCESS_SECRET-cf-secret-test}" \
         FAKE_SMORTRESS_SSH_KEY="${FAKE_SMORTRESS_SSH_KEY-ssh-key-test}" \
         DOTFILES_SECRETS="$tmp/secrets.yaml" \
         sh "$root/scripts/secrets.sh" "$@" >"$tmp/out" 2>&1
@@ -59,7 +55,6 @@ decrypts() { grep -c '^sops$' "$tmp/log"; }
 
 secrets=$home/.config/maki/secrets.env
 token=$home/.config/gh/token
-access=$home/.config/cloudflare/access.env
 ssh_key=$home/.ssh/id_smortress
 state=$home/.local/state/dotfiles/secrets.sha256
 
@@ -72,14 +67,6 @@ assert "the token file is mode 600" test "$(mode_of "$token" 2>/dev/null)" = 600
 assert_not "the PATs stay out of the Maki cache" grep -q ghp_ "$secrets"
 assert_not "the PATs are never printed" grep -q ghp_ "$tmp/out"
 assert_not "gh is never called" grep -q '^gh ' "$tmp/log"
-assert "the Access client id is written where the wrapper reads it" \
-    grep -qx 'CLOUDFLARE_ACCESS_CLIENT_ID=cf-id-test' "$access"
-assert "the Access secret is written where the wrapper reads it" \
-    grep -qx 'CLOUDFLARE_ACCESS_CLIENT_SECRET=cf-secret-test' "$access"
-assert "the Access token file is mode 600" test "$(mode_of "$access")" = 600
-assert "the Access token directory is private" test "$(mode_of "$home/.config/cloudflare")" = 700
-assert_not "the Access token stays out of the Maki cache" grep -q cf-secret-test "$secrets"
-assert_not "the Access token is never printed" grep -q cf-secret-test "$tmp/out"
 assert "the smortress key is written where ssh reads it" \
     grep -qx 'ssh-key-test' "$ssh_key"
 assert "the smortress key file is mode 600" test "$(mode_of "$ssh_key")" = 600
@@ -126,56 +113,10 @@ MISE_ENV=work FAKE_PAT='' run
 assert "switching to work picks up the work PAT despite the empty personal one" \
     test "$(cat "$token" 2>/dev/null)" = ghp_work
 
-# --- the Access service token
-# The case above left the work PAT marker in the state; a fixed environment
-# keeps this block on the Access marker alone.
-MISE_ENV=work
-
-before=$(decrypts)
-run
-assert "an untouched machine does not decrypt for the Access token again" \
-    test "$(decrypts)" -eq "$before"
-
-chmod 644 "$access"
-run
-assert "a loosened Access token file is tightened without decrypting" \
-    test "$(mode_of "$access")" = 600 -a "$(decrypts)" -eq "$before"
-
-rm "$access"
-run
-assert "a deleted Access token file is restored without a changed file" \
-    test "$(mode_of "$access")" = 600 -a "$(decrypts)" -eq "$((before + 1))"
-
-# A state file from before the token existed carries two fields.
-sha=$(cut -d' ' -f1 "$state")
-printf '%s GITHUB_PERSONAL_PAT\n' "$sha" >"$state"
-before=$(decrypts)
-run
-assert "a state file without an Access marker decrypts once more" \
-    test "$(decrypts)" -eq "$((before + 1))"
-
-printf 'access1\n' >"$tmp/secrets.yaml"
-before=$(decrypts)
-FAKE_ACCESS_ID='' run
-assert "a cipher without the Access pair leaves the token file alone" test -e "$access"
-assert "a cipher without the Access pair warns" grep -q 'no CLOUDFLARE_ACCESS_CLIENT_ID' "$tmp/out"
-assert "a cipher without the Access pair decrypts once, then settles" \
-    test "$(decrypts)" -eq "$((before + 1))"
-before=$(decrypts)
-FAKE_ACCESS_ID='' run
-assert "the absent Access pair is not decrypted again on every run" \
-    test "$(decrypts)" -eq "$before"
-printf 'access2\n' >"$tmp/secrets.yaml"
-before=$(decrypts)
-run
-assert "the Access token comes back with the cipher's pair" \
-    test "$(decrypts)" -eq "$((before + 1))"
-assert "the restored Access token file is mode 600" \
-    test "$(mode_of "$access")" = 600
-
 # --- the smortress ssh key
-# The Access cases above left the work PAT and the Access pair in the state, so
-# these runs stay on the same environment and the key marker alone decides.
+# The PAT cases above left the work PAT marker in the state; a fixed environment
+# keeps this block on the key marker alone.
+MISE_ENV=work
 before=$(decrypts)
 run
 assert "an untouched machine does not decrypt for the key again" \
@@ -191,9 +132,9 @@ run
 assert "a deleted key file is restored without a changed file" \
     test "$(mode_of "$ssh_key")" = 600 -a "$(decrypts)" -eq "$((before + 1))"
 
-# A state file from before the key existed carries three fields.
+# A state file from before the key existed carries two fields.
 sha=$(cut -d' ' -f1 "$state")
-printf '%s %s %s\n' "$sha" "$(cut -d' ' -f2 "$state")" "$(cut -d' ' -f3 "$state")" >"$state"
+printf '%s %s\n' "$sha" "$(cut -d' ' -f2 "$state")" >"$state"
 before=$(decrypts)
 run
 assert "a state file without the key marker decrypts once more" \
@@ -229,15 +170,12 @@ assert "a machine without the age identity is left alone" test "$(decrypts)" -eq
 printf 'prune1\n' >"$tmp/secrets.yaml"
 run
 assert "--prune guard setup: token exists" test -e "$token"
-assert "--prune guard setup: the Access file exists" test -e "$access"
 printf 'prune2\n' >"$tmp/secrets.yaml"
-FAKE_PAT='' FAKE_ACCESS_ID='' FAKE_ACCESS_SECRET='' run
+FAKE_PAT='' run
 assert "an absent PAT leaves the token in place" test -e "$token"
-assert "an absent Access pair leaves access.env in place" test -e "$access"
-assert "an absent pair says how to remove it" grep -q -- '--prune removes it' "$tmp/out"
-FAKE_PAT='' FAKE_ACCESS_ID='' FAKE_ACCESS_SECRET='' run --prune
+assert "an absent PAT says how to remove it" grep -q -- '--prune removes it' "$tmp/out"
+FAKE_PAT='' run --prune
 assert "--prune removes the token" test ! -e "$token"
-assert "--prune removes access.env" test ! -e "$access"
 
 # A hand run outside mise has no MISE_ENV; the set must come from mise, or a
 # work machine silently gets the personal PAT.

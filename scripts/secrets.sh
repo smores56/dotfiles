@@ -1,8 +1,6 @@
 #!/bin/sh
-# Decrypt sops.yaml once (one passphrase prompt) into four mode-600 files: the
-# Maki provider keys, the machine's GitHub token, the Cloudflare Access token,
-# and the smortress ssh key. The Access pair has its own file so nothing that
-# reads the Maki cache ever holds it.
+# Decrypt sops.yaml once (one passphrase prompt) into three mode-600 files: the
+# Maki provider keys, the machine's GitHub token, and the smortress ssh key.
 set -eu
 
 root=$(cd -- "$(dirname -- "$0")/.." && pwd)
@@ -10,7 +8,6 @@ cipher=${DOTFILES_SECRETS:-$root/sops.yaml}
 config=${XDG_CONFIG_HOME:-$HOME/.config}
 secrets=$config/maki/secrets.env
 token=$config/gh/token
-access=$config/cloudflare/access.env
 ssh_key=$HOME/.ssh/id_smortress
 key=$config/sops/keys.age
 state=${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/secrets.sha256
@@ -65,12 +62,11 @@ want=$(sha256_of "$cipher")
 state_line=$(cat "$state" 2>/dev/null || true)
 have=
 token_marker=
-access_marker=
 ssh_key_marker=
 if [ -n "$state_line" ]; then
-    # <cipher sha> <token marker> <access marker> <ssh key marker>; a missing
-    # marker forces a decrypt, so a state from an older script still settles.
-    read -r have token_marker access_marker ssh_key_marker _rest <<EOF
+    # <cipher sha> <token marker> <ssh key marker>; a missing marker forces a
+    # decrypt, so a state from an older script still settles.
+    read -r have token_marker ssh_key_marker _rest <<EOF
 $state_line
 EOF
 fi
@@ -84,16 +80,11 @@ if ! $prune && [ "$want" = "$have" ] && [ -s "$secrets" ]; then
         "$pat_name:none") token_ok=yes ;;
         "$pat_name") [ -s "$token" ] && { chmod 600 "$token"; token_ok=yes; } ;;
     esac
-    access_ok=no
-    case $access_marker in
-        none) access_ok=yes ;;
-        yes) [ -s "$access" ] && { chmod 600 "$access"; access_ok=yes; } ;;
-    esac
     ssh_key_ok=no
     case $ssh_key_marker in
         yes) [ -s "$ssh_key" ] && { chmod 600 "$ssh_key"; ssh_key_ok=yes; } ;;
     esac
-    if [ "$token_ok" = yes ] && [ "$access_ok" = yes ] && [ "$ssh_key_ok" = yes ]; then
+    if [ "$token_ok" = yes ] && [ "$ssh_key_ok" = yes ]; then
         exit 0
     fi
 fi
@@ -123,8 +114,6 @@ tinyfish=$(value_of TINYFISH_API_KEY)
 # escapes; ssh needs the real newlines back.
 ssh_key_value=$(printf '%b' "$(value_of SMORTRESS_SSH_KEY)")
 pat=$(value_of "$pat_name")
-access_id=$(value_of CLOUDFLARE_ACCESS_CLIENT_ID)
-access_secret=$(value_of CLOUDFLARE_ACCESS_CLIENT_SECRET)
 
 if [ -z "$neuralwatt" ] || [ -z "$tinyfish" ] || [ -z "$ssh_key_value" ]; then
     log "$cipher needs NEURALWATT_API_KEY, TINYFISH_API_KEY and SMORTRESS_SSH_KEY; leaving the secrets alone"
@@ -156,18 +145,6 @@ else
     log "$cipher has no $pat_name; leaving $token in place (--prune removes it)"
 fi
 
-access_marker=none
-if [ -n "$access_id" ] && [ -n "$access_secret" ]; then
-    write_private "$access" "CLOUDFLARE_ACCESS_CLIENT_ID=$access_id" \
-        "CLOUDFLARE_ACCESS_CLIENT_SECRET=$access_secret"
-    access_marker=yes
-elif $prune; then
-    rm -f "$access"
-    log "$cipher has no CLOUDFLARE_ACCESS_CLIENT_ID and CLOUDFLARE_ACCESS_CLIENT_SECRET; removed the service token"
-else
-    log "$cipher has no CLOUDFLARE_ACCESS_CLIENT_ID and CLOUDFLARE_ACCESS_CLIENT_SECRET; leaving $access in place (--prune removes it)"
-fi
-
 mkdir -p "$(dirname "$state")"
-printf '%s %s %s %s\n' "$want" "$token_marker" "$access_marker" "$ssh_key_marker" >"$state"
+printf '%s %s %s\n' "$want" "$token_marker" "$ssh_key_marker" >"$state"
 log "wrote $secrets"
