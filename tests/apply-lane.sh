@@ -71,7 +71,7 @@ esac
 
 case $(uname -s) in
     Linux)
-        link "$HOME/.terminfo/78/xterm-kitty"
+        link "$HOME/.terminfo/x/xterm-kitty"
         grep -q 'shell/env.sh' "$HOME/.bash_profile" \
             || fail "a bash login does not read the shared env"
         grep -q 'shell/env.sh' "$HOME/.bashrc" \
