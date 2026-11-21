@@ -21,6 +21,8 @@ eza = "0.23.5"
 just = "1.59.0"
 uv = "0.13.8"
 shellcheck = "0.11.0"
+# The homelab-platform gate runs both; yamllint is pipx like basedpyright.
+"aqua:rhysd/actionlint" = "1.7.12"
 "aqua:fish-shell/fish-shell" = "4.9.3"
 "github:Gobidev/pfetch-rs" = "3.1.1"
 "aqua:junegunn/fzf" = "0.75.0"
@@ -40,6 +42,7 @@ shellcheck = "0.11.0"
 "github:Feel-ix-343/markdown-oxide" = "0.25.12"
 "github:Automattic/harper" = { version = "3.2.0", bin = "harper-ls" }
 "github:LuaLS/lua-language-server" = "3.19.2"
+"pipx:yamllint" = "1.38.0"
 "pipx:basedpyright" = "1.40.2"
 "github:umputun/revdiff" = "1.15.0"
 "github:agynio/gh-pr-review" = { version = "1.6.2", bin = "gh-pr-review" }
