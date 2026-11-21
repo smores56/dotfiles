@@ -34,9 +34,12 @@ if [ "$(uname -s)" = Darwin ]; then
     export SSH_SK_PROVIDER
 fi
 
-# `ssh-add -l` prints "… (ED25519-SK)": re-adding on every bootstrap is pure
-# friction once a handle is already loaded.
-ssh-add -l 2>/dev/null | grep -qi 'ed25519-sk' && exit 0
+# Skip only the handles already in the agent, not the whole loop: a key enrolled
+# after the first bootstrap has to be added on the next one, and asking "is any
+# sk key loaded" answers a different question -- it would leave every spare key
+# out and turn its tap into a password prompt. `ssh-add -L` prints the loaded
+# keys in authorized_keys form, so the public half decides.
+loaded=$(ssh-add -L 2>/dev/null) || loaded=
 
 found=0
 for key in "$HOME"/.ssh/id_smortress_sudo*; do
@@ -45,6 +48,10 @@ for key in "$HOME"/.ssh/id_smortress_sudo*; do
         *.pub) continue ;;
     esac
     found=1
+    if [ -f "$key.pub" ] && printf '%s\n' "$loaded" | cut -d' ' -f1,2 |
+        grep -qxF "$(cut -d' ' -f1,2 <"$key.pub")"; then
+        continue
+    fi
     ssh-add "$key" || log "could not add $key; run: ssh-add $key"
 done
 [ "$found" -eq 1 ] || log "no ~/.ssh/id_smortress_sudo* handle; sudo falls back to the password"

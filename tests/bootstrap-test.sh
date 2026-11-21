@@ -318,6 +318,13 @@ assert "the bootstrap loads the agent and adds the sudo credentials" \
 expect "the work smortress route goes through the userspace tailscaled" \
     '$HOME/.local/bin/tailscale --socket=$HOME/.local/state/tailscale/tailscaled.sock nc %h %p' \
     "$(proxy_of smortress)"
+# The file text is not the contract: `Include` is the first line of every config
+# that pulls smortress.conf in, and ssh keeps the first value it obtains, so a
+# later `Host *` can only win if that ordering breaks. Assert what ssh resolves.
+expect "the smortress route forwards the agent in effect" yes \
+    "$(in_h ssh -F "$h/.ssh/config" -G smortress 2>/dev/null | sed -n 's/^forwardagent //p')"
+expect "the smortress route does not multiplex in effect" false \
+    "$(in_h ssh -F "$h/.ssh/config" -G smortress 2>/dev/null | sed -n 's/^controlmaster //p')"
 expect "the work smortress route still resolves through MagicDNS" smortress "$(hostname_of smortress)"
 # `accept-new` pins whatever the corporate resolver answered, so the alias keeps
 # one known-hosts identity instead of one per answer.

@@ -89,12 +89,6 @@ load_ssh_agent() {
         || log "could not load $label; load it with launchctl bootstrap by hand"
 }
 
-# The sudo credentials are resident sk handles, one per YubiKey, so a fresh
-# login needs them added once: without them pam_rssh falls back to the password,
-# which is a working path but not the tap. ssh-add asks for a touch here, which
-# is why this runs from bootstrap (a hand at the keyboard) and never from a
-# login hook. The loader is its own file so the test drives it with stubs.
-
 # A moved checkout root drops the ~/.dotfiles link, which every mise command needs.
 link_dotfiles_checkout() {
     [ "$(uname -s)" = Linux ] || return 0
@@ -123,4 +117,6 @@ install_tailscale_wrappers \
 load_tailscaled_agent
 load_ssh_agent
 load_ssh_agent_linux
+# After the agent, never before: the loader is a no-op until the socket is bound.
+# The loader is its own file so the test drives it with stubs.
 sh "$(dirname "$0")/add-sudo-credential.sh"

@@ -17,11 +17,11 @@ cat >"$bin/uname" <<'EOF'
 #!/bin/sh
 printf 'Darwin\n'
 EOF
-# ssh-add records its argv, and `-l` reports whatever the case staged.
+# ssh-add records its argv, and `-L` reports whatever the case staged.
 cat >"$bin/ssh-add" <<'EOF'
 #!/bin/sh
 printf '%s\n' "$*" >>"$SSH_ADD_LOG"
-[ "${1:-}" = -l ] && [ -n "$SSH_ADD_LIST" ] && printf '%s\n' "$SSH_ADD_LIST"
+[ "${1:-}" = -L ] && [ -n "$SSH_ADD_LOADED" ] && cat "$SSH_ADD_LOADED"
 exit 0
 EOF
 chmod 755 "$bin/uname" "$bin/ssh-add"
@@ -35,12 +35,14 @@ new_home() {  # new_home <name>: a HOME with a bound agent socket
 }
 handle() {  # handle <home> <file>: a private handle and its public half
     : >"$1/.ssh/$2"
-    printf 'sk-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5 %s\n' "$2" >"$1/.ssh/$2.pub"
+    # Distinct blobs: two handles are different credentials, and the loader
+    # compares the key material to decide what is already in the agent.
+    printf 'sk-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5%s %s\n' "$2" "$2" >"$1/.ssh/$2.pub"
 }
-run_loader() {  # run_loader <home> [ssh-add -l output]
+run_loader() {  # run_loader <home> [file of loaded keys]
     : >"$log"
     env -i HOME="$1" PATH="$bin:/usr/bin:/bin" \
-        SSH_ADD_LOG="$log" SSH_ADD_LIST="${2:-}" sh "$loader"
+        SSH_ADD_LOG="$log" SSH_ADD_LOADED="${2:-}" sh "$loader"
 }
 
 # One credential per YubiKey, as enrollment mints them: a tap on the spare has to
@@ -53,11 +55,17 @@ assert "the loader exits 0" run_loader "$h"
 expect "every handle is added" 3 "$(grep -c 'id_smortress_sudo_[123]$' "$log")"
 assert_not "no public half is added" grep -q '\.pub' "$log"
 
-# A resident handle is already in the agent after the first bootstrap; asking
-# for a second one is friction, not a fix.
-assert "the loader exits 0 with a loaded handle" \
-    run_loader "$h" '256 SHA256:aaaa smores-sudo-key1 (ED25519-SK)'
-expect "a loaded handle stops the adds" 1 "$(wc -l <"$log")"
+# A handle already in the agent must not be added again, but the other two are
+# the whole point of the per-key naming: a spare key's tap has to work.
+printf '%s\n' "$(cat "$h/.ssh/id_smortress_sudo_1.pub")" >"$tmp/loaded"
+assert "the loader exits 0 with one handle already loaded" run_loader "$h" "$tmp/loaded"
+expect "only the missing handles are added" 2 "$(grep -c 'id_smortress_sudo_' "$log")"
+assert_not "the loaded handle is not re-added" grep -q 'id_smortress_sudo_1$' "$log"
+
+# All three loaded is the steady state, and a second bootstrap must be silent.
+cat "$h"/.ssh/id_smortress_sudo_*.pub >"$tmp/loaded"
+assert "the loader exits 0 with every handle loaded" run_loader "$h" "$tmp/loaded"
+expect "nothing is added when every handle is loaded" 0 "$(grep -c 'id_smortress_sudo_' "$log")"
 
 # A machine that never enrolled must not fail the bootstrap.
 h=$(new_home none)
