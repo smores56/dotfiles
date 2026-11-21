@@ -34,10 +34,21 @@ Linux)
     # Link the distro's sonames, not conda's: conda's libncursesw needs
     # libtinfow, which Fedora lacks, and its .pc files add an rpath into the
     # mise store. The headers are the only build-time conda input.
-    libpath=$(ldconfig -p 2>/dev/null | awk '$1 == "libncursesw.so.6" { print $NF; exit }')
-    [ -n "$libpath" ] || die "libncursesw.so.6 is not in the loader cache"
-    build -L"$(dirname -- "$libpath")" -l:libncursesw.so.6 -l:libpanelw.so.6 -l:libtinfo.so.6
-    if ldd "$tmp" | grep -q "$HOME/.local/share/mise"; then
+    find_libdir() {
+        if command -v ldconfig >/dev/null 2>&1; then
+            path=$(ldconfig -p 2>/dev/null |
+                awk '$1 == "libncursesw.so.6" && tolower($0) ~ /x86-64|aarch64/ { print $NF; exit }')
+            [ -n "$path" ] && { dirname -- "$path"; return 0; }
+        fi
+        for dir in /usr/lib64 /usr/lib/x86_64-linux-gnu /usr/lib/aarch64-linux-gnu /lib64 /usr/lib; do
+            [ -e "$dir/libncursesw.so.6" ] && { printf '%s\n' "$dir"; return 0; }
+        done
+        return 1
+    }
+    libdir=$(find_libdir) || die "libncursesw.so.6 is not installed"
+    build -L"$libdir" -l:libncursesw.so.6 -l:libpanelw.so.6 -l:libtinfo.so.6
+    mise_data=${MISE_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/mise}
+    if ldd "$tmp" | grep -qF "$mise_data"; then
         die "the binary resolves a library from the mise store; the system sonames were not used"
     fi
     ;;
@@ -52,7 +63,7 @@ Darwin)
     ;;
 esac
 
-"$tmp" -h >/dev/null 2>&1 || die "the built binary does not start"
+TERM=xterm-256color "$tmp" -p -L 4 >/dev/null 2>&1 || die "the built binary does not render"
 chmod 0755 "$tmp"
 mv -f "$tmp" "$destdir/cbonsai"
 trap - EXIT HUP INT TERM

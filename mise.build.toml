@@ -1,0 +1,11 @@
+# Build-only toolchain for the vendored cbonsai. The `cbonsai` task reloads mise
+# with MISE_ENV=build so these tools exist for the compile and nowhere else.
+# A task-scoped `tools` table cannot carry conda:ncurses: mise resolves the conda
+# dependency closure into the lockfile but the task installer never reads it.
+[tools]
+"core:zig" = "0.17.1"
+"conda:ncurses" = "6.6"
+
+[tasks.cbonsai-build]
+description = "Compile the vendored cbonsai with the build-only toolchain"
+file = "scripts/build-cbonsai.sh"

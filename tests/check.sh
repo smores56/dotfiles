@@ -62,6 +62,21 @@ else
     skip "toml and lockfile coverage (python3 tomllib missing)"
 fi
 
+# --- vendored screensaver
+
+assert "the vendored cbonsai source matches its recorded checksum" sh -c \
+    "sha256sum '$root/vendor/cbonsai/cbonsai.c' | grep -q '^7a1900d505fb3947356b4e9f99fa8a8bf42d3e69fe7fdbc5eaa33ca3d2488fe4 '"
+
+$has_tomllib && assert "the cbonsai build lockfile pins both tools on every desktop platform" \
+    python3 -c '
+import sys, tomllib
+tools = tomllib.load(open(sys.argv[1], "rb"))["tools"]
+for name in ("zig", "conda:ncurses"):
+    entries = tools[name]
+    for platform in ("linux-x64", "linux-arm64", "macos-arm64"):
+        assert any("platforms." + platform in entry for entry in entries), (name, platform)
+' "$root/mise.build.lock"
+
 # --- desktop and shells
 
 assert_not "every flatpak id looks like a reverse-DNS app id" sh -c \
