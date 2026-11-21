@@ -17,6 +17,15 @@
   - `pr` (work repos): every change lands through a PR with `gh pr create`; one PR may cover several SDLC tasks. Quick fixes still need a PR; never merge to main yourself. Never file work features in the personal `sdlc` registry — run sdlc phases in the conversation with the human approving in chat
   - unset (third-party checkouts): follow the repo's own contribution rules
 
+# Loop
+- CI is a second gate, never a debugger: reproduce any failure locally with the same command before pushing again. A failure only CI can reproduce is an environment bug to fix, not a reason to push
+- Definition of done is the repo's gate exiting 0 in your worktree: `mise run check` where mise defines it, otherwise the command its AGENTS.md names. Report the command, its exit code, and its summary line; never claim green without them
+- Inner loop: run the failing test alone, make the minimal fix, then the repo's narrowed gate (`mise run check:changed` or `scripts/check-all.sh --changed`); run the full gate before the first push
+- One task = one commit = one green check. Target at most ~200 changed lines and ~5 files; split the task before starting, not after the diff exists
+- After 3 failed attempts at the same failure, stop and report the failing command and its output; do not keep guessing or hand the loop to CI
+- Never `--no-verify`, never edit a test to pass, never read `skip` as `ok`
+- `mise run hooks` once per machine installs the pre-push gate
+
 # Memory
 - Claude Code's memory files are the agent memory: keep durable facts, preferences, and decisions the repo and its docs don't hold, one self-contained fact per entry
 - Check memory before work that earlier sessions may have touched

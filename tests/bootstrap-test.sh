@@ -16,7 +16,7 @@ os=$(uname -s)
 if [ "$os" = Darwin ] && [ -x /bin/zsh ]; then
     zsh_bin=/bin/zsh
 else
-    zsh_bin=$(command -v zsh || true)
+    zsh_bin=$(usable_shell zsh || true)
 fi
 
 # run_mise <home> <env> <args...>: mise with a clean environment, trusting only

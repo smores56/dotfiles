@@ -1,0 +1,6 @@
+#!/bin/sh
+# The local gate before any push: the same command CI runs, on the same tree.
+# `git config core.hooksPath .githooks` (mise run hooks) enables it.
+set -eu
+root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+exec sh "$root/tests/check.sh"

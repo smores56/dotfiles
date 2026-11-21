@@ -30,16 +30,21 @@ design/plan/gate layer.
 4. **Plan** — from the code repo, `sdlc new <slug> --repo <owner/repo>`.
    Write `## Design` and `## Plan` into the body (`gh issue edit <n>
    --body-file`), then add task sub-issues with `sdlc task add <feature>
-   "<title>" --needs T1`. `blocked-by` edges are the dependency graph;
-   re-plan them with `sdlc task edit <n> --needs <T1,T2|10,12>`, which
+   "<title>" --needs T1`. Give every task a `Verify: <command>` line in its
+   body (`gh issue edit <n> --body`). `blocked-by` edges are the dependency
+   graph; re-plan them with `sdlc task edit <n> --needs <T1,T2|10,12>`, which
    replaces the task's edges (an empty `--needs` clears them) and refuses
-   a cycle.
+   a cycle. The first task is the thinnest end-to-end slice; one task is one
+   commit (~200 lines), and a task that cannot be verified in one loop is
+   split before it starts.
 5. **Approve** — show the human `sdlc show <feature>` and `sdlc status
    <feature>`; see Approval.
 6. **Build** — take work only from `sdlc next [<feature>]`. When other
    sessions may touch the feature, claim it with `gh issue edit <n>
    --add-assignee @me`. Per task: `sdlc task start <n>`, worktree,
-   `test-driven-development`.
+   `test-driven-development`, then the task's `Verify:` command and `review`.
+   A red verify command means the task is not done, whatever the diff looks
+   like.
 7. **Review & fix** — before every `task done`, run `review` on the task's
    diff, fix what survives, re-test. One final review of the whole feature
    before completion.

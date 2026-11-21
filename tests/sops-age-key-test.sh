@@ -32,6 +32,17 @@ EOF
 cp "$tmp/bin/systemd-cryptenroll" "$tmp/bin-noage/systemd-cryptenroll"
 chmod +x "$tmp/bin/age" "$tmp/bin/systemd-cryptenroll" \
     "$tmp/bin/age-plugin-fido2-hmac" "$tmp/bin-noage/systemd-cryptenroll"
+# Every tool the script may call except age. A distro that ships age in /usr/bin
+# would otherwise make the "missing helper" case pass without testing anything.
+for dir in /usr/bin /bin; do
+    [ "$dir" = /bin ] && [ /bin -ef /usr/bin ] && continue
+    for tool in "$dir"/*; do
+        name=${tool##*/}
+        [ "$name" = age ] && continue
+        [ -e "$tmp/bin-noage/$name" ] && continue
+        ln -s "$tool" "$tmp/bin-noage/$name" 2>/dev/null || true
+    done
+done
 
 fido2=$config/sops/fido2-identity.txt
 admin=$config/sops/keys.age
@@ -150,7 +161,7 @@ PRESENT=0 assert_not "--check rejects an empty admin identity" run --check
 printf 'not-an-age-file\n' >"$admin"
 PRESENT=0 assert_not "--check rejects a non-age admin file" run --check
 valid_admin
-PRESENT=0 RUN_PATH="$tmp/bin-noage:/usr/bin:/bin" assert_not "--check rejects a missing age helper" run --check
+PRESENT=0 RUN_PATH="$tmp/bin-noage" assert_not "--check rejects a missing age helper" run --check
 rm "$admin"
 PRESENT=0 assert_not "--check rejects a machine with no identity" run --check
 expect "--check is silent on stdout when it rejects" '' "$out"

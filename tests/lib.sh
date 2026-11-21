@@ -39,6 +39,15 @@ contains() {  # contains <desc> <needle> <haystack>
 
 mode_of() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
 
+# A mise shim whose version is unset is on PATH but fails at exec. Treating it
+# as installed turns one environment gap into a pile of misleading failures.
+usable_shell() {  # usable_shell <shell>: print its path when it runs
+    local bin
+    bin=$(command -v "$1" 2>/dev/null) || return 1
+    "$bin" -c ':' >/dev/null 2>&1 || return 1
+    printf '%s\n' "$bin"
+}
+
 # A test that cannot run here exits 0 with this line, which check.sh reports as a skip.
 skip_all() { printf 'skip all (%s)\n' "$*"; exit 0; }
 

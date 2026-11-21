@@ -2,24 +2,61 @@
 # Checks the source tree: every script parses, every config loads, the guards
 # hold, and the behavioural tests pass.
 #
-# usage: tests/check.sh [--shellcheck]
+# usage: tests/check.sh [--shellcheck] [--changed [BASE]]
+#
+# --changed runs only the behavioural tests the changed paths need, using
+# origin/main as the base unless one is named. Static checks always run.
 set -u
 # shellcheck source=tests/lib.sh
 . "$(dirname -- "$0")/lib.sh"
 
+check_start=$(date +%s)
 use_shellcheck=false
-[ "${1:-}" = "--shellcheck" ] && use_shellcheck=true
+changed=false
+base=origin/main
+while [ $# -gt 0 ]; do
+    case $1 in
+        --shellcheck) use_shellcheck=true ;;
+        --changed) changed=true
+                   if [ $# -gt 1 ]; then
+                       case $2 in -*) ;; *) base=$2; shift ;; esac
+                   fi ;;
+        --changed=*) changed=true; base=${1#--changed=} ;;
+        *) printf 'usage: %s [--shellcheck] [--changed [BASE]]\n' "$0" >&2; exit 2 ;;
+    esac
+    shift
+done
 
 skip() { printf 'skip %s\n' "$*"; }
 rel() { printf '%s' "${1#"$root"/}"; }
 has() { command -v "$1" >/dev/null 2>&1; }
+
+# --changed narrows the behavioural tests; the static checks are cheap and
+# always run. An unclaimed path selects everything (tests/select.sh).
+selected_tests=all
+if $changed; then
+    git -C "$root" rev-parse --verify -q "$base^{commit}" >/dev/null || {
+        printf 'check: no such base %s\n' "$base" >&2
+        exit 2
+    }
+    changed_list=$tmp/changed
+    { git -C "$root" diff --name-only "$base" || exit 2
+      git -C "$root" ls-files --others --exclude-standard || exit 2; } >"$changed_list"
+    selected_tests=$(sh "$root/tests/select.sh" <"$changed_list")
+    printf 'changed against %s: %s\n' "$base" "${selected_tests:-none}"
+fi
+selected() {  # selected <test name>
+    [ "$selected_tests" = all ] && return 0
+    case " $selected_tests " in *" $1 "*) return 0 ;; esac
+    return 1
+}
 
 # --- syntax
 
 shell_scripts() {
     for script in "$root"/home/.config/shell/env.sh "$root"/work/.config/shell/env.d/*.sh \
             "$root"/home/.local/bin/* "$root"/desktop/.local/bin/* \
-            "$root"/scripts/*.sh "$root"/tests/*.sh; do
+            "$root"/scripts/*.sh "$root"/tests/*.sh "$root"/.githooks/*; do
         [ -f "$script" ] || continue
         case $(head -n 1 "$script") in
             *python*) ;;
@@ -34,16 +71,16 @@ while read -r dialect script; do
     assert "syntax $(rel "$script") ($dialect)" "$dialect" -n "$script"
 done <"$tmp/scripts"
 
-if has zsh; then
-    assert "syntax home/.zshenv (zsh)" zsh -n "$root/home/.zshenv"
+if zsh_bin=$(usable_shell zsh); then
+    assert "syntax home/.zshenv (zsh)" "$zsh_bin" -n "$root/home/.zshenv"
 else
     skip "syntax home/.zshenv (zsh not installed)"
 fi
 
-if has fish; then
+if fish_bin=$(usable_shell fish); then
     for fish_file in "$root"/home/.config/fish/*.fish \
             "$root"/*/.config/fish/conf.d/*.fish "$root"/*/.config/fish/conf.d/*.fish.tera; do
-        [ -f "$fish_file" ] && assert "syntax $(rel "$fish_file") (fish)" fish --no-config -n "$fish_file"
+        [ -f "$fish_file" ] && assert "syntax $(rel "$fish_file") (fish)" "$fish_bin" --no-config -n "$fish_file"
     done
 else
     skip "syntax fish (fish not installed)"
@@ -276,6 +313,7 @@ expect "every Helix language server is defined and pinned in global/config.toml"
 if has git && has bash; then
     for test_script in "$root"/tests/*-test.sh; do
         name=$(rel "$test_script")
+        selected "$(basename -- "$test_script")" || continue
         if bash "$test_script" >"$tmp/test.log" 2>&1; then
             if grep -q '^skip all' "$tmp/test.log"; then
                 skip "behavioral tests ($name: $(sed -n 's/^skip all (\(.*\))$/\1/p' "$tmp/test.log"))"
@@ -291,9 +329,9 @@ else
     skip "behavioral tests (git or bash not installed)"
 fi
 
-if has python3; then
+if has python3 && selected sdlc; then
     assert "sdlc unit tests" python3 -m unittest discover -s "$root/sdlc/tests"
-else
+elif ! has python3; then
     skip "sdlc unit tests (python3 not installed)"
 fi
 
@@ -311,4 +349,5 @@ if $use_shellcheck; then
     fi
 fi
 
+printf '\n%d checks in %ss\n' "$((pass + fail))" "$(( $(date +%s) - check_start ))"
 finish

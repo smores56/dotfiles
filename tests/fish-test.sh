@@ -146,7 +146,7 @@ hw=$tmp/work
 mkdir -p "$hw/.local/bin" "$hw/.pyenv/shims" "$hw/.nvm/versions/node/v9.0.0/bin" \
     "$hw/.nvm/versions/node/v24.1.0/bin" "$hw/.local/share/mise/shims"
 ln -s "$fish_bin" "$hw/.local/bin/fish"
-zsh_bin=$(command -v zsh || true)
+zsh_bin=$(usable_shell zsh || true)
 [ -n "$zsh_bin" ] && ln -s "$zsh_bin" "$hw/.local/bin/zsh"
 # blitzy-dev's helpers in the real file's shape: top-level resets, a switch
 # that unsets the previous env file's variables, hyphenated aliases.

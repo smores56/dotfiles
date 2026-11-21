@@ -11,8 +11,10 @@ content.
 
 ## The cycle
 
-1. **RED** — write the test; run it and watch it fail. A test that passes
-   immediately proves nothing.
+1. **RED** — write the test; run it alone and watch it fail (`mise run test
+   <name>` where the repo defines it, otherwise its single-test command). A
+   test that passes immediately proves nothing, and CI is never the first
+   run.
 2. **GREEN** — the minimum code that passes.
 3. **REFACTOR** — clean up with the suite green, running it after each step.
 
@@ -44,4 +46,6 @@ stays as the regression guard.
 
 - Every new behavior has a test; every bug fix has a reproduction that
   failed first.
-- The full suite was actually run and passes, with no skips.
+- The repo's gate was actually run in this checkout and passes (`mise run
+  check`, or the command the repo names), not a claim that it would.
+- A skip is not a pass: state what skipped and why.

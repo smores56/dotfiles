@@ -51,6 +51,31 @@ min_version = "2026.11.9"
 description = "drop dotfile state from another checkout path"
 run = '''sh scripts/prune-dotfile-state.sh'''
 
+[tasks.check]
+description = "Run the local gate: syntax, consistency, and behavioural tests"
+run = "sh tests/check.sh"
+
+[tasks."check:changed"]
+description = "Run the gate narrowed to what changed against origin/main"
+run = "sh tests/check.sh --changed"
+
+[tasks.test]
+description = "Run one behavioural test by name: mise run test fish"
+run = 'sh tests/run-one.sh "$@"'
+
+[tasks."check:linux"]
+description = "Reproduce CI's Fedora apply lane locally with podman"
+run = '''
+podman run --rm -e HOME=/root -e TERM=dumb \
+  -v "$PWD:/src:ro" -v "$(command -v mise):/usr/local/bin/mise:ro" \
+  -w /src fedora:43 sh -euxc 'dnf install -y git >/dev/null
+                              sh tests/apply-lane.sh desktop,identity /usr/local/bin/mise'
+'''
+
+[tasks.hooks]
+description = "Point git at the repo's hooks (the pre-push gate)"
+run = "git config core.hooksPath .githooks"
+
 [tasks.bootstrap]
 description = "Install the pieces mise does not manage declaratively"
 depends = ["cbonsai"]
