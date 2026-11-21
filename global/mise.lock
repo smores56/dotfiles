@@ -94,6 +94,29 @@ url = "https://github.com/astral-sh/ruff/releases/download/0.17.5/ruff-aarch64-a
 url_api = "https://api.github.com/repos/astral-sh/ruff/releases/assets/740496814"
 provenance = "github-attestations"
 
+[[tools."aqua:coreos/butane"]]
+version = "0.29.0"
+backend = "aqua:coreos/butane"
+specifiers = ["0.29.0"]
+
+[tools."aqua:coreos/butane"."platforms.linux-arm64"]
+checksum = "sha256:12c1d78eeffc72dab9c8383d9b79d7d6e6e0d6ec6fe8f19eaf93d9e13eef286f"
+checksum_source = "mise-versions"
+url = "https://github.com/coreos/butane/releases/download/v0.29.0/butane-aarch64-unknown-linux-gnu"
+url_api = "https://api.github.com/repos/coreos/butane/releases/assets/469426715"
+
+[tools."aqua:coreos/butane"."platforms.linux-x64"]
+checksum = "sha256:53a20d820fbaa7fda4f1afd1814974badc8e448db4c151d3f1ba005dc29bc4c9"
+checksum_source = "mise-versions"
+url = "https://github.com/coreos/butane/releases/download/v0.29.0/butane-x86_64-unknown-linux-gnu"
+url_api = "https://api.github.com/repos/coreos/butane/releases/assets/469429058"
+
+[tools."aqua:coreos/butane"."platforms.macos-arm64"]
+checksum = "sha256:9d27a4093e4908d6a66b3996ccf4aaf2ea6123972809c4d47dc1b14ac05d8417"
+checksum_source = "mise-versions"
+url = "https://github.com/coreos/butane/releases/download/v0.29.0/butane-aarch64-apple-darwin"
+url_api = "https://api.github.com/repos/coreos/butane/releases/assets/469426365"
+
 [[tools."aqua:dandavison/delta"]]
 version = "0.20.1"
 backend = "aqua:dandavison/delta"
