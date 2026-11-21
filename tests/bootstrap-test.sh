@@ -258,6 +258,16 @@ else
     assert "desktop copies the mimeapps list on Linux" test -f "$h/.config/mimeapps.list"
     assert "desktop links the wallpaper timer on Linux" \
         links_into_repo "$h/.config/systemd/user/wallpapers.timer"
+    # The sudo tap on smortress signs through this agent: without the unit the
+    # user has no SSH_AUTH_SOCK to forward.
+    assert "desktop links the ssh-agent unit on Linux" \
+        links_into_repo "$h/.config/systemd/user/ssh-agent.service"
+    assert "the ssh-agent unit binds the shared socket" \
+        grep -qF -- '-a %h/.local/state/ssh/agent.sock' "$h/.config/systemd/user/ssh-agent.service"
+    assert "the base env exports the agent socket" \
+        grep -q 'SSH_AUTH_SOCK' "$h/.config/shell/env.d/10-ssh-agent.sh"
+    assert "the bootstrap starts the Linux agent" \
+        grep -q 'load_ssh_agent_linux' "$root/scripts/bootstrap-task.sh"
     assert "desktop links Google Sans Code on Linux" \
         links_into_repo "$h/.local/share/fonts/GoogleSansCode-MONO-VF.ttf"
     assert "desktop links Google Sans Code Italic on Linux" \

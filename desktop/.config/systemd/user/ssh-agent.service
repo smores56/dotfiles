@@ -1,0 +1,20 @@
+# The ssh-agent the sudo tap needs on the Linux laptops (design #767): sudo on
+# smortress hands pam_rssh nothing but SSH_AUTH_SOCK, so the agent has to exist
+# before any terminal does. A user unit on a fixed socket, not `ssh-agent` per
+# shell, so the credential loaded once survives every terminal.
+[Unit]
+Description=OpenSSH authentication agent for the smortress sudo tap
+Documentation=https://github.com/smores56/dotfiles
+After=default.target
+
+[Service]
+Type=simple
+UMask=0077
+# %h/.local/state is not created by systemd and ssh-agent will not create its
+# parent: the socket path has to exist 0700 before the agent binds it.
+ExecStartPre=-/usr/bin/mkdir -p -m 0700 %h/.local/state/ssh
+ExecStart=/usr/bin/ssh-agent -D -a %h/.local/state/ssh/agent.sock
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Adds the sudo credentials to the work Mac's agent (design #767, T10/T11).
+# Adds the sudo credentials to this client's agent (design #767, T10/T11).
 #
 # Enrollment mints one resident sk handle per YubiKey -- id_smortress_sudo_1,
 # _2, _3 -- and every one of them goes in: ssh-agent offers each in turn, and
@@ -17,8 +17,6 @@ set -eu
 
 log() { printf 'bootstrap: %s\n' "$*" >&2; }
 
-[ "$(uname -s)" = Darwin ] || exit 0
-
 sock=$HOME/.local/state/ssh/agent.sock
 # launchctl bootstrap returns before ssh-agent has bound the socket.
 i=0
@@ -28,9 +26,13 @@ while [ ! -S "$sock" ] && [ "$i" -lt 20 ]; do
 done
 [ -S "$sock" ] || exit 0
 SSH_AUTH_SOCK=$sock
-# Apple's OpenSSH refuses an sk handle without a FIDO provider.
-SSH_SK_PROVIDER=/usr/lib/ssh-keychain.dylib
-export SSH_AUTH_SOCK SSH_SK_PROVIDER
+export SSH_AUTH_SOCK
+# Apple's OpenSSH refuses an sk handle without a FIDO provider; the Linux
+# builds find libfido2 on their own.
+if [ "$(uname -s)" = Darwin ]; then
+    SSH_SK_PROVIDER=/usr/lib/ssh-keychain.dylib
+    export SSH_SK_PROVIDER
+fi
 
 # `ssh-add -l` prints "… (ED25519-SK)": re-adding on every bootstrap is pure
 # friction once a handle is already loaded.

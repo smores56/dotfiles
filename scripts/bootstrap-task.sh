@@ -102,6 +102,17 @@ link_dotfiles_checkout() {
         || log "dotfiles link unchanged; see scripts/link-dotfiles-checkout.sh"
 }
 
+# The Linux laptops get the same agent from a systemd user unit on the socket
+# the Mac's LaunchAgent binds. Started here because a fresh host has it linked
+# but not yet enabled, and the sudo tap has no other way to find it.
+load_ssh_agent_linux() {
+    [ "$(uname -s)" = Linux ] || return 0
+    command -v systemctl >/dev/null 2>&1 || return 0
+    systemctl --user enable --quiet ssh-agent.service 2>/dev/null || true
+    systemctl --user start ssh-agent.service 2>/dev/null \
+        || log "could not start ssh-agent.service; the sudo tap falls back to the password"
+}
+
 link_dotfiles_checkout
 tighten_ssh_dir
 sh "$(dirname "$0")/secrets.sh" \
@@ -111,4 +122,5 @@ install_tailscale_wrappers \
     || log "the tailscaled agent and the smortress ProxyCommand have no wrapper to run"
 load_tailscaled_agent
 load_ssh_agent
+load_ssh_agent_linux
 sh "$(dirname "$0")/add-sudo-credential.sh"
