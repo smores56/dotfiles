@@ -3,4 +3,8 @@
 # `git config core.hooksPath .githooks` (mise run hooks) enables it.
 set -eu
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+# git exports these to a hook; the suite makes fixture repositories.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY \
+    GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_NAMESPACE \
+    GIT_PREFIX GIT_QUARANTINE_PATH
 exec sh "$root/tests/check.sh"

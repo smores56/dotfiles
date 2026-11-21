@@ -1,6 +1,12 @@
 # shellcheck shell=sh
 # Sourced by every test. tmp is physical because git reports worktrees by their
 # real path (/private/var on macOS).
+#
+# A git hook exports GIT_DIR and friends; a test that makes a fixture
+# repository would otherwise commit into the invoking checkout.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY \
+    GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_NAMESPACE \
+    GIT_PREFIX GIT_QUARANTINE_PATH
 
 # shellcheck disable=SC2034
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
