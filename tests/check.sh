@@ -104,6 +104,9 @@ for kitty_conf in "$root"/desktop/.config/kitty/linux.conf "$root"/desktop/.conf
 done
 assert "zellij starts fish" grep -qx 'default_shell "fish"' "$root/home/.config/zellij/config.kdl"
 
+assert "kitty terminfo is installed where ncurses looks" \
+    test -f "$root/home/.terminfo/x/xterm-kitty"
+
 assert "the focus layout centers a 120-column pane" \
     grep -qE '^[[:space:]]*pane size=120 focus=true$' "$root/home/.config/zellij/layouts/focus.kdl"
 assert "the focus layout runs the screensaver in both gutters" \
