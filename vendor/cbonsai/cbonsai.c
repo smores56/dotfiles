@@ -741,8 +741,9 @@ void printstdscr(void) {
 			if(attrs & A_BOLD) printf("\033[1m");
 			else printf("\033[0m");
 
-			// enable correct color
-			if (fg == 0) printf("\033[0m");
+			// enable correct color; the default pair reports -1, and "\033[3-1m"
+			// made terminals print a stray "m" between the tree's cells
+			if (fg <= 0) printf("\033[0m");
 			else if (fg >= 16) printf("\033[38;5;%him", fg);
 			else if (fg <= 7) printf("\033[3%him", fg);
 			else if (fg >= 8) printf("\033[9%him", fg - 8);

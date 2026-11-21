@@ -67,7 +67,7 @@ fi
 assert "the vendored cbonsai source matches its recorded checksum" sh -c \
     "if command -v sha256sum >/dev/null 2>&1; then sum=\$(sha256sum '$root/vendor/cbonsai/cbonsai.c'); \
         else sum=\$(shasum -a 256 '$root/vendor/cbonsai/cbonsai.c'); fi; \
-        printf '%s\\n' \"\$sum\" | grep -q '^7a1900d505fb3947356b4e9f99fa8a8bf42d3e69fe7fdbc5eaa33ca3d2488fe4 '"
+        printf '%s\\n' \"\$sum\" | grep -q '^3d74a154447a14b93e3c7d868eea51c5ccb770d8454de8f3541d887e89eb2622 '"
 
 $has_tomllib && assert "the cbonsai build lockfile pins both tools on every desktop platform" \
     python3 -c '
