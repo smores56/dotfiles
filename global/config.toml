@@ -7,6 +7,8 @@ locked = true
 experimental = true
 
 [tools]
+# tofu/opentofu for homelab-platform and the Cloudflare state.
+opentofu = "1.13.9"
 python = "3.14.10"
 gh = "2.104.0"
 jq = "1.8.2"
