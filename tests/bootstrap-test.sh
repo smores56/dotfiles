@@ -304,10 +304,10 @@ assert "the work shell env names Apple's security-key provider" \
     grep -qF 'SSH_SK_PROVIDER=/usr/lib/ssh-keychain.dylib' "$h/.config/shell/env.d/work.sh"
 assert "the fish work hook names Apple's security-key provider" \
     grep -qF 'SSH_SK_PROVIDER /usr/lib/ssh-keychain.dylib' "$h/.config/fish/conf.d/90-work.fish"
-assert "the bootstrap adds the sudo credential through the provider" \
-    grep -qF 'SSH_SK_PROVIDER=/usr/lib/ssh-keychain.dylib' "$root/scripts/bootstrap-task.sh"
-assert "the bootstrap loads the agent and adds the sudo credential" \
-    grep -q 'add_sudo_credential' "$root/scripts/bootstrap-task.sh"
+assert "the bootstrap adds the sudo credentials through the provider" \
+    grep -qF 'SSH_SK_PROVIDER=/usr/lib/ssh-keychain.dylib' "$root/scripts/add-sudo-credential.sh"
+assert "the bootstrap loads the agent and adds the sudo credentials" \
+    grep -qF 'add-sudo-credential.sh' "$root/scripts/bootstrap-task.sh"
 expect "the work smortress route goes through the userspace tailscaled" \
     '$HOME/.local/bin/tailscale --socket=$HOME/.local/state/tailscale/tailscaled.sock nc %h %p' \
     "$(proxy_of smortress)"

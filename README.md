@@ -161,11 +161,13 @@ A few things are set once per host, outside the repository:
   `ProxyCommand` both exec those
 - the work Mac runs an OpenSSH agent the same way:
   `~/Library/LaunchAgents/dev.sammohr.ssh-agent.plist` binds
-  `~/.local/state/ssh/agent.sock`, the bootstrap loads it and adds
-  `~/.ssh/id_smortress_sudo` (one touch), and both shells export
-  `SSH_AUTH_SOCK` to that socket. `ssh smortress` then forwards it, and
-  `pam_rssh` signs the sudo tap through it; after a reboot,
-  `ssh-add ~/.ssh/id_smortress_sudo` is the one touch that restores it
+  `~/.local/state/ssh/agent.sock`, the bootstrap loads it and adds every
+  `~/.ssh/id_smortress_sudo*` handle — enrolment mints one per YubiKey
+  (`_1`, `_2`, `_3`), and the agent must hold each, or a spare key's tap falls
+  through to the password — and both shells export `SSH_AUTH_SOCK` to that
+  socket. `ssh smortress` then forwards it, and `pam_rssh` signs the sudo tap
+  through it; after a reboot, `ssh-add ~/.ssh/id_smortress_sudo_*` is the one
+  touch that restores them
 - the work Mac also carries `ykman`: smorespro has no PC/SC stack by design, so
   the YubiKey's TOTP code is minted there (the bootstrap installs `ykman` with
   `uv`). Alt+o inserts a code into fish's edit buffer, which is all a binding

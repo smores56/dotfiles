@@ -89,30 +89,11 @@ load_ssh_agent() {
         || log "could not load $label; load it with launchctl bootstrap by hand"
 }
 
-# The sudo credential is a resident sk handle, so a fresh login needs it fetched
-# and added once: without it pam_rssh falls back to the password, which is a
-# working path but not the tap. ssh-add asks for a touch here, which is why this
-# runs from bootstrap (a hand at the keyboard) and never from a login hook.
-add_sudo_credential() {
-    [ "$(uname -s)" = Darwin ] || return 0
-    key=$HOME/.ssh/id_smortress_sudo
-    [ -f "$key" ] || return 0
-    SSH_AUTH_SOCK=$HOME/.local/state/ssh/agent.sock
-    # Apple's OpenSSH refuses an sk handle without a FIDO provider.
-    SSH_SK_PROVIDER=/usr/lib/ssh-keychain.dylib
-    export SSH_AUTH_SOCK SSH_SK_PROVIDER
-    # launchctl bootstrap returns before ssh-agent has bound the socket.
-    i=0
-    while [ ! -S "$SSH_AUTH_SOCK" ] && [ "$i" -lt 20 ]; do
-        sleep 0.1
-        i=$((i + 1))
-    done
-    [ -S "$SSH_AUTH_SOCK" ] || return 0
-    # `ssh-add -l` prints "… (ED25519-SK)": a second touch on every bootstrap is
-    # pure friction once the handle is already loaded.
-    ssh-add -l 2>/dev/null | grep -qi 'ed25519-sk' && return 0
-    ssh-add "$key" || log "could not add $key; run: ssh-add $key"
-}
+# The sudo credentials are resident sk handles, one per YubiKey, so a fresh
+# login needs them added once: without them pam_rssh falls back to the password,
+# which is a working path but not the tap. ssh-add asks for a touch here, which
+# is why this runs from bootstrap (a hand at the keyboard) and never from a
+# login hook. The loader is its own file so the test drives it with stubs.
 
 # ykman is not a mise tool: its pyscard dependency ships no wheel for the PC/SC
 # build mise would need, so mise can build no dependency graph and a locked
@@ -142,5 +123,5 @@ install_tailscale_wrappers \
     || log "the tailscaled agent and the smortress ProxyCommand have no wrapper to run"
 load_tailscaled_agent
 load_ssh_agent
-add_sudo_credential
+sh "$(dirname "$0")/add-sudo-credential.sh"
 install_ykman
