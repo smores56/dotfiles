@@ -164,8 +164,10 @@ A few things are set once per host, outside the repository:
   (`_1`, `_2`, `_3`), and the agent must hold each, or a spare key's tap falls
   through to the password — and both shells export `SSH_AUTH_SOCK` to that
   socket. `ssh smortress` then forwards it, and `pam_rssh` signs the sudo tap
-  through it; after a reboot, `ssh-add ~/.ssh/id_smortress_sudo_*` is the one
-  touch that restores them
+  through it; after a reboot, `ssh-add ~/.ssh/id_smortress_sudo_[0-9]*` is the step
+  (the `_*` glob would also match the `.pub` halves and warn on each)
+  that restores them (it asks for no touch — the touch happens at the next
+  `sudo`)
 
 ## Maintenance
 
