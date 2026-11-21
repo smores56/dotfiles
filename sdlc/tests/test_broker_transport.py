@@ -489,6 +489,38 @@ class TaskTest(BrokerTest):
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertEqual(self.requests("PATCH"), [])
 
+    def serve_edit_case(self, blocked_by=()):
+        self.broker.route("GET", REPO_PATH + "/issues", [self.feature])
+        self.broker.routes[("GET", REPO_PATH + "/issues/10/dependencies/blocked_by")] = [
+            (200, list(blocked_by))
+        ]
+        self.broker.route(
+            "GET", REPO_PATH + "/issues/14", rest_issue(14, "T4: More", db_id=1014)
+        )
+        self.serve_blocked_by(14)
+        self.broker.route("POST", REPO_PATH + "/issues/10/dependencies/blocked_by", {})
+        self.broker.route("DELETE", REPO_PATH + "/issues/10/dependencies/blocked_by/1012", {})
+
+    def test_task_edit_swaps_dependency_ids_over_http(self):
+        self.serve_edit_case(blocked_by=[rest_issue(12, "T2: Wire", db_id=1012)])
+        out = self.run_cli("task", "edit", "10", "--needs", "14")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        added = self.requests("POST", REPO_PATH + "/issues/10/dependencies/blocked_by")
+        self.assertEqual([entry["body"] for entry in added], [{"issue_id": 1014}])
+        removed = self.requests("DELETE", REPO_PATH + "/issues/10/dependencies/blocked_by/1012")
+        self.assertEqual(len(removed), 1)
+        self.assertEqual(self.requests("PATCH"), [])
+
+    def test_task_edit_retitles_over_http(self):
+        self.serve_edit_case()
+        self.broker.route("PATCH", REPO_PATH + "/issues/10", rest_issue(10, "T1: Build it"))
+        out = self.run_cli("task", "edit", "10", "--title", "T1: Build it")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        patched = self.requests("PATCH", REPO_PATH + "/issues/10")
+        self.assertEqual([entry["body"] for entry in patched], [{"title": "T1: Build it"}])
+        self.assertEqual(self.requests("POST"), [])
+        self.assertEqual(self.requests("DELETE"), [])
+
 
 class CommentTest(BrokerTest):
     def setUp(self):

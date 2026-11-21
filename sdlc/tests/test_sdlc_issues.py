@@ -36,7 +36,30 @@ elif args[:2] == ["issue", "view"]:
     sys.stdout.write(read("issue-%s.json" % args[2]))
 elif args[:2] == ["issue", "create"]:
     sys.stdout.write(read("create_url.txt"))
-elif args[:2] in (["issue", "edit"], ["issue", "comment"], ["issue", "close"]):
+elif args[:2] == ["issue", "edit"]:
+    # Dependency and title edits rewrite the canned issue, so a later read
+    # sees what GitHub would hold.
+    path = os.path.join(state, "issue-%s.json" % args[2])
+    if os.path.exists(path):
+        with open(path) as fh:
+            iss = json.load(fh)
+        for index, arg in enumerate(args):
+            if arg == "--title":
+                iss["title"] = args[index + 1]
+        blocked = list((iss.get("blockedBy") or {}).get("nodes") or [])
+        for index, arg in enumerate(args):
+            if arg == "--add-blocked-by":
+                for number in str(args[index + 1]).split(","):
+                    if not any(node["number"] == int(number) for node in blocked):
+                        blocked.append({"number": int(number), "title": "", "state": "OPEN"})
+            elif arg == "--remove-blocked-by":
+                for number in str(args[index + 1]).split(","):
+                    blocked = [node for node in blocked if node["number"] != int(number)]
+        iss["blockedBy"] = {"nodes": blocked, "totalCount": len(blocked)}
+        with open(path, "w") as fh:
+            json.dump(iss, fh)
+    sys.stdout.write("")
+elif args[:2] in (["issue", "comment"], ["issue", "close"]):
     if args[:2] == ["issue", "comment"] and "--body-file" in args:
         with open(os.path.join(state, "last-comment.md"), "w") as fh:
             fh.write(sys.stdin.read())
@@ -57,9 +80,9 @@ elif args[:2] == ["api", "graphql"]:
     for node in (feature.get("subIssues") or {}).get("nodes", []):
         task = task_node(node)
         subs.append({
-            "number": node["number"],
-            "title": node.get("title"),
-            "state": node.get("state"),
+            "number": task.get("number", node["number"]),
+            "title": task.get("title") or node.get("title"),
+            "state": task.get("state") or node.get("state"),
             "labels": {"nodes": task.get("labels", [])},
             "blockedBy": task.get("blockedBy", {"nodes": []}),
         })
@@ -663,6 +686,103 @@ class TaskTest(GhTest):
         edit = self.calls_for("issue", "edit")[0]
         self.assertEqual(edit[edit.index("--add-label") + 1], "status:canceled")
         self.assertEqual(len(self.calls_for("issue", "close")), 1)
+
+    def serve_dependency_case(self, blocked_by=(), blockers=()):
+        self.serve_issue(
+            issue(10, "T1: Build", labels=["status:todo"], blocked_by=list(blocked_by))
+        )
+        self.serve_issue(issue(12, "T2: Wire", labels=["status:todo"]))
+        for number in blockers:
+            self.serve_issue(issue(number, "T%d: Extra" % number, labels=["status:todo"]))
+
+    def test_task_edit_sets_blocked_by_from_a_label(self):
+        self.serve_dependency_case()
+        out = self.run_cli("task", "edit", "10", "--needs", "T2")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        edit = self.calls_for("issue", "edit")[0]
+        self.assertEqual(
+            [edit[i + 1] for i, arg in enumerate(edit) if arg == "--add-blocked-by"], ["12"]
+        )
+        self.assertNotIn("--remove-blocked-by", edit)
+        self.assertIn("blocked_by=[12]", out.stdout)
+        status = self.run_cli("status", "1")
+        self.assertIn("#10 [blocked] T1: Build blocked_by=[12]", status.stdout)
+
+    def test_task_edit_replaces_the_edges(self):
+        self.serve_dependency_case(blocked_by=[sub(11, "T0: Prior"), sub(12, "T2: Wire")])
+        out = self.run_cli("task", "edit", "10", "--needs", "12")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertEqual(
+            self.calls_for("issue", "edit"),
+            [["issue", "edit", "10", "--repo", "test/repo", "--remove-blocked-by", "11"]],
+        )
+
+    def test_task_edit_adds_one_edge_and_keeps_the_others(self):
+        self.serve_dependency_case(blocked_by=[sub(12, "T2: Wire")], blockers=(14,))
+        out = self.run_cli("task", "edit", "10", "--needs", "12,14")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        edits = self.calls_for("issue", "edit")
+        self.assertEqual(len(edits), 1)
+        self.assertEqual(
+            [edits[0][i + 1] for i, arg in enumerate(edits[0]) if arg == "--add-blocked-by"],
+            ["14"],
+        )
+        self.assertNotIn("--remove-blocked-by", edits[0])
+
+    def test_task_edit_refuses_a_cycle(self):
+        # 10 is blocked by 12, so 12 cannot be blocked by 10.
+        self.serve_dependency_case(blocked_by=[sub(12, "T2: Wire")])
+        for token in ("10", "12"):
+            with self.subTest(token=token):
+                out = self.run_cli("task", "edit", "12", "--needs", token)
+                self.assertEqual(out.returncode, 1)
+                self.assertIn("cycle", out.stderr)
+                self.assertEqual(self.calls_for("issue", "edit"), [])
+
+    def test_task_edit_refuses_an_issue_that_is_not_a_task(self):
+        self.serve_dependency_case()
+        out = self.run_cli("task", "edit", "99", "--needs", "10")
+        self.assertEqual(out.returncode, 1)
+        self.assertIn("#99 is not a task", out.stderr)
+        self.assertEqual(self.calls_for("issue", "edit"), [])
+
+    def test_task_edit_needs_a_change(self):
+        self.serve_dependency_case()
+        out = self.run_cli("task", "edit", "10")
+        self.assertEqual(out.returncode, 1)
+        self.assertIn("--needs or --title", out.stderr)
+
+    def test_task_edit_retitles_without_touching_the_edges(self):
+        self.serve_dependency_case(blocked_by=[sub(12, "T2: Wire")])
+        out = self.run_cli("task", "edit", "10", "--title", "T1: Build it")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        edit = self.calls_for("issue", "edit")[0]
+        self.assertEqual(edit[edit.index("--title") + 1], "T1: Build it")
+        self.assertNotIn("--add-blocked-by", edit)
+        self.assertNotIn("--remove-blocked-by", edit)
+        status = self.run_cli("status", "1")
+        self.assertIn("#10 [blocked] T1: Build it blocked_by=[12]", status.stdout)
+
+    def test_next_reflects_a_new_edge(self):
+        self.serve_dependency_case()
+        first = self.run_cli("next", "1")
+        self.assertIn("#10", first.stdout)
+        out = self.run_cli("task", "edit", "10", "--needs", "12")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        after = self.run_cli("next", "1")
+        self.assertEqual(after.returncode, 0, after.stderr)
+        self.assertIn("#12", after.stdout)
+
+    def test_task_add_translates_a_suffixed_label(self):
+        self.serve_feature(
+            approved_feature(sub_issues=(sub(10, "T1: Build"), sub(15, "T2b: Prove")))
+        )
+        out = self.run_cli("task", "add", "1", "T3: Test", "--needs", "T2b")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        create = self.calls_for("issue", "create")[0]
+        self.assertEqual(
+            [create[i + 1] for i, arg in enumerate(create) if arg == "--blocked-by"], ["15"]
+        )
 
 
 class FeatureTerminalTest(GhTest):

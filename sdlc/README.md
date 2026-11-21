@@ -18,6 +18,7 @@ sdlc next [FEATURE]                 # next ready task, or the blocker
 sdlc approve FEATURE [--yes]        # human gate: label + hash comment
 sdlc new SLUG --repo OWNER/REPO     # create the feature issue
 sdlc task add FEATURE TITLE [--needs T1,T2|10,12]
+sdlc task edit ISSUE [--needs T1,T2|10,12] [--title TITLE]
 sdlc task start|done|cancel ISSUE
 sdlc complete|cancel FEATURE
 sdlc pick [--all] [--repo OWNER/REPO]   # fzf: pick a feature, then an action
