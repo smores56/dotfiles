@@ -31,7 +31,9 @@ design/plan/gate layer.
    Write `## Design` and `## Plan` into the body (`gh issue edit <n>
    --body-file`), then add task sub-issues with `sdlc task add <feature>
    "<title>" --needs T1`. `blocked-by` edges are the dependency graph;
-   re-planning is free.
+   re-plan them with `sdlc task edit <n> --needs <T1,T2|10,12>`, which
+   replaces the task's edges (an empty `--needs` clears them) and refuses
+   a cycle.
 5. **Approve** — show the human `sdlc show <feature>` and `sdlc status
    <feature>`; see Approval.
 6. **Build** — take work only from `sdlc next [<feature>]`. When other

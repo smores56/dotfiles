@@ -151,6 +151,18 @@ class GhTransport:
             command += ["--remove-label", name]
         gh(*command)
 
+    def edit_task(self, repo, number, title=None, add_blocked_by=(), remove_blocked_by=()):
+        if title is None and not add_blocked_by and not remove_blocked_by:
+            return
+        command = ["issue", "edit", str(number), "--repo", repo]
+        if title is not None:
+            command += ["--title", title]
+        for blocker in add_blocked_by:
+            command += ["--add-blocked-by", str(blocker)]
+        for blocker in remove_blocked_by:
+            command += ["--remove-blocked-by", str(blocker)]
+        gh(*command)
+
     def close_issue(self, repo, number):
         gh("issue", "close", str(number), "--repo", repo)
 
@@ -332,6 +344,28 @@ class BrokerTransport:
         self.json_call(
             "PATCH", repo_path(repo, "/issues/%d" % int(number)), body={"state": "closed"}
         )
+
+    def edit_task(self, repo, number, title=None, add_blocked_by=(), remove_blocked_by=()):
+        number = int(number)
+        if title is not None:
+            self.json_call(
+                "PATCH", repo_path(repo, "/issues/%d" % number), body={"title": title}
+            )
+        for blocker in add_blocked_by:
+            self.json_call(
+                "POST",
+                repo_path(repo, "/issues/%d/dependencies/blocked_by" % number),
+                body={"issue_id": self.issue_id(repo, blocker)},
+            )
+        for blocker in remove_blocked_by:
+            self.json_call(
+                "DELETE",
+                repo_path(
+                    repo,
+                    "/issues/%d/dependencies/blocked_by/%d"
+                    % (number, self.issue_id(repo, blocker)),
+                ),
+            )
 
     def create_issue(self, repo, title, body, labels=(), parent=None, blocked_by=()):
         created = self.json_call(
@@ -616,6 +650,22 @@ def open_blockers(task):
     return [node for node in node_list(task.get("blockedBy")) if node.get("state") == "OPEN"]
 
 
+def blocker_path(repo, start, goal):
+    """Issue numbers along blocked-by edges from `start` to `goal`, or None."""
+    stack = [(start, [start])]
+    seen = set()
+    while stack:
+        number, path = stack.pop()
+        if number == goal:
+            return path
+        if number in seen:
+            continue
+        seen.add(number)
+        for node in node_list(fetch_issue(repo, number, TASK_FIELDS).get("blockedBy")):
+            stack.append((node["number"], path + [node["number"]]))
+    return None
+
+
 def task_state(task):
     if task.get("state") == "CLOSED":
         return "closed"
@@ -630,6 +680,18 @@ def sub_tasks(repo, feature):
     if all("blockedBy" in node for node in nodes):
         return nodes
     return [fetch_issue(repo, node["number"], TASK_FIELDS) for node in nodes]
+
+
+def owning_feature(repo, number):
+    """The feature whose sub-issues include `number`."""
+    for feature in feature_issues(repo, all_states=True):
+        for node in node_list(feature.get("subIssues")):
+            if int(node["number"]) == int(number):
+                return feature
+    raise CliError(
+        "#%d is not a task of any feature in %s; sdlc task edit takes a task"
+        % (int(number), repo)
+    )
 
 
 def task_counts(tasks):
@@ -967,14 +1029,14 @@ def task_number_map(repo, feature):
     """Map T-labels to issue numbers from the plan body and sub-issue titles."""
     mapping = {}
     for line in (feature.get("body") or "").splitlines():
-        match = re.match(r"\s*-\s*\[[ xX]\]\s*(T\d+)\b.*?#(\d+)", line)
+        match = re.match(r"\s*-\s*\[[ xX]\]\s*(T\d+[A-Za-z]?)\b.*?#(\d+)", line)
         if match:
             mapping[match.group(1).upper()] = int(match.group(2))
     for node in node_list(feature.get("subIssues")):
         title = node.get("title")
         if not title:
             title = fetch_issue(repo, node["number"], NODE_FIELDS).get("title") or ""
-        match = re.match(r"\s*(T\d+)\b", title)
+        match = re.match(r"\s*(T\d+[A-Za-z]?)\b", title)
         label = match.group(1).upper() if match else None
         if label and label not in mapping:
             mapping[label] = node["number"]
@@ -992,11 +1054,11 @@ def resolve_needs(repo, feature, needs):
         if direct:
             numbers.append(int(direct.group(1)))
             continue
-        label = re.fullmatch(r"[Tt](\d+)", token)
+        label = re.fullmatch(r"[Tt](\d+[A-Za-z]?)", token)
         if label:
             if mapping is None:
                 mapping = task_number_map(repo, feature)
-            key = "T%s" % label.group(1)
+            key = ("T%s" % label.group(1)).upper()
             if key in mapping:
                 numbers.append(mapping[key])
                 continue
@@ -1018,6 +1080,39 @@ def cmd_task_add(args):
     )
     number, url = parse_created_url(output)
     print("#%d %s" % (number, url))
+
+
+def cmd_task_edit(args):
+    repo = registry_repo()
+    if not str(args.issue).isdigit():
+        raise CliError("task edit takes an issue number, got %r" % args.issue)
+    number = int(args.issue)
+    if args.needs is None and args.title is None:
+        raise CliError("task edit needs --needs or --title")
+    feature = owning_feature(repo, number)
+    task = fetch_issue(repo, number, TASK_FIELDS)
+    current = [node["number"] for node in node_list(task.get("blockedBy"))]
+    desired = current if args.needs is None else resolve_needs(repo, feature, args.needs)
+    for blocker in desired:
+        if blocker == number:
+            raise CliError("refusing a cycle: #%d cannot be blocked by itself" % number)
+    add = [blocker for blocker in desired if blocker not in current]
+    remove = [blocker for blocker in current if blocker not in desired]
+    for blocker in add:
+        # An edge is a cycle when the task is already reachable from the blocker.
+        path = blocker_path(repo, blocker, number)
+        if path is not None:
+            raise CliError(
+                "refusing a cycle: #%d already depends on #%d (%s)"
+                % (blocker, number, " -> ".join("#%d" % step for step in path))
+            )
+    transport().edit_task(
+        repo, number, title=args.title, add_blocked_by=add, remove_blocked_by=remove
+    )
+    changes = ["blocked_by=%s" % desired]
+    if args.title is not None:
+        changes.insert(0, "title=%s" % one_line(args.title))
+    print("#%d %s" % (number, " ".join(changes)))
 
 
 TASK_TRANSITIONS = {
@@ -1202,6 +1297,11 @@ def build_parser():
     p.add_argument("title")
     p.add_argument("--needs", help="comma-separated T-labels or issue numbers")
     p.set_defaults(fn=cmd_task_add)
+    p = task_sub.add_parser("edit", help="replace a task's blockers or title")
+    p.add_argument("issue")
+    p.add_argument("--needs", help="comma-separated T-labels or issue numbers; replaces the edges")
+    p.add_argument("--title")
+    p.set_defaults(fn=cmd_task_edit)
     for action, help_text in (
         ("start", "mark a task in progress"),
         ("done", "mark a task done and close it"),
