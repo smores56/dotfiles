@@ -164,10 +164,13 @@ A few things are set once per host, outside the repository:
   (`_1`, `_2`, `_3`), and the agent must hold each, or a spare key's tap falls
   through to the password — and both shells export `SSH_AUTH_SOCK` to that
   socket. `ssh smortress` then forwards it, and `pam_rssh` signs the sudo tap
-  through it; after a reboot, `ssh-add ~/.ssh/id_smortress_sudo_[0-9]*` is the step
-  (the `_*` glob would also match the `.pub` halves and warn on each)
-  that restores them (it asks for no touch — the touch happens at the next
-  `sudo`)
+  through it. Both agents load the handles themselves at start-up — the Linux
+  unit with `ExecStartPost`, the Mac's plist by exec'ing
+  `scripts/ssh-agent-serve.sh` — so a reboot needs nothing. `ssh-add
+  ~/.ssh/id_smortress_sudo_[0-9]*` is only for a host that has not bootstrapped
+  since a handle was minted (the `_*` glob would also match the `.pub` halves
+  and warn on each); loading asks for no touch, and the touch happens at the
+  next `sudo`
 
 ## Maintenance
 
