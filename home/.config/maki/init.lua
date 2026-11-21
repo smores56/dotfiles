@@ -19,6 +19,14 @@ maki.setup({
   },
 })
 
+-- Plan mode is never wanted here, and Tab's default toggles it. Accept a
+-- completion or ghost text as usual, then swallow the key instead of falling
+-- back to the host's plan/build switch.
+maki.keymap.set({ "n", "i" }, "<Tab>", function()
+  if maki.ui.action("completion.accept") then return end
+  if maki.ui.action("ghost.accept") then return end
+end)
+
 -- TinyFish's MCP server ships wallet, monitor, and browser-automation tools.
 -- A deny rule cannot say "everything but search", and always_yolo bypasses a
 -- per-server default, so stop the rest here. plugin.toml carries the grants
