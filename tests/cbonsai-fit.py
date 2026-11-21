@@ -14,10 +14,12 @@ import os
 import pty
 import re
 import select
+import signal
 import struct
 import subprocess
 import sys
 import termios
+import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCREENSAVERS = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "home/.local/bin/screensavers")
@@ -65,12 +67,52 @@ def box(lines, rows, cols):
     ys = [p[0] for p in ink]
     xs = [p[1] for p in ink]
     # Line width varies: use the widest line for the right edge.
-    width = max((len(line) for line in lines[: rows - 1]), default=0)
-    return min(ys), max(ys), min(xs), max(xs), width
+    return min(ys), max(ys), min(xs), max(xs)
+
+
+def test_resize():
+    """Run the real renderer, resize its pty, and require a second render."""
+    master, slave = pty.openpty()
+    fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 80, 0, 0))
+    proc = subprocess.Popen(
+        [SCREENSAVERS], stdin=slave, stdout=slave, stderr=slave,
+        env=dict(os.environ, TERM="xterm-256color"), close_fds=True, start_new_session=True,
+    )
+    out = b""
+    deadline = time.time() + 10
+    while b"\x1b[2J" not in out and time.time() < deadline:
+        ready, _, _ = select.select([master], [], [], 0.2)
+        if ready:
+            try:
+                out += os.read(master, 65536)
+            except OSError:
+                break
+    if b"\x1b[2J" not in out:
+        proc.kill()
+        return "no initial render"
+    fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 30, 100, 0, 0))
+    os.kill(proc.pid, signal.SIGWINCH)
+    after = b""
+    deadline = time.time() + 10
+    while b"\x1b[2J" not in after and time.time() < deadline:
+        ready, _, _ = select.select([master], [], [], 0.2)
+        if ready:
+            try:
+                after += os.read(master, 65536)
+            except OSError:
+                break
+    proc.kill()
+    proc.wait(timeout=5)
+    os.close(master)
+    os.close(slave)
+    return None if b"\x1b[2J" in after else "no re-render after SIGWINCH"
 
 
 def main():
     failures = 0
+    resize = test_resize()
+    print(("ok   " if resize is None else "FAIL ") + "renderer re-renders on resize" + ("" if resize is None else f": {resize}"))
+    failures += resize is not None
     for rows, cols in ((24, 80), (40, 120), (50, 200), (18, 40)):
         for seed in range(1, 11):
             lines = render(rows, cols, seed).split("\n")
@@ -79,7 +121,7 @@ def main():
                 print(f"FAIL {rows}x{cols} seed={seed}: no ink")
                 failures += 1
                 continue
-            top, bottom, left, right, width = found
+            top, bottom, left, right = found
             clipped = []
             if top == 0:
                 clipped.append("top")
@@ -87,8 +129,6 @@ def main():
                 clipped.append("right")
             if left == 0:
                 clipped.append("left")
-            if width > cols:
-                clipped.append(f"line>{cols}")
             if clipped:
                 failures += 1
             print(

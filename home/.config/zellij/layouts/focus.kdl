@@ -1,6 +1,7 @@
 // A calm focus tab: static screensaver gutters around a 120-column working pane.
-// Ill-fitting terminals expose the gutters' fixed width; there is no native
-// max-width mode in Zellij.
+// The frame is drawn inside the 120 columns, so the pane is 118 usable; below
+// roughly 122 terminal columns the two gutters collapse, since Zellij has no
+// native max-width mode that would shrink the centre instead.
 layout {
     pane size=1 borderless=true {
         plugin location="zellij:bars" {

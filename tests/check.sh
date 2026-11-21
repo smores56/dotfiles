@@ -65,7 +65,9 @@ fi
 # --- vendored screensaver
 
 assert "the vendored cbonsai source matches its recorded checksum" sh -c \
-    "sha256sum '$root/vendor/cbonsai/cbonsai.c' | grep -q '^7a1900d505fb3947356b4e9f99fa8a8bf42d3e69fe7fdbc5eaa33ca3d2488fe4 '"
+    "if command -v sha256sum >/dev/null 2>&1; then sum=\$(sha256sum '$root/vendor/cbonsai/cbonsai.c'); \
+        else sum=\$(shasum -a 256 '$root/vendor/cbonsai/cbonsai.c'); fi; \
+        printf '%s\\n' \"\$sum\" | grep -q '^7a1900d505fb3947356b4e9f99fa8a8bf42d3e69fe7fdbc5eaa33ca3d2488fe4 '"
 
 $has_tomllib && assert "the cbonsai build lockfile pins both tools on every desktop platform" \
     python3 -c '
@@ -84,7 +86,10 @@ assert "the screensaver life stays inside cbonsai's range" sh -c \
     done"
 
 if has cbonsai; then
-    assert "the screensaver tree fits its pane" python3 "$root/tests/cbonsai-fit.py"
+    assert "the screensaver tree fits its pane and re-renders on resize" \
+        python3 "$root/tests/cbonsai-fit.py"
+else
+    skip "the screensaver tree fits its pane and re-renders on resize"
 fi
 
 # --- desktop and shells

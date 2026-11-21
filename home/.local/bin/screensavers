@@ -17,9 +17,8 @@ EOF
 life_for() {
     rows=$1
     cols=$2
-    case $rows$cols in
-    *[!0-9]*) return 1 ;;
-    esac
+    case $rows in '' | *[!0-9]*) return 1 ;; esac
+    case $cols in '' | *[!0-9]*) return 1 ;; esac
     by_width=$(((cols - 6) / 2))
     by_height=$(((rows - 4) * 6 / 5))
     life=$by_width
@@ -34,7 +33,7 @@ die() { printf 'screensavers: %s\n' "$*" >&2; exit 1; }
 case ${1:-} in
 -h | --help) usage ;;
 --life)
-    [ $# -eq 3 ] || usage >&2
+    [ $# -eq 3 ] || { usage >&2; exit 2; }
     life_for "$2" "$3" || die "rows and columns must be integers"
     exit 0
     ;;
@@ -73,10 +72,23 @@ render() {
     LINES=$((rows - 1)) COLUMNS=$cols "$bin" -p -L "$life" -s "$seed"
 }
 
-trap ':' WINCH
+sleeper=
+cleanup() {
+    kill "$sleeper" 2>/dev/null || :
+    printf '\033[?25h'
+}
+# A foreground sleep keeps the shell waiting after the trap runs, so the sleeper
+# runs in the background and WINCH kills it to return to the loop.
+trap cleanup EXIT
+trap 'exit 130' HUP INT TERM
+trap 'kill "$sleeper" 2>/dev/null || :' WINCH
+printf '\033[?25l'
+
 while :; do
     terminal_size
     printf '\033[H\033[2J'
     render
-    sleep 86400
+    sleep 86400 &
+    sleeper=$!
+    wait "$sleeper" || :
 done
