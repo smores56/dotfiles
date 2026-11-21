@@ -14,6 +14,13 @@ UMask=0077
 # parent: the socket path has to exist 0700 before the agent binds it.
 ExecStartPre=-/usr/bin/mkdir -p -m 0700 %h/.local/state/ssh
 ExecStart=/usr/bin/ssh-agent -D -a %h/.local/state/ssh/agent.sock
+# The sudo credentials are resident handles, and loading one asks for no touch,
+# so the agent can come up holding them. Without this every boot starts an empty
+# agent and every sudo after it silently costs a password (design #767). The
+# wait is longer than the bootstrap's: systemd returns from ExecStart as soon as
+# ssh-agent is forked, and the socket appears a moment later.
+Environment=SUDO_CREDENTIAL_WAIT=100
+ExecStartPost=%h/.dotfiles/scripts/add-sudo-credential.sh
 Restart=on-failure
 
 [Install]

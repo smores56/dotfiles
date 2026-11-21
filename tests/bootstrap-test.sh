@@ -264,6 +264,11 @@ else
         links_into_repo "$h/.config/systemd/user/ssh-agent.service"
     assert "the ssh-agent unit binds the shared socket" \
         grep -qF -- '-a %h/.local/state/ssh/agent.sock' "$h/.config/systemd/user/ssh-agent.service"
+    # A resident handle loads without a touch, so the agent can come up holding
+    # the credentials: without this every reboot leaves it empty and every sudo
+    # afterwards is a password prompt.
+    assert "the ssh-agent unit loads the sudo credentials at start" \
+        grep -qF 'add-sudo-credential.sh' "$h/.config/systemd/user/ssh-agent.service"
     assert "the base env exports the agent socket" \
         grep -q 'SSH_AUTH_SOCK' "$h/.config/shell/env.d/10-ssh-agent.sh"
     assert "the bootstrap starts the Linux agent" \

@@ -18,9 +18,12 @@ set -eu
 log() { printf 'bootstrap: %s\n' "$*" >&2; }
 
 sock=$HOME/.local/state/ssh/agent.sock
-# The service manager returns before ssh-agent has bound the socket.
+# The service manager returns before ssh-agent has bound the socket. The unit
+# allows it longer than a bootstrap does, since systemd returns from ExecStart as
+# soon as the agent is forked.
 i=0
-while [ ! -S "$sock" ] && [ "$i" -lt 20 ]; do
+tries=${SUDO_CREDENTIAL_WAIT:-20}
+while [ ! -S "$sock" ] && [ "$i" -lt "$tries" ]; do
     sleep 0.1
     i=$((i + 1))
 done
