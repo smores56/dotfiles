@@ -39,8 +39,14 @@ if $changed; then
         printf 'check: no such base %s\n' "$base" >&2
         exit 2
     }
+    # Compare from the merge base: a branch behind main must not select the
+    # tests for commits it does not contain.
+    compare=$(git -C "$root" merge-base "$base" HEAD) || {
+        printf 'check: %s has no merge base with HEAD\n' "$base" >&2
+        exit 2
+    }
     changed_list=$tmp/changed
-    { git -C "$root" diff --name-only "$base" || exit 2
+    { git -C "$root" diff --name-only "$compare" || exit 2
       git -C "$root" ls-files --others --exclude-standard || exit 2; } >"$changed_list"
     selected_tests=$(sh "$root/tests/select.sh" <"$changed_list")
     printf 'changed against %s: %s\n' "$base" "${selected_tests:-none}"
