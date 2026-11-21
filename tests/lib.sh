@@ -25,12 +25,14 @@ assert() {
     local desc=$1
     shift
     if "$@" >"$tmp/.out" 2>&1; then ok "$desc"; else no "$desc"; indent <"$tmp/.out"; fi
+    # shellcheck disable=SC2034 # sourcing tests read $out
     out=$(cat "$tmp/.out")
 }
 assert_not() {
     local desc=$1
     shift
     if "$@" >"$tmp/.out" 2>&1; then no "$desc"; indent <"$tmp/.out"; else ok "$desc"; fi
+    # shellcheck disable=SC2034 # sourcing tests read $out
     out=$(cat "$tmp/.out")
 }
 expect() {  # expect <desc> <want> <got>
