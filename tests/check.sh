@@ -77,6 +77,16 @@ for name in ("zig", "conda:ncurses"):
         assert any("platforms." + platform in entry for entry in entries), (name, platform)
 ' "$root/mise.build.lock"
 
+assert "the screensaver life stays inside cbonsai's range" sh -c \
+    "for size in '24 80' '40 120' '50 200' '8 20'; do set -- \$size; \
+        life=\$('$root/home/.local/bin/screensavers' --life \$1 \$2); \
+        [ \$life -ge 10 ] && [ \$life -le 200 ] || exit 1; \
+    done"
+
+if has cbonsai; then
+    assert "the screensaver tree fits its pane" python3 "$root/tests/cbonsai-fit.py"
+fi
+
 # --- desktop and shells
 
 assert_not "every flatpak id looks like a reverse-DNS app id" sh -c \

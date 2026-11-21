@@ -1,0 +1,82 @@
+#!/bin/sh
+# A static cbonsai screensaver sized to its pane. It prints one tree and waits;
+# a terminal resize (WINCH) clears and prints a tree that fits the new pane.
+set -eu
+
+usage() {
+    cat <<'EOF'
+usage: screensavers [--zen] | screensavers --life ROWS COLS
+
+  (no argument)   print a scaled cbonsai tree and idle until interrupted
+  --zen           open a Zellij tab with screensaver gutters around a 120-column pane
+  --life ROWS COLS  print the life value the renderer would use, then exit
+EOF
+}
+
+# Height grows about 0.75 lives, width about 2; both factors leave a margin.
+life_for() {
+    rows=$1
+    cols=$2
+    case $rows$cols in
+    *[!0-9]*) return 1 ;;
+    esac
+    by_width=$(((cols - 6) / 2))
+    by_height=$(((rows - 4) * 6 / 5))
+    life=$by_width
+    [ "$by_height" -lt "$life" ] && life=$by_height
+    [ "$life" -lt 10 ] && life=10
+    [ "$life" -gt 200 ] && life=200
+    printf '%s\n' "$life"
+}
+
+die() { printf 'screensavers: %s\n' "$*" >&2; exit 1; }
+
+case ${1:-} in
+-h | --help) usage ;;
+--life)
+    [ $# -eq 3 ] || usage >&2
+    life_for "$2" "$3" || die "rows and columns must be integers"
+    exit 0
+    ;;
+--zen)
+    [ -n "${ZELLIJ:-}" ] || die "--zen needs a Zellij session"
+    exec zellij action new-tab --layout focus --name screensavers
+    ;;
+'') ;;
+*)
+    usage >&2
+    exit 2
+    ;;
+esac
+
+[ $# -eq 0 ] || die "unexpected arguments"
+
+bin=$(command -v cbonsai || true)
+[ -n "$bin" ] || die "cbonsai is missing; run mise bootstrap"
+
+terminal_size() {
+    rows=$(tput lines 2>/dev/null || true)
+    cols=$(tput cols 2>/dev/null || true)
+    case $rows in '' | *[!0-9]*) rows=${LINES:-24} ;; esac
+    case $cols in '' | *[!0-9]*) cols=${COLUMNS:-80} ;; esac
+    [ "$rows" -ge 8 ] || rows=8
+    [ "$cols" -ge 20 ] || cols=20
+}
+
+# One seed per run, so a resize changes the size, not the tree.
+seed=$(date +%s)
+
+render() {
+    life=$(life_for "$rows" "$cols")
+    # -p prints one line per row; one row less keeps the final newline from
+    # scrolling the tree off the top.
+    LINES=$((rows - 1)) COLUMNS=$cols "$bin" -p -L "$life" -s "$seed"
+}
+
+trap ':' WINCH
+while :; do
+    terminal_size
+    printf '\033[H\033[2J'
+    render
+    sleep 86400
+done
