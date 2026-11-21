@@ -44,3 +44,8 @@ run = '''if [ "$(uname -s)" = Linux ] && [ -d "$HOME/.local/share/fonts" ] \
         && command -v fc-cache >/dev/null 2>&1; then
     fc-cache -f >/dev/null 2>&1 || true
 fi'''
+
+[tasks.cbonsai]
+description = "Build the vendored cbonsai screensaver"
+tools = { "core:zig" = "0.17.1", "conda:ncurses" = "6.6" }
+file = "scripts/build-cbonsai.sh"
