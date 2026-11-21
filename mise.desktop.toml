@@ -44,7 +44,3 @@ run = '''if [ "$(uname -s)" = Linux ] && [ -d "$HOME/.local/share/fonts" ] \
         && command -v fc-cache >/dev/null 2>&1; then
     fc-cache -f >/dev/null 2>&1 || true
 fi'''
-
-[tasks.cbonsai]
-description = "Build the vendored cbonsai screensaver"
-run = "MISE_ENV=build mise -C . run cbonsai-build"

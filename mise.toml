@@ -53,9 +53,12 @@ run = '''sh scripts/prune-dotfile-state.sh'''
 
 [tasks.bootstrap]
 description = "Install the pieces mise does not manage declaratively"
-# Only the desktop config defines cbonsai; servers skip it.
-depends = [{ task = "cbonsai", optional = true }]
+depends = ["cbonsai"]
 run = "sh scripts/bootstrap-task.sh"
+
+[tasks.cbonsai]
+description = "Build the vendored cbonsai screensaver"
+run = "MISE_ENV=build mise -C . run cbonsai-build"
 
 [tasks.sops-audit]
 description = "check the SOPS readers in the known checkouts"
