@@ -76,6 +76,14 @@ load_tailscaled_agent() {
         || log "could not load $label; load it with launchctl bootstrap by hand"
 }
 
+# launchd has no ExecStartPost, so the Mac's plist execs a script that runs the
+# agent in the foreground and loads the sudo credentials into it. The wrapper
+# carries the absolute path, because launchd never starts inside the checkout.
+install_ssh_agent_serve() {
+    [ "$(uname -s)" = Darwin ] || return 0
+    write_wrapper ssh-agent-smortress "$repo_root/scripts/ssh-agent-serve.sh"
+}
+
 # The work Mac's ssh-agent is a LaunchAgent too, because the sudo tap needs an
 # agent that outlives one terminal: ssh -A forwards whatever SSH_AUTH_SOCK names,
 # and pam_rssh on smortress signs through it.
@@ -115,6 +123,8 @@ sh "$(dirname "$0")/secrets.sh" \
 install_tailscale_wrappers \
     || log "the tailscaled agent and the smortress ProxyCommand have no wrapper to run"
 load_tailscaled_agent
+# Before the agent: the plist it loads execs this wrapper.
+install_ssh_agent_serve
 load_ssh_agent
 load_ssh_agent_linux
 # After the agent, never before: the loader is a no-op until the socket is bound.

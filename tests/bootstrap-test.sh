@@ -302,10 +302,23 @@ assert "the tailscaled agent creates its state unreadable" \
 agent=$h/Library/LaunchAgents/dev.sammohr.ssh-agent.plist
 # -D keeps it in the foreground: a forking agent exits 0, so KeepAlive respawns
 # it every throttle interval and each respawn deletes the live socket.
-assert "the ssh-agent is a foreground LaunchAgent on a fixed socket" \
-    grep -qF 'exec /usr/bin/ssh-agent -D -a "$HOME/.local/state/ssh/agent.sock"' "$agent"
-assert "the ssh-agent clears a stale socket and creates its directory unreadable" \
-    grep -qF 'umask 077 &amp;&amp; mkdir -p "$HOME/.local/state/ssh" &amp;&amp; rm -f' "$agent"
+# launchd has no ExecStartPost, so the Mac gets a script that runs the agent in
+# the foreground and loads the credentials into it once the socket is bound --
+# the same thing the Linux unit does with ExecStartPost.
+assert "the ssh-agent LaunchAgent runs the serve script" \
+    grep -qF 'exec "$HOME/.local/bin/ssh-agent-smortress"' "$agent"
+assert "the serve script keeps the agent in the foreground on the fixed socket" \
+    grep -qF 'ssh-agent -D -a "$sock"' "$root/scripts/ssh-agent-serve.sh"
+assert "the serve script loads the sudo credentials after the socket binds" \
+    grep -qF 'add-sudo-credential.sh' "$root/scripts/ssh-agent-serve.sh"
+assert "the bootstrap writes the serve script's wrapper" \
+    grep -qF 'write_wrapper ssh-agent-smortress' "$root/scripts/bootstrap-task.sh"
+# The serve script owns the socket directory now: 0700 before ssh-agent binds,
+# and the stale socket removed before binding.
+assert "the serve script creates the socket directory unreadable" \
+    grep -qF 'umask 077' "$root/scripts/ssh-agent-serve.sh"
+assert "the serve script clears a stale socket" \
+    grep -qF 'rm -f "$sock"' "$root/scripts/ssh-agent-serve.sh"
 assert "the work shell env exports the agent socket" \
     grep -q 'SSH_AUTH_SOCK=\$HOME/.local/state/ssh/agent.sock' "$h/.config/shell/env.d/work.sh"
 assert "the fish work hook exports the agent socket" \
