@@ -40,7 +40,7 @@ case ${1:-} in
     ;;
 --zen)
     [ -n "${ZELLIJ:-}" ] || die "--zen needs a Zellij session"
-    exec zellij action new-tab --layout focus --name screensavers
+    exec zellij action new-tab --layout focus --name focus --cwd "${PWD:-$HOME}"
     ;;
 '') ;;
 *)

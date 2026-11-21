@@ -99,6 +99,12 @@ for kitty_conf in "$root"/desktop/.config/kitty/linux.conf "$root"/desktop/.conf
 done
 assert "zellij starts fish" grep -qx 'default_shell "fish"' "$root/home/.config/zellij/config.kdl"
 
+assert "the focus layout centers a 120-column pane" \
+    grep -qE '^[[:space:]]*pane size=120 focus=true$' "$root/home/.config/zellij/layouts/focus.kdl"
+assert "the focus layout runs the screensaver in both gutters" \
+    sh -c "[ \$(grep -c 'command \"screensavers\"' '$root/home/.config/zellij/layouts/focus.kdl') -eq 2 ]"
+assert "the screensaver abbreviation is added" grep -qx 'abbr -a sv screensavers' "$root/home/.config/fish/conf.d/20-abbreviations.fish"
+
 assert_not "zsh has no interactive config: no ZDOTDIR, zim, plugins, or conda zsh" sh -c \
     "[ -e '$root/home/.config/zsh' ] || grep -rnE 'zim|zsh-plugins|conda:zsh|ZDOTDIR' \
         '$root/mise.toml' '$root'/mise.*.toml '$root/global/config.toml' '$root/scripts'"
