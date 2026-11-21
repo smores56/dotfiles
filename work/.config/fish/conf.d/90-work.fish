@@ -15,7 +15,7 @@ if set -q shims[1]; and set -q extra[1]
 end
 # Same socket as work/.config/shell/env.d/work.sh: the LaunchAgent's agent is
 # what smortress's pam_rssh asks for a touch, and fish must not start without it.
-if test -S "$HOME/.local/state/ssh/agent.sock"
+if not set -q SSH_AUTH_SOCK; and test -S "$HOME/.local/state/ssh/agent.sock"
     set -gx SSH_AUTH_SOCK "$HOME/.local/state/ssh/agent.sock"
 end
 set -gx SSH_SK_PROVIDER /usr/lib/ssh-keychain.dylib

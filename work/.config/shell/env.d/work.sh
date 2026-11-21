@@ -4,7 +4,7 @@ export SDLC_REPO=smohr-blitzy/sdlc
 # as a LaunchAgent on a fixed socket rather than one socket per terminal. Only
 # exported when the daemon has bound it; an inherited agent (inside an ssh
 # session, say) then keeps working instead of being pointed at a dead path.
-if [ -S "$HOME/.local/state/ssh/agent.sock" ]; then
+if [ -z "${SSH_AUTH_SOCK-}" ] && [ -S "$HOME/.local/state/ssh/agent.sock" ]; then
     SSH_AUTH_SOCK=$HOME/.local/state/ssh/agent.sock
     export SSH_AUTH_SOCK
 fi
