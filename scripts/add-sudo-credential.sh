@@ -10,15 +10,15 @@
 # sudo signs, which is why the bootstrap runs this with a hand at the keyboard
 # and no login hook ever does.
 #
-# Everything here is a no-op rather than an error: a Mac with no YubiKey and a
-# launchd agent that has not bound its socket yet are both normal, and sudo's
-# password fallback covers them.
+# Everything here is a no-op rather than an error: a machine with no YubiKey and
+# an agent whose unit or LaunchAgent has not bound its socket yet are both
+# normal, and sudo's password fallback covers them.
 set -eu
 
 log() { printf 'bootstrap: %s\n' "$*" >&2; }
 
 sock=$HOME/.local/state/ssh/agent.sock
-# launchctl bootstrap returns before ssh-agent has bound the socket.
+# The service manager returns before ssh-agent has bound the socket.
 i=0
 while [ ! -S "$sock" ] && [ "$i" -lt 20 ]; do
     sleep 0.1

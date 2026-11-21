@@ -12,15 +12,15 @@ bin=$tmp/bin
 log=$tmp/ssh-add.log
 mkdir -p "$bin"
 
-# The loader is macOS-only by design; the test is what decides the platform.
+# Both agents bind the same socket, so the test is what decides the platform.
 cat >"$bin/uname" <<'EOF'
 #!/bin/sh
-printf 'Darwin\n'
+cat "$SSH_TEST_OS"
 EOF
 # ssh-add records its argv, and `-L` reports whatever the case staged.
 cat >"$bin/ssh-add" <<'EOF'
 #!/bin/sh
-printf '%s\n' "$*" >>"$SSH_ADD_LOG"
+printf '%s provider=%s\n' "$*" "${SSH_SK_PROVIDER:-none}" >>"$SSH_ADD_LOG"
 [ "${1:-}" = -L ] && [ -n "$SSH_ADD_LOADED" ] && cat "$SSH_ADD_LOADED"
 exit 0
 EOF
@@ -41,9 +41,11 @@ handle() {  # handle <home> <file>: a private handle and its public half
 }
 run_loader() {  # run_loader <home> [file of loaded keys]
     : >"$log"
-    env -i HOME="$1" PATH="$bin:/usr/bin:/bin" \
+    env -i HOME="$1" PATH="$bin:/usr/bin:/bin" SSH_TEST_OS="$tmp/os" \
         SSH_ADD_LOG="$log" SSH_ADD_LOADED="${2:-}" sh "$loader"
 }
+on_os() { printf '%s\n' "$1" >"$tmp/os"; }
+on_os Darwin
 
 # One credential per YubiKey, as enrollment mints them: a tap on the spare has to
 # work too, and the agent only offers what was added.
@@ -52,7 +54,7 @@ handle "$h" id_smortress_sudo_1
 handle "$h" id_smortress_sudo_2
 handle "$h" id_smortress_sudo_3
 assert "the loader exits 0" run_loader "$h"
-expect "every handle is added" 3 "$(grep -c 'id_smortress_sudo_[123]$' "$log")"
+expect "every handle is added" 3 "$(grep -c 'id_smortress_sudo_[123] ' "$log")"
 assert_not "no public half is added" grep -q '\.pub' "$log"
 
 # A handle already in the agent must not be added again, but the other two are
@@ -60,7 +62,7 @@ assert_not "no public half is added" grep -q '\.pub' "$log"
 printf '%s\n' "$(cat "$h/.ssh/id_smortress_sudo_1.pub")" >"$tmp/loaded"
 assert "the loader exits 0 with one handle already loaded" run_loader "$h" "$tmp/loaded"
 expect "only the missing handles are added" 2 "$(grep -c 'id_smortress_sudo_' "$log")"
-assert_not "the loaded handle is not re-added" grep -q 'id_smortress_sudo_1$' "$log"
+assert_not "the loaded handle is not re-added" grep -q 'id_smortress_sudo_1 ' "$log"
 
 # All three loaded is the steady state, and a second bootstrap must be silent.
 cat "$h"/.ssh/id_smortress_sudo_*.pub >"$tmp/loaded"
@@ -86,5 +88,27 @@ h=$(new_home legacy)
 handle "$h" id_smortress_sudo
 assert "the loader exits 0 on a single handle" run_loader "$h"
 contains "the single handle is added" 'id_smortress_sudo' "$(cat "$log")"
+
+# The Linux laptops run the same agent from a systemd user unit on the same
+# socket, and Apple's FIDO provider does not exist there: OpenSSH links
+# libfido2 directly, so the variable must not be set.
+on_os Linux
+h=$(new_home linux)
+handle "$h" id_smortress_sudo_1
+handle "$h" id_smortress_sudo_2
+assert "the loader exits 0 on Linux" run_loader "$h"
+expect "handles are added on Linux too" 2 "$(grep -c 'id_smortress_sudo_' "$log")"
+assert_not "no Apple FIDO provider on Linux" grep -q 'provider=/usr/lib/ssh-keychain.dylib' "$log"
+contains "the macOS provider is set on macOS" 'provider=/usr/lib/ssh-keychain.dylib' \
+    "$(on_os Darwin; run_loader "$h"; cat "$log")"
+
+# No agent is the condition that matters, not the platform: a host whose unit
+# has not started yet is a no-op rather than a failure.
+on_os FreeBSD
+h=$tmp/noagent2
+mkdir -p "$h/.ssh"
+handle "$h" id_smortress_sudo_1
+assert "the loader exits 0 without an agent on another platform" run_loader "$h"
+expect "no socket, no adds" 0 "$(grep -c 'id_smortress_sudo_' "$log")"
 
 finish
