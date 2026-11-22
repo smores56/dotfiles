@@ -23,5 +23,14 @@ keybinds {
         bind "Ctrl Alt Right" { MoveFocusOrTab "Right"; }
         bind "Ctrl Alt Down"  { MoveFocus "Down"; }
         bind "Ctrl Alt Up"    { MoveFocus "Up"; }
+
+        // Attention first: go-to-next-attention exits 2 when nothing is
+        // counted, so fall back to the session manager (inbox tab when it
+        // has rows, sessions when empty). Background keeps it invisible.
+        bind "Ctrl Alt i" {
+            Run "sh" "-c" "zellij action go-to-next-attention || zellij action launch-or-focus-plugin zellij:session-manager --floating --move-to-focused-tab" {
+                background true
+            }
+        }
     }
 }
