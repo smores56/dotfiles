@@ -1,0 +1,6 @@
+#!/bin/sh
+# sshd runs a remote command through the login shell's PATH, and a fresh
+# account has only the system one. This is [bootstrap.user]'s shell: a real
+# executable for /etc/shells that resolves the mise-managed fish. It is not
+# named `fish` so it never shadows the shim on a normal PATH.
+exec "${XDG_DATA_HOME:-$HOME/.local/share}/mise/shims/fish" "$@"
