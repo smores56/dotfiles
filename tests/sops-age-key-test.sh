@@ -233,4 +233,24 @@ valid_admin
 SBIN=$tmp/bin/age PRESENT=0 assert "--check accepts a pinned age" run --check
 SBIN=$tmp/no-such-age PRESENT=0 assert_not "--check rejects a missing pinned age" run --check
 
+# 16. The root branch is unreachable without root, so run a copy with the guard
+#     and its fixed identity path pointed at this test. age-keygen writes
+#     "# created:" and "# public key:" headers above the identity.
+root_script=$tmp/sops-age-key-root
+sed -e 's/^if \[ "\$EUID" -eq 0 \]; then$/if true; then/' \
+    -e "s#^    legacy=/root/.config/sops/age/keys.txt\$#    legacy=$config/sops/age/keys.txt#" \
+    "$script" >"$root_script"
+mkdir -p "$config/sops/age"
+cat >"$config/sops/age/keys.txt" <<'EOF'
+# created: 2026-01-01T00:00:00Z
+# public key: age1test
+AGE-SECRET-KEY-1TEST
+EOF
+chmod 600 "$config/sops/age/keys.txt"
+assert "a root identity with age-keygen headers passes" \
+    env -i HOME="$home" XDG_CONFIG_HOME="$config" PATH=/usr/bin:/bin bash "$root_script" --check
+printf 'not a key\n' >"$config/sops/age/keys.txt"
+assert_not "a root identity that is not an age key fails" \
+    env -i HOME="$home" XDG_CONFIG_HOME="$config" PATH=/usr/bin:/bin bash "$root_script" --check
+
 finish

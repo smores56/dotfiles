@@ -41,9 +41,18 @@ if [ "$EUID" -eq 0 ]; then
             printf 'sops-age-key: root identity %s is missing\n' "$legacy" >&2
             exit 1
         fi
-        IFS= read -r first <"$legacy" || first=
+        # age-keygen writes "# created:" and "# public key:" headers above the
+        # identity, so the first line is not the key.
+        keyline=
+        while IFS= read -r line || [ -n "$line" ]; do
+            case $line in
+                '' | '#'*) continue ;;
+            esac
+            keyline=$line
+            break
+        done <"$legacy"
         prefix='AGE-SECRET-'
-        case $first in
+        case $keyline in
             "${prefix}KEY-1"* | "${prefix}KEY-PQ-1"*) exit 0 ;;
         esac
         printf 'sops-age-key: %s is not a plaintext age identity\n' "$legacy" >&2
