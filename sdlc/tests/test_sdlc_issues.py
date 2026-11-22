@@ -996,7 +996,7 @@ class PickCliTest(GhTest):
         with open(os.path.join(self.state, "rows-sdlc-features.txt")) as fh:
             self.assertEqual(
                 fh.read().splitlines(),
-                ["1\tReduce bespoke tooling [todo] nix-config"],
+                ["1\t#1 Reduce bespoke tooling [todo] nix-config"],
             )
 
     def test_all_reaches_terminal_features(self):
@@ -1014,7 +1014,7 @@ class PickCliTest(GhTest):
         )
         self.run_cli("pick", "--all")
         with open(os.path.join(self.state, "rows-sdlc-features.txt")) as fh:
-            self.assertIn("2\tOld done thing [done] sdlc", fh.read())
+            self.assertIn("2\t#2 Old done thing [done] sdlc", fh.read())
 
     def test_canceling_the_feature_pick_runs_nothing(self):
         self.serve("fzf-feature.txt", "no-such-number\n")

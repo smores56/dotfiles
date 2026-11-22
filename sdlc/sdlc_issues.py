@@ -1237,7 +1237,7 @@ def cmd_pick(args):
     rows = []
     for feature in features:
         number, title, status, names = summary(feature)
-        rows.append("%d\t%s [%s] %s" % (number, title, status, names or "-"))
+        rows.append("%d\t#%d %s [%s] %s" % (number, number, title, status, names or "-"))
     number = fzf(rows, "sdlc features", "sdlc show {1}")
     if not number:
         return
