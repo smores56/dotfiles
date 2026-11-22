@@ -96,6 +96,7 @@ expect "copy is fish's clipboard copy, with OSC 52" fish_clipboard_copy "$(exp_ 
 expect "paste is fish's clipboard paste" fish_clipboard_paste "$(exp_ paste)"
 expect "gc clones with git get" 'git get' "$(exp_ gc)"
 expect "sm opens fish on smortress" 'ssh smortress -t fish' "$(exp_ sm)"
+expect "sn opens fish on smoresnet" 'ssh root@smoresnet -t fish' "$(exp_ sn)"
 if [ "$(uname -s)" = Linux ]; then
     expect "ct empties the trash where gtrash exists" 'gtrash find --rm --force' "$(exp_ ct)"
 else
@@ -173,6 +174,7 @@ expect "r lists the flat work clones" \
     'path dirname ~/Blitzy/*/.git ~/Blitzy/*/.worktrees/*/.git | fzf | read f; and c $f' "$(exp_ r "$hw")"
 expect "work has no git get" "" "$(exp_ gc "$hw")"
 expect "sm opens fish on smortress from work" 'ssh smortress -t fish' "$(exp_ sm "$hw")"
+expect "sn opens fish on smoresnet from work" 'ssh root@smoresnet -t fish' "$(exp_ sn "$hw")"
 
 fw_() { fish_at "$hw" -i -c "$1"; }
 expect "the employer toolchains follow the mise shims, newest node first" \

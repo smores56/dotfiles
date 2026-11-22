@@ -16,6 +16,7 @@ abbr -a sv screensavers
 abbr -a d 'git -C ~/.dotfiles pull --ff-only --no-rebase --autostash && mise -C ~/.dotfiles bootstrap --prune-dotfiles && begin; mise -C ~/.dotfiles dot status --missing --json >/dev/null; or mise -C ~/.dotfiles dot status --missing; end'
 abbr -a gw git worktree
 abbr -a sm ssh smortress -t fish
+abbr -a sn ssh root@smoresnet -t fish
 # fish's own clipboard functions: copy also sends OSC 52, so it works over SSH
 # and through zellij; paste reads pbpaste or wl-paste locally.
 abbr -a copy fish_clipboard_copy
