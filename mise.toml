@@ -20,6 +20,10 @@ min_version = "2026.11.9"
 # because installers append their own lines here.
 "~/.zprofile/shell-env" = { block = '''emulate sh -c 'f=${XDG_CONFIG_HOME:-$HOME/.config}/shell/env.sh; [ -r "$f" ] && . "$f"; unset f'''' }
 "~/.config/gh" = { source = "home/.config/gh", mode = "symlink-each" }
+"~/.config/sdlc" = { source = "home/.config/sdlc", mode = "symlink-each" }
+# gh only discovers extensions under its data dir, not gh-* on PATH, so this is
+# a real local extension; gh-sdlc itself stays in ~/.local/bin for direct use.
+"~/.local/share/gh/extensions/gh-sdlc/gh-sdlc" = { source = "home/.local/bin/gh-sdlc" }
 "~/.config/git" = { source = "home/.config/git", mode = "symlink-each" }
 "~/.config/helix" = { source = "home/.config/helix", mode = "symlink-each" }
 # lazygit on macOS reads ~/Library/Application Support unless XDG_CONFIG_HOME is set.

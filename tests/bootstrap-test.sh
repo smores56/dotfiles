@@ -60,6 +60,9 @@ for target in \
     .config/zellij/themes/ansi.kdl \
     .config/yazi/yazi.toml \
     .config/gh/config.yml \
+    .config/sdlc/gh-dash.yml \
+    .local/bin/gh-sdlc \
+    .local/share/gh/extensions/gh-sdlc/gh-sdlc \
     .local/bin/sops-age-key \
     .local/bin/maki \
     .config/maki/init.lua \
@@ -72,6 +75,8 @@ for target in \
     .claude/skills/sdlc/SKILL.md; do
     assert "base links ~/$target into the checkout" links_into_repo "$h/$target"
 done
+
+assert "the gh sdlc extension is executable" test -x "$h/.local/bin/gh-sdlc"
 
 if [ "$os" = Darwin ]; then
     assert "base links lazygit where macOS lazygit reads it" \

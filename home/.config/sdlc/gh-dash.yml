@@ -1,0 +1,23 @@
+# gh-dash config for the sdlc registry. Launch it with `gh sdlc`.
+#
+# Sections are GitHub search filters. gh-dash already adds is:issue and a sort,
+# but this private registry's search returns nothing without an explicit
+# is:issue, so every filter keeps it.
+defaults:
+  view: issues
+  issuesLimit: 50
+  preview:
+    open: true
+  refetchIntervalMinutes: 5
+
+issuesSections:
+  - title: Features
+    filters: repo:smores56/sdlc is:issue is:open label:type:feature
+  - title: In progress
+    filters: repo:smores56/sdlc is:issue is:open label:type:feature label:status:in-progress
+  - title: Needs approval
+    filters: repo:smores56/sdlc is:issue is:open label:type:feature -label:status:approved
+  - title: Tasks
+    filters: repo:smores56/sdlc is:issue is:open -label:type:feature label:status:todo,status:in-progress
+  - title: Closed
+    filters: repo:smores56/sdlc is:issue is:closed
