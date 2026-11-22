@@ -20,11 +20,11 @@ for plugin in ~/.local/share/fish-plugins/{pure,async-prompt,done}
 end
 
 # pure's fish_title prepends the full path and repeats the command. Zellij shows
-# this as the tab name, so keep only the command, capped at 40 columns; an empty
+# this as the tab name, so keep only the command, capped at 30 columns; an empty
 # prompt title would leave the last command in place, hence the blank.
 function fish_title
     if set -q argv[1]
-        echo -- (string shorten -m 40 -- $argv[1])
+        echo -- (string shorten -m 30 -- $argv[1])
         return
     end
     echo -n ' '
