@@ -10,9 +10,3 @@ repos_root = "/srv/git"
 "~/.config/fish/conf.d/85-identity.fish" = { source = "identity/.config/fish/conf.d/85-identity.fish.tera", mode = "template" }
 "~/.config/git/machine.inc" = { source = "identity/.config/git/machine.inc.tera", mode = "template" }
 "~/.config/git/work.inc" = { source = "identity/.config/git/work.inc.tera", mode = "template" }
-
-# The README's second step. A bare name resolves the ~/.local/bin/mise-fish
-# wrapper from PATH, which mise adds to /etc/shells and hands to chsh; a shim
-# path would not be a valid shell and is per-machine.
-[bootstrap.user]
-login_shell = "mise-fish"

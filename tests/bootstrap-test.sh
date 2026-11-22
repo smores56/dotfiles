@@ -48,15 +48,6 @@ h=$(new_home base)
 mkdir -p "$h/.claude"
 printf '{\n  "theme": "dark",\n  "autoMemoryEnabled": false\n}\n' >"$h/.claude/settings.json"
 assert "base apply exits 0" run_mise "$h" "" dot apply
-assert "base links the mise-fish wrapper" links_into_repo "$h/.local/bin/mise-fish"
-mkdir -p "$h/.local/share/mise/shims"
-cat >"$h/.local/share/mise/shims/fish" <<'EOF'
-#!/bin/sh
-printf '%s\n' "$*" >"$HOME/shim.args"
-EOF
-chmod +x "$h/.local/share/mise/shims/fish"
-env -i HOME="$h" XDG_DATA_HOME="$h/.local/share" "$root/home/.local/bin/mise-fish" -c true
-expect "the mise-fish wrapper execs the fish shim" "-c true" "$(cat "$h/shim.args")"
 
 for target in \
     .zshenv \
@@ -202,8 +193,6 @@ assert "identity apply exits 0" run_mise "$h" identity dot apply
 assert "identity links ~/.config/git/config" links_into_repo "$h/.config/git/config"
 assert "identity links ~/.ssh/config" links_into_repo "$h/.ssh/config"
 assert "identity links the shared smortress route" links_into_repo "$h/.ssh/smortress.conf"
-assert "identity sets mise-fish as the login shell" \
-    grep -qF 'login_shell = "mise-fish"' "$root/mise.identity.toml"
 # The route is one file under home/, included by both ssh configs: the tailnet is
 # the only route, so ssh's own transport carries it and nothing proxies.
 expect "the smortress route needs no proxy" '' "$(proxy_of smortress)"
