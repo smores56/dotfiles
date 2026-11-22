@@ -76,6 +76,17 @@ fi
 git -C "$repo/main" branch --set-upstream-to=origin/main >/dev/null \
     || die "could not set main's upstream"
 
+# A force-push on origin (a rewritten history) leaves the deployed worktree on
+# the old history, and mise's `--update` only fast-forwards. This script owns
+# the worktree, so converge it; uncommitted edits mean someone worked here by
+# hand, so stop rather than throw them away.
+git -C "$repo/main" diff-index --quiet HEAD -- \
+    || die "$repo/main has uncommitted changes; commit or discard them and re-run"
+git -C "$repo/main" merge-base --is-ancestor HEAD origin/main \
+    || log "replacing $repo/main's diverged history with origin/main"
+git -C "$repo/main" reset --hard origin/main >/dev/null \
+    || die "could not update $repo/main to origin/main"
+
 DOTFILES_LINK=$CHECKOUT DOTFILES_CHECKOUT=$repo/main \
     sh "$repo/main/scripts/link-dotfiles-checkout.sh" \
     || die "could not link $CHECKOUT"

@@ -71,4 +71,29 @@ assert "the existing checkout is still a real directory" test -d "$home2/.dotfil
 assert_not "the existing checkout was not replaced by a symlink" test -L "$home2/.dotfiles"
 assert_not "nothing is cloned before the refusal" test -e "$tmp/root2/github.com"
 
+# --- a force-push on origin rewrote the history the worktree has
+
+printf 'rewritten\n' >"$tmp/src/rewritten"
+git -C "$tmp/src" add -A
+git -C "$tmp/src" -c user.email=fixture@example.invalid -c user.name=fixture \
+    commit -q --amend --no-edit
+git -C "$tmp/src" push -q -f "$tmp/remote.git" HEAD:refs/heads/main
+
+rm -f "$tmp/marker"
+assert "a bootstrap after an upstream history rewrite exits 0" \
+    run_bootstrap "$home" "$repos" "$home/.dotfiles"
+expect "the worktree follows the rewritten origin/main" \
+    "$(git -C "$repo" rev-parse refs/remotes/origin/main)" \
+    "$(git -C "$repo/main" rev-parse HEAD)"
+assert "the installer runs after converging" test -e "$tmp/marker"
+
+# Uncommitted edits are the one thing a reset would silently lose.
+printf '\n# local edit\n' >>"$repo/main/scripts/install-mise.sh"
+rm -f "$tmp/marker"
+assert_not "a bootstrap refuses a worktree with uncommitted changes" \
+    run_bootstrap "$home" "$repos" "$home/.dotfiles"
+assert "the hand edit survives the refusal" \
+    grep -qF '# local edit' "$repo/main/scripts/install-mise.sh"
+assert_not "the refused bootstrap never runs the installer" test -e "$tmp/marker"
+
 finish
