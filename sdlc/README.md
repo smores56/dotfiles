@@ -49,8 +49,10 @@ from private repositories on the Free plan (upstream
 [#562](https://github.com/dlvhdr/gh-dash/issues/562)), so the pin stays on the
 last release before that query.
 
-Sections are Features, In progress, Needs approval, Tasks, and Closed. `/`
-filters the current section; `r` refreshes it and `R` refreshes every section.
+Sections are Features, In progress, Unapproved, Re-approval, Tasks, and Closed.
+`Unapproved` is the absence of the approval label; `Re-approval` is the explicit
+`status:needs-reapproval` label. `/` filters the current section; `r` refreshes
+it and `R` refreshes every section.
 
 Keys on a selected issue:
 
@@ -67,10 +69,12 @@ Keys on a selected issue:
 | `ctrl+x` | `sdlc task cancel` (confirms) |
 
 The wrapper pins `SDLC_REPO=smores56/sdlc` and `SDLC_TRANSPORT=gh`; a second
-registry needs its own config and wrapper. gh-dash merges its global config, so
-keybindings added there also appear in this view. The custom keys replace
-gh-dash's `x` close and `t` smart-filter; `ctrl+s x` section removal is
-unavailable. Press `R` after an action if a section still shows a stale row.
+registry needs its own config and wrapper. Every key passes the row's repo, so a
+row from another repo is refused. `--config` makes gh-dash read only this file;
+the global gh-dash config does not apply. The custom `x` replaces gh-dash's
+close; `t` is free in this view. `s` still switches to the PR view, where the
+actions refuse rows outside the registry. Press `R` to refresh every section
+after an action.
 
 [gh-dash]: https://github.com/dlvhdr/gh-dash
 

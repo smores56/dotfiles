@@ -1,8 +1,7 @@
 # gh-dash config for the sdlc registry. Launch it with `gh sdlc`.
 #
-# Sections are GitHub search filters. gh-dash already adds is:issue and a sort,
-# but this private registry's search returns nothing without an explicit
-# is:issue, so every filter keeps it.
+# gh-dash prepends is:issue and sort:updated to every section filter, so these
+# add only the registry, state, and label qualifiers.
 defaults:
   view: issues
   issuesLimit: 50
@@ -12,45 +11,38 @@ defaults:
 
 issuesSections:
   - title: Features
-    filters: repo:smores56/sdlc is:issue is:open label:type:feature
+    filters: repo:smores56/sdlc is:open label:type:feature
   - title: In progress
-    filters: repo:smores56/sdlc is:issue is:open label:type:feature label:status:in-progress
-  - title: Needs approval
-    filters: repo:smores56/sdlc is:issue is:open label:type:feature -label:status:approved
+    filters: repo:smores56/sdlc is:open label:type:feature label:status:in-progress
+  - title: Unapproved
+    filters: repo:smores56/sdlc is:open label:type:feature -label:status:approved
+  - title: Re-approval
+    filters: repo:smores56/sdlc is:open label:type:feature label:status:needs-reapproval
   - title: Tasks
-    filters: repo:smores56/sdlc is:issue is:open -label:type:feature label:status:todo,status:in-progress
+    filters: repo:smores56/sdlc is:open -label:type:feature label:status:todo,status:in-progress
   - title: Closed
-    filters: repo:smores56/sdlc is:issue is:closed
+    filters: repo:smores56/sdlc is:closed
 
-# The fixed keymap. gh-dash runs each command with $SHELL, which the wrapper
-# pins to /bin/sh. Every snippet preserves the action's exit code so gh-dash's
-# error banner is honest, and waits so the output stays readable.
+# The fixed keymap. Each command carries the row's repo so the wrapper can
+# refuse a row from anywhere else; the wrapper also preserves the action's
+# exit code and waits for Enter.
 keybindings:
   issues:
     - key: S
-      name: sdlc status
-      command: gh sdlc act status {{.IssueNumber}}; rc=$?; printf '\nPress Enter to return (R refreshes all)'; read -r _ || true; exit $rc
+      command: gh sdlc act status {{.IssueNumber}} {{.RepoName}}
     - key: N
-      name: next ready task
-      command: gh sdlc act next {{.IssueNumber}}; rc=$?; printf '\nPress Enter to return (R refreshes all)'; read -r _ || true; exit $rc
+      command: gh sdlc act next {{.IssueNumber}} {{.RepoName}}
     - key: v
-      name: sdlc review
-      command: gh sdlc act review {{.IssueNumber}}; rc=$?; printf '\nPress Enter to return (R refreshes all)'; read -r _ || true; exit $rc
+      command: gh sdlc act review {{.IssueNumber}} {{.RepoName}}
     - key: V
-      name: approve design
-      command: gh sdlc act approve {{.IssueNumber}}; rc=$?; printf '\nPress Enter to return (R refreshes all)'; read -r _ || true; exit $rc
+      command: gh sdlc act approve {{.IssueNumber}} {{.RepoName}}
     - key: x
-      name: cancel feature
-      command: gh sdlc act cancel {{.IssueNumber}}; rc=$?; printf '\nPress Enter to return (R refreshes all)'; read -r _ || true; exit $rc
+      command: gh sdlc act cancel {{.IssueNumber}} {{.RepoName}}
     - key: D
-      name: complete feature
-      command: gh sdlc act complete {{.IssueNumber}}; rc=$?; printf '\nPress Enter to return (R refreshes all)'; read -r _ || true; exit $rc
+      command: gh sdlc act complete {{.IssueNumber}} {{.RepoName}}
     - key: t
-      name: start task
-      command: gh sdlc act start {{.IssueNumber}}; rc=$?; printf '\nPress Enter to return (R refreshes all)'; read -r _ || true; exit $rc
+      command: gh sdlc act start {{.IssueNumber}} {{.RepoName}}
     - key: d
-      name: finish task
-      command: gh sdlc act finish {{.IssueNumber}}; rc=$?; printf '\nPress Enter to return (R refreshes all)'; read -r _ || true; exit $rc
+      command: gh sdlc act finish {{.IssueNumber}} {{.RepoName}}
     - key: ctrl+x
-      name: abandon task
-      command: gh sdlc act abandon {{.IssueNumber}}; rc=$?; printf '\nPress Enter to return (R refreshes all)'; read -r _ || true; exit $rc
+      command: gh sdlc act abandon {{.IssueNumber}} {{.RepoName}}

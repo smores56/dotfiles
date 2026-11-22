@@ -48,7 +48,7 @@ while IFS= read -r path || [ -n "$path" ]; do
         identity/.config/git/*) add git-get-test.sh ;;
         home/.config/git/*) add bootstrap-test.sh; add git-get-test.sh ;;
 
-        home/.local/bin/gh-sdlc|home/.config/sdlc/*|home/.local/share/gh/extensions/gh-sdlc/*)
+        home/.local/bin/gh-sdlc|home/.config/sdlc/*)
             add gh-sdlc-test.sh ;;
 
         # Applying dotfiles and the tools they install.
