@@ -37,3 +37,18 @@ maki.api.set_slot("tool.*.input", function(prev, input, ctx)
   end
   return prev(input, ctx)
 end)
+
+-- Zellij names single-pane tabs after the pane's OSC title, so mirror the
+-- session's auto-generated title (the first prompt) instead of the command
+-- name. maki reports working/blocked state separately via OSC 7501, which
+-- zellij draws as tab markers, so the title stays topic-only.
+local function sync_window_title()
+  local s = maki.session.read()
+  if not s then return end
+  local t = s.title
+  if not t or t == "" then t = "maki" end
+  maki.ui.set_window_title("maki: " .. maki.ui.truncate_text(t, 36).head)
+end
+
+maki.api.create_autocmd({ "SessionFocusChanged", "SessionTitleChanged" },
+  { callback = sync_window_title })
