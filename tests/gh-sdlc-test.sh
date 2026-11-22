@@ -96,6 +96,7 @@ if command -v yq >/dev/null 2>&1; then
     assert "the config opens on the issues view" yq -e '.defaults.view == "issues"' "$config"
     assert "the registry is limited to a page" yq -e '.defaults.issuesLimit == 50' "$config"
     expect "the config has six sections" 6 "$(yq '.issuesSections | length' "$config" 2>/dev/null)"
+    expect "the PR view is empty" 0 "$(yq '.prSections | length' "$config" 2>/dev/null)"
     expect "every section names the registry" 6 \
         "$(yq '[.issuesSections[] | select(.filters | contains("repo:smores56/sdlc"))] | length' "$config" 2>/dev/null)"
     expect "the re-approval section watches its label" 1 \
@@ -116,6 +117,7 @@ assert "act status routes a feature" run act status 824 smores56/sdlc
 expect "status keeps the issue number" "status 824" "$(sdlc_calls)"
 contains "the guard reads the pinned registry" \
     "issue view 824 --repo smores56/sdlc --json labels,state" "$(cat "$state/calls")"
+expect "a non-tty action does not wait" "" "$(printf '%s' "$out" | grep -F 'Press Enter')"
 
 rm -f "$h/.config/sdlc/gh-dash.yml"
 clear_calls
@@ -201,6 +203,55 @@ meta 824 "OPEN type:feature status:approved"
 clear_calls
 FAKE_SDLC_EXIT=7 run act status 824 smores56/sdlc >/dev/null 2>&1
 expect "the action's exit code propagates" 7 $?
+
+# The wait only runs with a tty, which /dev/null and pipes do not provide.
+assert "the wait runs on a tty" python3 - "$wrapper" "$bin" "$state" "$h" <<'PY'
+import os, pty, select, sys, time, fcntl, termios, struct
+wrapper, bin_dir, state, home = sys.argv[1:5]
+env = {
+    "HOME": home,
+    "PATH": bin_dir + ":/usr/bin:/bin",
+    "XDG_CONFIG_HOME": home + "/.config",
+    "FAKE_GH_STATE": state,
+    "FAKE_SDLC_EXIT": "0",
+}
+pid, fd = pty.fork()
+if pid == 0:
+    os.execve(wrapper, [wrapper, "act", "status", "824", "smores56/sdlc"], env)
+fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 100, 0, 0))
+out = b""
+sent = False
+deadline = time.time() + 10
+reaped = False
+while time.time() < deadline:
+    r, _, _ = select.select([fd], [], [], 0.1)
+    if r:
+        try:
+            data = os.read(fd, 65536)
+        except OSError:
+            data = b""
+        if data:
+            out += data
+    if b"Press Enter to return" in out and not sent:
+        os.write(fd, b"\r")
+        sent = True
+    done, status = os.waitpid(pid, os.WNOHANG)
+    if done:
+        reaped = True
+        break
+if not reaped:
+    os.kill(pid, 9)
+    os.waitpid(pid, 0)
+    print("pty: wrapper did not exit")
+    sys.exit(1)
+text = out.decode("utf-8", "replace")
+if "Press Enter to return" not in text:
+    print("pty: missing wait prompt")
+    sys.exit(1)
+if os.waitstatus_to_exitcode(status) != 0:
+    print("pty: exit", os.waitstatus_to_exitcode(status))
+    sys.exit(1)
+PY
 
 # --- fixed keymap -------------------------------------------------------------
 

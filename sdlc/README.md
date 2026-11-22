@@ -72,9 +72,9 @@ The wrapper pins `SDLC_REPO=smores56/sdlc` and `SDLC_TRANSPORT=gh`; a second
 registry needs its own config and wrapper. Every key passes the row's repo, so a
 row from another repo is refused. `--config` makes gh-dash read only this file;
 the global gh-dash config does not apply. The custom `x` replaces gh-dash's
-close; `t` is free in this view. `s` still switches to the PR view, where the
-actions refuse rows outside the registry. Press `R` to refresh every section
-after an action.
+close; `t` is free in this view. `s` switches to an intentionally empty PR view,
+since the registry is issues-only. The Closed section is browse-only: the verbs
+refuse closed issues. Press `R` to refresh every section after an action.
 
 [gh-dash]: https://github.com/dlvhdr/gh-dash
 

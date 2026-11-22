@@ -9,6 +9,10 @@ defaults:
     open: true
   refetchIntervalMinutes: 5
 
+# `s` switches to gh-dash's PR view, where PR keys (v approve, x close) are
+# live. Keep it empty: the registry is issues-only.
+prSections: []
+
 issuesSections:
   - title: Features
     filters: repo:smores56/sdlc is:open label:type:feature
