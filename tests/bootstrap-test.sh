@@ -290,6 +290,31 @@ else
         test -e "$h/Library/Fonts/GoogleSansCode-MONO-VF.ttf"
 fi
 
+# --- install-mise ------------------------------------------------------------
+
+# A fresh root account has no ~/.local/bin on PATH, yet the bootstrap task's
+# dependencies call `mise` by name, so install-mise must export it first.
+h=$(new_home install-mise)
+mkdir -p "$h/.local/bin" "$tmp/fake-bin"
+cat >"$h/.local/bin/mise" <<EOF
+#!/bin/sh
+printf 'PATH=%s\n' "\$PATH" >>"$tmp/install-mise.log"
+printf 'ARGS=%s\n' "\$*" >>"$tmp/install-mise.log"
+[ "\${1-}" = --version ] && printf 'mise stub\n'
+exit 0
+EOF
+chmod +x "$h/.local/bin/mise"
+printf '#!/bin/sh\nexit 0\n' >"$tmp/fake-bin/curl"
+chmod +x "$tmp/fake-bin/curl"
+rm -f "$tmp/install-mise.log"
+assert "install-mise exits 0 with a stubbed mise" \
+    env -i HOME="$h" PATH="$tmp/fake-bin:/usr/bin:/bin" DOTFILES_ENVS=identity \
+    sh "$root/scripts/install-mise.sh" 2>&1
+assert "install-mise puts ~/.local/bin on PATH for the bootstrap" \
+    grep -qxF "PATH=$h/.local/bin:$tmp/fake-bin:/usr/bin:/bin" "$tmp/install-mise.log"
+assert "install-mise bootstraps the checkout" \
+    grep -qF 'ARGS=bootstrap --from https://github.com/smores56/dotfiles.git' "$tmp/install-mise.log"
+
 # --- work environment --------------------------------------------------------
 
 h=$(new_home work)

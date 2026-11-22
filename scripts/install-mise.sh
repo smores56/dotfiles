@@ -23,6 +23,12 @@ curl -fsSL --proto '=https' --tlsv1.2 https://mise.run \
 [ -x "$mise" ] || die "the official installer did not write $mise"
 printf 'install-mise: %s for %s\n' "$("$mise" --version)" "$envs"
 
+# The `bootstrap` task's dependencies call `mise` by name (the cbonsai build),
+# and a fresh account has not sourced the shell env that puts ~/.local/bin on
+# PATH yet, so the task runner's shell would not find it.
+PATH=$HOME/.local/bin:$PATH
+export PATH
+
 "$mise" bootstrap \
     --from "$REPO_URL" --from-dir "$CHECKOUT" --config-dir global \
     -E "$envs" --save-env --skip user --update --yes "$@"
