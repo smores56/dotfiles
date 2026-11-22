@@ -341,6 +341,21 @@ elif ! has python3; then
     skip "sdlc unit tests (python3 not installed)"
 fi
 
+# --- Stremio quadlet
+
+# A hard Requires on the build would keep the server down whenever a rebuild
+# fails, even with a usable image still tagged locally.
+assert "the Stremio container wants, not requires, its image build" \
+    grep -qE '^Wants=.* stremio-server-build\.service' "$root/desktop/.config/containers/systemd/stremio-server.container"
+assert_not "the Stremio container has no hard build dependency" \
+    grep -q '^Requires=' "$root/desktop/.config/containers/systemd/stremio-server.container"
+assert "the Stremio image copies server.js from a pinned vendor digest" \
+    grep -q 'docker.io/stremio/server@sha256:' "$root/desktop/.config/containers/systemd/Containerfile"
+assert "the Stremio image asserts the ffmpeg argument rewrites" \
+    sh -c 'grep -qF "\"-fps_mode\"," "$1" && grep -qF "\"-bsf:v\"," "$1"' sh "$root/desktop/.config/containers/systemd/Containerfile"
+assert "the Stremio unit keeps its state in a volume" \
+    grep -qx 'Volume=stremio-state.volume:/root/.stremio-server' "$root/desktop/.config/containers/systemd/stremio-server.container"
+
 # --- optional shellcheck
 
 if $use_shellcheck; then

@@ -3,6 +3,9 @@
 "~/.config/aerospace/aerospace.toml" = { source = "desktop/.config/aerospace/aerospace.toml", variants = [{ os = "macos" }] }
 "~/.local/bin/wallpapers" = { source = "desktop/.local/bin/wallpapers", variants = [{ os = "linux" }] }
 "~/.config/systemd/user" = { source = "desktop/.config/systemd/user", mode = "symlink-each", variants = [{ os = "linux" }] }
+# Quadlet units: the Stremio server builds its image from the Containerfile in
+# the same directory, so the server and its GPU passthrough survive a reinstall.
+"~/.config/containers/systemd" = { source = "desktop/.config/containers/systemd", mode = "symlink-each", variants = [{ os = "linux" }] }
 "~/.config/kitty" = { source = "desktop/.config/kitty", mode = "symlink-each" }
 "~/.config/fish/conf.d/80-desktop.fish" = { source = "desktop/.config/fish/conf.d/80-desktop.fish", variants = [{ os = "linux" }] }
 "~/.config/mimeapps.list" = { source = "desktop/.config/mimeapps.list", mode = "copy", variants = [{ os = "linux" }] }

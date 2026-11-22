@@ -1,0 +1,36 @@
+# Stremio's official image is node:14 on Debian 10 with iHD 18.4 and libva 2.4.
+# That driver predates Xe, so the server's vaapi profile test fails and every
+# x265 title is transcoded on the CPU. This rebuilds the same server.js on
+# Fedora 45 against RPM Fusion's nonfree iHD: Fedora's own iHD is built without
+# the H.264/HEVC profiles, which is exactly what this transcode needs.
+#
+# The vendor image is pinned by digest because :latest is republished with every
+# server release and COPY --from would silently follow it. Bump it with
+#   podman pull docker.io/stremio/server:latest
+#   podman image inspect --format '{{.Digest}}' docker.io/stremio/server:latest
+#
+# server.js is written against jellyfin-ffmpeg 4.4.1, and ffmpeg 9 dropped two
+# arguments it passes: -vsync (now -fps_mode) and -vbsf (now -bsf:v). Both are
+# rewritten after the COPY, and the build fails if either rewrite found nothing
+# to do. The rest of the pinned ffmpeg is not needed: RPM Fusion's build has
+# HEVC decode, x264 and vaapi.
+#
+# procps-ng is not optional: the server shells out to ps and crashes without it.
+# libva-utils is the diagnostic: `vainfo` is the one command that shows whether
+# the driver exposes HEVC decode and H.264 encode.
+FROM fedora:45
+
+RUN dnf5 -y install \
+      'https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-45.noarch.rpm' \
+      'https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-45.noarch.rpm' \
+ && dnf5 -y install ffmpeg nodejs intel-media-driver libva-utils procps-ng \
+ && dnf5 clean all
+
+COPY --from=docker.io/stremio/server@sha256:15a40b21ad3bb37a6f04493c479e3e9f8eaa7fc5653bc98ed3488f68547dc427 /stremio/server.js /stremio/server.js
+RUN sed -i 's/"-vsync",/"-fps_mode",/g; s/"-vbsf",/"-bsf:v",/g' /stremio/server.js \
+ && grep -qF '"-fps_mode",' /stremio/server.js \
+ && grep -qF '"-bsf:v",' /stremio/server.js
+
+WORKDIR /stremio
+ENV CASTING_DISABLED=1
+ENTRYPOINT ["node", "server.js"]

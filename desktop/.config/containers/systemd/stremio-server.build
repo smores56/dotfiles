@@ -1,0 +1,5 @@
+[Build]
+ImageTag=localhost/stremio-server:vaapi
+# The Containerfile is the neighbor of this unit; the build context has no
+# files of its own because server.js comes from the vendor image.
+SetWorkingDirectory=unit

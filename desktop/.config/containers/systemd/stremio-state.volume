@@ -1,0 +1,4 @@
+[Unit]
+Description=Stremio server state (settings, cache, downloads)
+
+[Volume]

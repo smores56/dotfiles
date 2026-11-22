@@ -1,0 +1,27 @@
+[Unit]
+Description=Stremio streaming server (companion for web.strem.io)
+Documentation=https://www.stremio.com/download-service
+Wants=network-online.target stremio-server-build.service
+After=network-online.target stremio-server-build.service
+
+[Container]
+ContainerName=stremio-server
+# Not Image=stremio-server.build: that emits a hard Requires, so one failed
+# rebuild would keep the server down even with a good image still on disk. The
+# build is Wants-ed above, and this starts from whatever the tag holds.
+Image=localhost/stremio-server:vaapi
+Pull=never
+# The vendor image declares /root/.stremio-server a volume; without this the
+# settings and cache live in the container layer and vanish on every restart.
+Volume=stremio-state.volume:/root/.stremio-server
+# renderD128 is the node server.js hardcodes its encoder on. Rootless Podman
+# with SELinux Enforcing can reach it; only card0 is root:video.
+AddDevice=/dev/dri
+PublishPort=127.0.0.1:11470:11470
+PublishPort=127.0.0.1:12470:12470
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target
