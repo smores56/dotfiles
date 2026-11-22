@@ -27,24 +27,47 @@ printf '%s\n' "$*" >>"$RCLONE_LOG"
 case $1 in
     lsf)
         [ "${FAKE_LSF_FAIL:-}" = 1 ] && exit 1
-        printf 'a.jpg\nb.png\nwide.jpg\n' ;;
+        if [ "${FAKE_LSF_NESTED:-}" = 1 ]; then
+            # The canonical tree has no top-level files: every image sits in a
+            # subdirectory, so --files-only sees an empty listing.
+            case " $* " in
+                *" --files-only "*) ;;
+                *) printf 'Standard/\nUltrawide/\n' ;;
+            esac
+        else
+            printf 'a.jpg\nb.png\nwide.jpg\n'
+        fi ;;
     sync)
         mkdir -p "$3"
-        printf x >"$3/a.jpg"
-        printf y >"$3/b.png"
-        printf z >"$3/wide.jpg" ;;
+        if [ "${FAKE_LSF_NESTED:-}" = 1 ]; then
+            mkdir -p "$3/Standard" "$3/Ultrawide"
+            printf x >"$3/Standard/a.jpg"
+            printf y >"$3/Ultrawide/b.png"
+        else
+            printf x >"$3/a.jpg"
+            printf y >"$3/b.png"
+            printf z >"$3/wide.jpg"
+        fi ;;
 esac
 EOF
 
 cat >"$tmp/bin/identify" <<'EOF'
 #!/bin/sh
-for last; do :; done
-case ${last##*/} in
-    a.jpg|'a.jpg[0]') printf '1920 1080' ;;
-    b.png|'b.png[0]') printf '3440 1440' ;;
-    wide.jpg|'wide.jpg[0]') printf '3840 1600' ;;
-    *) exit 1 ;;
-esac
+while [ "$#" -gt 0 ]; do
+    case $1 in
+        -ping|-quiet) shift ;;
+        -format) shift 2 ;;
+        *) break ;;
+    esac
+done
+for file do
+    case ${file##*/} in
+        a.jpg) printf '1920 1080 %s\n' "$file" ;;
+        b.png) printf '3440 1440 %s\n' "$file" ;;
+        wide.jpg) printf '3840 1600 %s\n' "$file" ;;
+        *) exit 1 ;;
+    esac
+done
 EOF
 
 cat >"$tmp/bin/niri" <<'EOF'
@@ -68,6 +91,7 @@ chmod +x "$tmp/bin"/*
 run() {
     env -i HOME="$home" PATH="${RUN_PATH:-$tmp/bin:/usr/bin:/bin}" XDG_CACHE_HOME="$home/.cache" \
         RCLONE_LOG="$tmp/log" FAKE_LSF_FAIL="${FAKE_LSF_FAIL:-}" \
+        FAKE_LSF_NESTED="${FAKE_LSF_NESTED:-}" \
         FAKE_NIRI_FAIL="${FAKE_NIRI_FAIL:-}" \
         FAKE_TS_FAIL="${FAKE_TS_FAIL:-}" FAKE_TS_NONAME="${FAKE_TS_NONAME:-}" \
         NOCTALIA_STATE="$tmp/state" \
@@ -82,6 +106,13 @@ assert "the cache holds the synced files" test -f "$home/.cache/wallpapers/Wallp
 contains "the sync reads the served URL for the resolved tailnet" \
     ":http,url='https://smortress.tail1234.ts.net/wallpapers/':" "$(cat "$tmp/log")"
 assert_not "the sync carries no credential" grep -E 'key_file|known_hosts|ssh=|user=' "$tmp/log"
+
+# A probe that only looks at top-level files reports the canonical tree as
+# empty, because every image is nested under an aspect directory.
+FAKE_LSF_NESTED=1 WALLPAPERS_CACHE="$home/.cache/wallpapers-nested" \
+    assert "a tree with only nested files syncs" run sync
+assert "a nested image lands in the cache" \
+    test -f "$home/.cache/wallpapers-nested/Wallpapers/Standard/a.jpg"
 
 WALLPAPERS_CACHE="$home/.cache/wallpapers2" \
     WALLPAPERS_SOURCE=https://cache.example.test/wallpapers/ run sync >/dev/null 2>&1

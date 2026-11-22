@@ -95,7 +95,9 @@ sync_cache() {
     remote=$(remote_url "$url") || return 1
     mkdir -p "$dest"
     # Probe before syncing, so an unreachable host never empties the cache.
-    if ! listing=$("$rclone_bin" lsf "$remote" --files-only --max-depth 1 \
+    # Top-level entries may be directories (the canonical tree groups images by
+    # aspect), so a --files-only probe reports an exposed tree as empty.
+    if ! listing=$("$rclone_bin" lsf "$remote" --max-depth 1 \
             --contimeout 20s --timeout 240s --retries 2 2>/dev/null); then
         log "cannot list $url; keeping the cached set"
         return 1
@@ -119,20 +121,19 @@ classify_cache() {
     mkdir -p "$out"
     : >"$out/Standard.list"
     : >"$out/Ultrawide.list"
-    find "$dir" -type f | while IFS= read -r file; do
-        case "$file" in
-            *.jpg | *.jpeg | *.png | *.webp | *.jxl | \
-            *.JPG | *.JPEG | *.PNG | *.WEBP | *.JXL) ;;
-            *) continue ;;
-        esac
-        # [0] pins the first frame: animated webp emits one dimension pair per frame.
-        dims=$(identify -ping -format '%w %h' "${file}[0]" 2>/dev/null) || continue
-        width=${dims% *}
-        height=${dims#* }
-        if bucket=$(bucket_of "${width:-}" "${height:-}"); then
-            printf '%s\n' "$file" >>"$out/$bucket.list"
-        fi
-    done
+    # One identify process per batch: process startup dominates when every file
+    # gets its own. %i labels each frame, and the first frame of an animated
+    # image is the only one that should decide the aspect.
+    find "$dir" -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' \
+            -o -iname '*.webp' -o -iname '*.jxl' \) -print0 |
+        xargs -0 -r -n 64 identify -ping -format '%w %h %i\n' 2>/dev/null |
+        awk '{ file = $0; sub(/^[^ ]+ [^ ]+ /, "", file) }
+             !seen[file]++ { print $1 "\t" $2 "\t" file }' |
+        while IFS="$(printf '\t')" read -r width height file; do
+            if bucket=$(bucket_of "${width:-}" "${height:-}"); then
+                printf '%s\n' "$file" >>"$out/$bucket.list"
+            fi
+        done
     LC_ALL=C sort -o "$out/Standard.list" "$out/Standard.list"
     LC_ALL=C sort -o "$out/Ultrawide.list" "$out/Ultrawide.list"
 }
