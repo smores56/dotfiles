@@ -38,17 +38,145 @@ maki.api.set_slot("tool.*.input", function(prev, input, ctx)
   return prev(input, ctx)
 end)
 
--- Zellij names single-pane tabs after the pane's OSC title, so mirror the
--- session's auto-generated title (the first prompt) instead of the command
--- name. maki reports working/blocked state separately via OSC 7501, which
--- zellij draws as tab markers, so the title stays topic-only.
-local function sync_window_title()
-  local s = maki.session.read()
-  if not s then return end
-  local t = s.title
-  if not t or t == "" then t = "maki" end
-  maki.ui.set_window_title("maki: " .. maki.ui.truncate_text(t, 36).head)
+-- Zellij names single-pane tabs after the pane's OSC title, so keep it short:
+-- the sushi marks a maki tab, and the slug is a weak model's read of what the
+-- session is about, made at the first prompt and again whenever the agent stops.
+local SUSHI = "🍣"
+-- Custom providers carry no curated tiers, so tier("weak") resolves to nil.
+local WEAK_MODEL = "neuralwatt/qwen-3.8-27b"
+local MAX_SLUG = 32
+
+local first_prompt, latest_prompt, latest_reply = {}, {}, {}
+local slugs, sluggers, busy, dirty = {}, {}, {}, {}
+
+local function slugify(text)
+  -- The model is told to answer with just a slug, but drop a "Slug:" label or
+  -- backticks and ignore anything past the first line in case it decorates it.
+  local line = ((text or ""):lower():gsub("`", ""):match("[^\r\n]+") or "")
+  line = line:gsub("^%s*slug:%s*", ""):gsub("^%s+", "")
+  local words = {}
+  for w in line:gmatch("%w+") do
+    words[#words + 1] = w
+    if #words == 4 then break end
+  end
+  local slug = table.concat(words, "-")
+  if #slug > MAX_SLUG then
+    slug = slug:sub(1, MAX_SLUG):gsub("%-%w*$", "")
+  end
+  return slug
 end
 
-maki.api.create_autocmd({ "SessionFocusChanged", "SessionTitleChanged" },
-  { callback = sync_window_title })
+local function apply_title()
+  local s = maki.session.read()
+  if not s then return end
+  local slug = slugs[s.id]
+  if not slug then
+    -- A session this process did not see start (resumed, or after /reload)
+    -- still carries maki's auto title, which is its first prompt.
+    slug = s.title ~= "New session" and slugify(s.title) or "maki"
+  end
+  if slug == "" then slug = "maki" end
+  maki.ui.set_window_title(SUSHI .. ": " .. slug)
+end
+
+local function generate(sid)
+  if busy[sid] then
+    dirty[sid] = true
+    return
+  end
+  local parts = {}
+  if first_prompt[sid] then
+    parts[#parts + 1] = "Session started with: " .. first_prompt[sid]
+  end
+  if latest_prompt[sid] and latest_prompt[sid] ~= first_prompt[sid] then
+    parts[#parts + 1] = "Latest request: " .. latest_prompt[sid]
+  end
+  if latest_reply[sid] then
+    parts[#parts + 1] = "Latest answer: " .. latest_reply[sid]
+  end
+  if #parts == 0 then return end
+  busy[sid] = true
+  maki.async.spawn(function()
+    local sess = sluggers[sid]
+    if not sess then
+      local weak = maki.model.tier("weak")
+      sess = maki.agent.session({
+        session = sid,
+        scope = "session",
+        name = "sushi-title",
+        thinking = "off",
+        model_spec = weak and weak.spec or WEAK_MODEL,
+        system = "You name coding sessions. Reply with only a URL slug: 2 to 4 "
+          .. "lowercase words joined by hyphens, at most " .. MAX_SLUG
+          .. " characters. No quotes, punctuation, or explanation.",
+      })
+      if not sess then
+        busy[sid] = false
+        return
+      end
+      sluggers[sid] = sess
+    end
+    local r, err = sess:prompt(table.concat(parts, "\n\n") .. "\n\nSlug:")
+    busy[sid] = false
+    if err then
+      sluggers[sid] = nil
+    elseif r then
+      local slug = slugify(r.text)
+      if slug ~= "" then
+        slugs[sid] = slug
+        apply_title()
+      end
+    end
+    if dirty[sid] then
+      dirty[sid] = false
+      generate(sid)
+    end
+  end)
+end
+
+local function reply_text(msg)
+  local out = {}
+  for _, block in ipairs(msg and msg.content or {}) do
+    if block.type == "text" and block.text then
+      out[#out + 1] = block.text
+    end
+  end
+  return table.concat(out, "\n")
+end
+
+maki.api.create_autocmd("SessionFocusChanged", { callback = apply_title })
+
+maki.api.create_autocmd("TurnStart", { callback = function(ev)
+  local sid, text = ev.data.session_id, ev.data.text
+  if not sid or not text then return end
+  latest_prompt[sid] = text
+  if first_prompt[sid] then return end
+  first_prompt[sid] = text
+  slugs[sid] = slugify(text)
+  apply_title()
+  generate(sid)
+end })
+
+maki.api.create_autocmd("TurnComplete", { callback = function(ev)
+  if ev.data.id then return end -- a subagent's reply, not the chat's
+  local sid = ev.data.session_id
+  if not sid then return end
+  local text = reply_text(ev.data.message)
+  if text ~= "" then latest_reply[sid] = text:sub(1, 800) end
+end })
+
+maki.api.create_autocmd("TurnEnd", { callback = function(ev)
+  local sid = ev.data.session_id
+  if sid and ev.data.reason ~= "dropped" then generate(sid) end
+end })
+
+maki.api.create_autocmd({ "SessionEnd", "SessionReset" }, { callback = function(ev)
+  local sid = ev.data.session_id
+  if sid then
+    local sess = sluggers[sid]
+    if sess then sess:close() end
+    first_prompt[sid], latest_prompt[sid], latest_reply[sid] = nil, nil, nil
+    slugs[sid], sluggers[sid], busy[sid], dirty[sid] = nil, nil, nil, nil
+  end
+  apply_title()
+end })

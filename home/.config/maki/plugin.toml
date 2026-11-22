@@ -4,6 +4,8 @@
 fs_read = true
 fs_write = true
 net = true
+# The sushi-title slugger opens a background subagent per chat session.
+agent = true
 # The guard makes no network calls; the empty list keeps the layer's price
 # without granting egress.
 net_hosts = []
