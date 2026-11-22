@@ -20,14 +20,16 @@ for plugin in ~/.local/share/fish-plugins/{pure,async-prompt,done}
 end
 
 # pure's fish_title prepends the full path and repeats the command. Zellij shows
-# this as the tab name, so keep only the command, capped at 30 columns; an empty
-# prompt title would leave the last command in place, hence the blank.
+# this as the tab name: the command alone at 30 columns while one runs, and the
+# abbreviated path (pure's window-title shortening) whenever the pane is idle.
+set -g pure_shorten_window_title_current_directory_length 1
+
 function fish_title
     if set -q argv[1]
         echo -- (string shorten -m 30 -- $argv[1])
         return
     end
-    echo -n ' '
+    fish_prompt_pwd_dir_length=$pure_shorten_window_title_current_directory_length prompt_pwd
 end
 
 command -q zoxide; and zoxide init fish --cmd c | source
