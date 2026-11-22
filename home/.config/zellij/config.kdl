@@ -4,6 +4,10 @@ show_startup_tips false
 
 theme "ansi"
 
+// A tab left at its default name with one pane shows that pane's OSC title
+// (fish sets it to the foreground command and cwd) instead of "Tab #N".
+pane_frame_style "titles"
+
 ui {
     pane_frames {
         rounded_corners true
