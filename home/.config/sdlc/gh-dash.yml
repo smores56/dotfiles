@@ -21,3 +21,36 @@ issuesSections:
     filters: repo:smores56/sdlc is:issue is:open -label:type:feature label:status:todo,status:in-progress
   - title: Closed
     filters: repo:smores56/sdlc is:issue is:closed
+
+# The fixed keymap. gh-dash runs each command with $SHELL, which the wrapper
+# pins to /bin/sh. Every snippet preserves the action's exit code so gh-dash's
+# error banner is honest, and waits so the output stays readable.
+keybindings:
+  issues:
+    - key: S
+      name: sdlc status
+      command: gh sdlc act status {{.IssueNumber}}; rc=$?; printf '\nPress Enter to return (R refreshes all)'; read -r _ || true; exit $rc
+    - key: N
+      name: next ready task
+      command: gh sdlc act next {{.IssueNumber}}; rc=$?; printf '\nPress Enter to return (R refreshes all)'; read -r _ || true; exit $rc
+    - key: v
+      name: sdlc review
+      command: gh sdlc act review {{.IssueNumber}}; rc=$?; printf '\nPress Enter to return (R refreshes all)'; read -r _ || true; exit $rc
+    - key: V
+      name: approve design
+      command: gh sdlc act approve {{.IssueNumber}}; rc=$?; printf '\nPress Enter to return (R refreshes all)'; read -r _ || true; exit $rc
+    - key: x
+      name: cancel feature
+      command: gh sdlc act cancel {{.IssueNumber}}; rc=$?; printf '\nPress Enter to return (R refreshes all)'; read -r _ || true; exit $rc
+    - key: D
+      name: complete feature
+      command: gh sdlc act complete {{.IssueNumber}}; rc=$?; printf '\nPress Enter to return (R refreshes all)'; read -r _ || true; exit $rc
+    - key: t
+      name: start task
+      command: gh sdlc act start {{.IssueNumber}}; rc=$?; printf '\nPress Enter to return (R refreshes all)'; read -r _ || true; exit $rc
+    - key: d
+      name: finish task
+      command: gh sdlc act finish {{.IssueNumber}}; rc=$?; printf '\nPress Enter to return (R refreshes all)'; read -r _ || true; exit $rc
+    - key: ctrl+x
+      name: abandon task
+      command: gh sdlc act abandon {{.IssueNumber}}; rc=$?; printf '\nPress Enter to return (R refreshes all)'; read -r _ || true; exit $rc

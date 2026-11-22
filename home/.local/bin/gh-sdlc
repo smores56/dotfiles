@@ -7,16 +7,62 @@
 # regardless of the login shell.
 set -eu
 
-config=${SDLC_GH_DASH_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/sdlc/gh-dash.yml}
-[ -f "$config" ] || {
-    printf 'gh sdlc: config not found: %s\n' "$config" >&2
-    printf 'gh sdlc: re-apply dotfiles, or set SDLC_GH_DASH_CONFIG\n' >&2
-    exit 2
+die() { printf 'gh sdlc: %s\n' "$*" >&2; exit 1; }
+
+confirm() {
+    printf '%s? [y/N] ' "$*" >&2
+    read -r answer || return 1
+    case $answer in
+        y|Y) return 0 ;;
+        *) return 1 ;;
+    esac
 }
 
-command -v gh >/dev/null 2>&1 || {
-    printf 'gh sdlc: gh is not on PATH\n' >&2
-    exit 127
+# The keymap's verbs. The CLI guards approvals but not feature/task type or
+# terminal state, so this is the one place that must refuse the wrong target.
+act() {
+    verb=${1:-}
+    number=${2:-}
+    case $verb in
+        status|next|review|approve|complete|cancel|start|finish|abandon) ;;
+        *) die "unknown action: ${verb:-<empty>}" ;;
+    esac
+    case $number in
+        ''|*[!0-9]*) die "expected an issue number, got: ${number:-<empty>}" ;;
+    esac
+
+    meta=$(gh issue view "$number" --repo smores56/sdlc --json labels,state \
+        --jq '[.state, (.labels[].name)] | join(" ")') || die "cannot read #$number"
+    state=${meta%% *}
+    labels=" ${meta#* } "
+    is_feature=false
+    case $labels in *" type:feature "*) is_feature=true ;; esac
+    has_status=false
+    case $labels in *" status:"*) has_status=true ;; esac
+
+    [ "$state" = OPEN ] || die "#$number is $state; only open issues can be acted on"
+    case $verb in
+        status|next|review|approve|complete|cancel)
+            [ "$is_feature" = true ] || die "#$number is not a feature (no type:feature label)" ;;
+        start|finish|abandon)
+            [ "$is_feature" = false ] && [ "$has_status" = true ] \
+                || die "#$number is not a task (needs a status:* label and no type:feature)" ;;
+    esac
+    case $verb in
+        complete|cancel|finish|abandon) confirm "$verb #$number" || die "not $verb" ;;
+    esac
+
+    case $verb in
+        status) exec sdlc status "$number" ;;
+        next) exec sdlc next "$number" ;;
+        review) exec sdlc review "$number" ;;
+        approve) exec sdlc approve "$number" ;;
+        complete) exec sdlc complete "$number" ;;
+        cancel) exec sdlc cancel "$number" ;;
+        start) exec sdlc task start "$number" ;;
+        finish) exec sdlc task done "$number" ;;
+        abandon) exec sdlc task cancel "$number" ;;
+    esac
 }
 
 SDLC_REPO=smores56/sdlc
@@ -25,9 +71,27 @@ GH_NO_UPDATE_NOTIFIER=1
 SHELL=/bin/sh
 export SDLC_REPO SDLC_TRANSPORT GH_NO_UPDATE_NOTIFIER SHELL
 
+command -v gh >/dev/null 2>&1 || {
+    printf 'gh sdlc: gh is not on PATH\n' >&2
+    exit 127
+}
+
+if [ "${1:-}" = act ]; then
+    shift
+    act "$@"
+fi
+
+config=${SDLC_GH_DASH_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/sdlc/gh-dash.yml}
+[ -f "$config" ] || {
+    printf 'gh sdlc: config not found: %s\n' "$config" >&2
+    printf 'gh sdlc: re-apply dotfiles, or set SDLC_GH_DASH_CONFIG\n' >&2
+    exit 2
+}
+
 if ! gh dash --version >/dev/null 2>&1; then
     printf 'gh sdlc: gh-dash is not installed\n' >&2
-    printf 'gh sdlc: run gh extension install dlvhdr/gh-dash --pin v4.26.3\n' >&2
+    printf 'gh sdlc: run gh extension install dlvhdr/gh-dash --pin v4.11.0\n' >&2
+    printf 'gh sdlc: v4.12+ needs branch protection access, which a private Free repo cannot grant\n' >&2
     exit 127
 fi
 

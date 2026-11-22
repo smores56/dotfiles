@@ -29,6 +29,51 @@ sdlc comment FEATURE                # comment in $EDITOR
 `sdlc pick` shells out to `fzf`: one list of features with `sdlc show` as the
 preview, then the action list. It needs a terminal, so agents never call it.
 
+## Interactive dashboard (`gh sdlc`)
+
+`gh sdlc` opens [gh-dash] on the registry. It is a local gh extension
+(`home/.local/bin/gh-sdlc`, also linked into gh's extension directory) plus a
+dedicated config (`home/.config/sdlc/gh-dash.yml`). It does not change this
+CLI; agents keep using the non-interactive commands.
+
+Install gh-dash once, then apply the dotfiles:
+
+```sh
+gh extension install dlvhdr/gh-dash --pin v4.11.0
+mise dot apply
+gh sdlc
+```
+
+v4.12+ requests `repository.branchProtectionRules`, which GitHub withholds
+from private repositories on the Free plan (upstream
+[#562](https://github.com/dlvhdr/gh-dash/issues/562)), so the pin stays on the
+last release before that query.
+
+Sections are Features, In progress, Needs approval, Tasks, and Closed. `/`
+filters the current section; `r` refreshes it and `R` refreshes every section.
+
+Keys on a selected issue:
+
+| Key | Action |
+| --- | --- |
+| `S` | `sdlc status` (design hash, approval, task counts) |
+| `N` | `sdlc next` (next ready task) |
+| `v` | `sdlc review` (revdiff → comment) |
+| `V` | `sdlc approve` (prompts) |
+| `D` | `sdlc complete` (confirms; refuses open tasks) |
+| `x` | `sdlc cancel` (confirms) |
+| `t` | `sdlc task start` |
+| `d` | `sdlc task done` (confirms) |
+| `ctrl+x` | `sdlc task cancel` (confirms) |
+
+The wrapper pins `SDLC_REPO=smores56/sdlc` and `SDLC_TRANSPORT=gh`; a second
+registry needs its own config and wrapper. gh-dash merges its global config, so
+keybindings added there also appear in this view. The custom keys replace
+gh-dash's `x` close and `t` smart-filter; `ctrl+s x` section removal is
+unavailable. Press `R` after an action if a section still shows a stale row.
+
+[gh-dash]: https://github.com/dlvhdr/gh-dash
+
 ## Transports
 
 `SDLC_TRANSPORT` picks the backend:
