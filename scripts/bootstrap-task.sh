@@ -115,6 +115,46 @@ load_ssh_agent_linux() {
         || log "could not start ssh-agent.service; the sudo tap falls back to the password"
 }
 
+# Google Sans Code carries no emoji, so the terminal falls back to Noto Color
+# Emoji for them. One 10 MB file is too big to keep in the repo, so fetch it
+# here; the digest is the pin, and a mismatched download is discarded.
+install_noto_color_emoji() {
+    digest=15671215ab769fdc7162a045d56fd7d7e477c51b04e6b3c761d914d8fdd6cc44
+    url=https://raw.githubusercontent.com/googlefonts/noto-emoji/99701e07d3d1fe1bdbcdb14964547f0fd592966f/2D/fonts/NotoColorEmoji.ttf
+    case $(uname -s) in
+        Darwin) dir=$HOME/Library/Fonts ;;
+        *) dir=$HOME/.local/share/fonts ;;
+    esac
+    dest=$dir/NotoColorEmoji.ttf
+    file_digest() {
+        if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "$1" | cut -d' ' -f1
+        else
+            shasum -a 256 "$1" | cut -d' ' -f1
+        fi
+    }
+    if [ -f "$dest" ] && [ "$(file_digest "$dest")" = "$digest" ]; then
+        return 0
+    fi
+    log "installing Noto Color Emoji"
+    mkdir -p "$dir"
+    rm -f "$dest.new"
+    if ! curl -fsSL --retry 3 -o "$dest.new" "$url"; then
+        log "could not download Noto Color Emoji"
+        rm -f "$dest.new"
+        return 1
+    fi
+    if [ "$(file_digest "$dest.new")" != "$digest" ]; then
+        log "Noto Color Emoji checksum mismatch; leaving the old file alone"
+        rm -f "$dest.new"
+        return 1
+    fi
+    mv -f "$dest.new" "$dest"
+    if [ "$(uname -s)" = Linux ] && command -v fc-cache >/dev/null 2>&1; then
+        fc-cache -f >/dev/null 2>&1 || true
+    fi
+}
+
 link_dotfiles_checkout
 tighten_ssh_dir
 sh "$(dirname "$0")/secrets.sh" \
@@ -127,6 +167,8 @@ load_tailscaled_agent
 install_ssh_agent_serve
 load_ssh_agent
 load_ssh_agent_linux
+install_noto_color_emoji \
+    || log "terminal emoji will not render; run scripts/bootstrap-task.sh by hand to see why"
 # After the agent, never before: the loader is a no-op until the socket is bound.
 # The loader is its own file so the test drives it with stubs.
 sh "$(dirname "$0")/add-sudo-credential.sh"

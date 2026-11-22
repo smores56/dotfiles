@@ -243,6 +243,12 @@ h=$(new_home desktop)
 assert "desktop apply exits 0" run_mise "$h" desktop dot apply
 assert "desktop keeps the base links" links_into_repo "$h/.local/bin/maki"
 assert_not "desktop does not pull in identity" test -e "$h/.config/git/config"
+# The emoji fallback is a download, not a dotfile: the bootstrap task owns it.
+assert "the bootstrap installs Noto Color Emoji" \
+    grep -qF 'install_noto_color_emoji' "$root/scripts/bootstrap-task.sh"
+assert "the bootstrap pins the Noto Color Emoji digest" \
+    grep -qF '15671215ab769fdc7162a045d56fd7d7e477c51b04e6b3c761d914d8fdd6cc44' \
+    "$root/scripts/bootstrap-task.sh"
 if [ "$os" = Darwin ]; then
     assert "desktop links ~/.config/aerospace/aerospace.toml on macOS" links_into_repo "$h/.config/aerospace/aerospace.toml"
     assert "desktop installs Google Sans Code on macOS" test -f "$h/Library/Fonts/GoogleSansCode-MONO-VF.ttf"
