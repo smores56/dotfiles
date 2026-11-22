@@ -115,6 +115,17 @@ load_ssh_agent_linux() {
         || log "could not start ssh-agent.service; the sudo tap falls back to the password"
 }
 
+# A fresh host has the wallpaper timer linked but never enabled, so the cache
+# stays empty until someone runs it by hand. The timer itself waits two minutes
+# after the user manager starts before the first sync.
+load_wallpapers_linux() {
+    [ "$(uname -s)" = Linux ] || return 0
+    command -v systemctl >/dev/null 2>&1 || return 0
+    systemctl --user enable --quiet wallpapers.timer 2>/dev/null || true
+    systemctl --user start wallpapers.timer 2>/dev/null \
+        || log "could not start wallpapers.timer; run wallpapers sync by hand"
+}
+
 # Google Sans Code carries no emoji, so the terminal falls back to Noto Color
 # Emoji for them. One 10 MB file is too big to keep in the repo, so fetch it
 # here; the digest is the pin, and a mismatched download is discarded.
@@ -167,6 +178,7 @@ load_tailscaled_agent
 install_ssh_agent_serve
 load_ssh_agent
 load_ssh_agent_linux
+load_wallpapers_linux
 install_noto_color_emoji \
     || log "terminal emoji will not render; run scripts/bootstrap-task.sh by hand to see why"
 # After the agent, never before: the loader is a no-op until the socket is bound.

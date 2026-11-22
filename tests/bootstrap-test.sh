@@ -279,6 +279,11 @@ else
         grep -q 'SSH_AUTH_SOCK' "$h/.config/shell/env.d/10-ssh-agent.sh"
     assert "the bootstrap starts the Linux agent" \
         grep -q 'load_ssh_agent_linux' "$root/scripts/bootstrap-task.sh"
+    assert "the bootstrap enables the wallpaper timer" \
+        grep -q 'load_wallpapers_linux' "$root/scripts/bootstrap-task.sh"
+    assert "the bootstrap enables and starts the wallpaper timer" \
+        grep -q 'systemctl --user start wallpapers.timer' \
+            "$root/scripts/bootstrap-task.sh"
     assert "desktop links Google Sans Code on Linux" \
         links_into_repo "$h/.local/share/fonts/GoogleSansCode-MONO-VF.ttf"
     assert "desktop links Google Sans Code Italic on Linux" \
