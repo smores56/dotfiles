@@ -222,13 +222,13 @@ $has_tomllib && assert "the global lockfiles cover every pinned tool on its plat
 # Nothing here is a private key, stub or otherwise: the smortress key arrives
 # from sops at mode 600 per machine, so a PEM or a PAT in the tree is a leak.
 secret_pattern='BEGIN [A-Z ]*PRIVATE KEY|AGE-SECRET-KEY-[A-Z0-9]|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}'
+# The whole checkout, tracked or not: a key dropped at the root by an ad-hoc
+# command is exactly what a managed-directories list misses.
 offenders=''
-for hit in $(grep -rIlE "$secret_pattern" "$root/home" "$root/identity" "$root/desktop" \
-        "$root/work" "$root/maki" "$root/global" "$root/scripts" "$root/tests" \
-        "$root/.github" 2>/dev/null); do
+for hit in $(grep -rIlE --exclude-dir=.git "$secret_pattern" "$root" 2>/dev/null); do
     offenders="$offenders $hit"
 done
-expect "no secret material in managed files" "" "$offenders"
+expect "no secret material in the checkout" "" "$offenders"
 
 # Every tracked ciphertext carries exactly the canonical readers, and the
 # canonical file names all five; a stale updatekeys or a missing key fails.
