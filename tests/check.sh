@@ -92,6 +92,9 @@ else
     skip "syntax fish (fish not installed)"
 fi
 
+assert "python scripts/sops-policy.py parses" \
+    python3 -c 'import sys; compile(open(sys.argv[1]).read(), sys.argv[1], "exec")' "$root/scripts/sops-policy.py"
+
 if python3 -c 'import tomllib' >/dev/null 2>&1; then
     has_tomllib=true
     for cfg in "$root"/mise.toml "$root"/mise.*.toml "$root"/mise.*.lock "$root"/global/*.toml "$root"/global/*.lock \

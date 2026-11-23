@@ -42,6 +42,7 @@ while IFS= read -r path || [ -n "$path" ]; do
             add sops-age-key-test.sh
             add sops-age-key-contract-test.sh ;;
         sops.yaml|scripts/check-sops-recipients.sh) add sops-age-key-contract-test.sh ;;
+        scripts/sops-policy.py|home/.config/sops/sops.yaml) add sops-policy-test.sh ;;
 
         desktop/.local/bin/wallpapers) add wallpapers-test.sh ;;
 

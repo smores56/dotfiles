@@ -91,4 +91,9 @@ run = "MISE_ENV=build mise -C . run cbonsai-build"
 
 [tasks.sops-audit]
 description = "check the SOPS readers in the known checkouts"
-run = '''scripts/check-sops-recipients.sh "$PWD" "${HOMELAB_REPO:-$HOME/ghq/github.com/smores56/homelab-platform}"'''
+run = '''python3 scripts/sops-policy.py check --repo "$PWD"
+for repo in "${HOMELAB_REPO:-/srv/git/github.com/smores56/homelab-platform/main}" \
+            "${HOMELAB_APPS_REPO:-/srv/git/github.com/smores56/homelab-apps/main}"; do
+    [ -d "$repo" ] || continue
+    python3 scripts/sops-policy.py check --repo "$repo"
+done'''
