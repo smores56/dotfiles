@@ -53,7 +53,11 @@ The fork keeps v4.26.3 but uses an issue-only repository type, so the issue
 query no longer asks for `repository.branchProtectionRules` — a field private
 repos on the Free plan cannot read (upstream
 [#562](https://github.com/dlvhdr/gh-dash/issues/562)). The wrapper requires the
-`v4.26.3-sdlc` version marker. `?` lists all nine named verbs.
+`v4.26.3-sdlc` version marker. `?` lists all nine named verbs. The table hides
+the redundant repo, creator, state, reactions, and created-at columns; the
+section title carries the state. The wrapper rejects a stock gh-dash build, so
+rebuild after pulling the fork. `gh extension list` can keep the old pin after
+swapping the binary; `gh dash --version` is authoritative.
 
 Sections are Features, In progress, Unapproved, Re-approval, Tasks, and Closed.
 `Unapproved` is the absence of the approval label; `Re-approval` is the explicit

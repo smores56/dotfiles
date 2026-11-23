@@ -94,6 +94,9 @@ rm -f "$state/wrong-version"
 if command -v yq >/dev/null 2>&1; then
     assert "the config opens on the issues view" yq -e '.defaults.view == "issues"' "$config"
     assert "the registry is limited to a page" yq -e '.defaults.issuesLimit == 50' "$config"
+    assert "the table hides the repo column" yq -e '.defaults.layout.issues.repo.hidden == true' "$config"
+    assert "the table hides the creator column" yq -e '.defaults.layout.issues.creator.hidden == true' "$config"
+    assert "the table hides the state column" yq -e '.defaults.layout.issues.state.hidden == true' "$config"
     expect "the config has six sections" 6 "$(yq '.issuesSections | length' "$config" 2>/dev/null)"
     expect "the PR view is empty" 0 "$(yq '.prSections | length' "$config" 2>/dev/null)"
     expect "every section names the registry" 6 \
@@ -197,6 +200,9 @@ contains "the unknown verb is named" "unknown action: explode" "$out"
 rm -f "$state/issue-824"
 assert_not "missing issue metadata fails" run act status 824 smores56/sdlc
 contains "the read failure names the issue" "cannot read #824" "$out"
+: >"$state/issue-824"
+assert_not "empty issue metadata fails" run act status 824 smores56/sdlc
+contains "the empty read failure names the issue" "cannot read #824" "$out"
 meta 824 "OPEN type:feature status:approved"
 
 clear_calls

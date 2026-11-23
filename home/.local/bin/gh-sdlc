@@ -38,6 +38,7 @@ act() {
 
     meta=$(gh issue view "$number" --repo "$SDLC_REPO" --json labels,state \
         --jq '[.state, (.labels[].name)] | join(" ")') || die "cannot read #$number"
+    [ -n "$meta" ] || die "cannot read #$number"
     state=${meta%% *}
     labels=" ${meta#* } "
     is_feature=false

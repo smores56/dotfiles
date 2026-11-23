@@ -5,6 +5,20 @@
 defaults:
   view: issues
   issuesLimit: 50
+  layout:
+    issues:
+      repo:
+        hidden: true
+      creator:
+        hidden: true
+      creatorIcon:
+        hidden: true
+      state:
+        hidden: true
+      reactions:
+        hidden: true
+      createdAt:
+        hidden: true
   preview:
     open: true
   refetchIntervalMinutes: 5
