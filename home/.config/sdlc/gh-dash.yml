@@ -33,20 +33,29 @@ issuesSections:
 keybindings:
   issues:
     - key: S
+      name: sdlc status
       command: gh sdlc act status {{.IssueNumber}} {{.RepoName}}
     - key: N
+      name: next ready task
       command: gh sdlc act next {{.IssueNumber}} {{.RepoName}}
     - key: v
+      name: sdlc review
       command: gh sdlc act review {{.IssueNumber}} {{.RepoName}}
     - key: V
+      name: approve design
       command: gh sdlc act approve {{.IssueNumber}} {{.RepoName}}
     - key: x
+      name: cancel feature
       command: gh sdlc act cancel {{.IssueNumber}} {{.RepoName}}
     - key: D
+      name: complete feature
       command: gh sdlc act complete {{.IssueNumber}} {{.RepoName}}
-    - key: t
+    - key: T
+      name: start task
       command: gh sdlc act start {{.IssueNumber}} {{.RepoName}}
     - key: d
+      name: finish task
       command: gh sdlc act finish {{.IssueNumber}} {{.RepoName}}
     - key: ctrl+x
+      name: abandon task
       command: gh sdlc act abandon {{.IssueNumber}} {{.RepoName}}

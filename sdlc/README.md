@@ -36,18 +36,24 @@ preview, then the action list. It needs a terminal, so agents never call it.
 dedicated config (`home/.config/sdlc/gh-dash.yml`). It does not change this
 CLI; agents keep using the non-interactive commands.
 
-Install gh-dash once, then apply the dotfiles:
+Build the smores56 gh-dash fork once, then apply the dotfiles:
 
 ```sh
-gh extension install dlvhdr/gh-dash --pin v4.11.0
+git get smores56/gh-dash
+cd /srv/git/github.com/smores56/gh-dash/main
+MISE_LOCKED=0 mise x go@1.27.1 -- go build \
+  -ldflags '-X github.com/dlvhdr/gh-dash/v4/cmd.Version=v4.26.3-sdlc' -o gh-dash .
+mkdir -p ~/.local/share/gh/extensions/gh-dash
+cp gh-dash ~/.local/share/gh/extensions/gh-dash/gh-dash
 mise dot apply
 gh sdlc
 ```
 
-v4.12+ requests `repository.branchProtectionRules`, which GitHub withholds
-from private repositories on the Free plan (upstream
-[#562](https://github.com/dlvhdr/gh-dash/issues/562)), so the pin stays on the
-last release before that query.
+The fork keeps v4.26.3 but uses an issue-only repository type, so the issue
+query no longer asks for `repository.branchProtectionRules` — a field private
+repos on the Free plan cannot read (upstream
+[#562](https://github.com/dlvhdr/gh-dash/issues/562)). The wrapper requires the
+`v4.26.3-sdlc` version marker. `?` lists all nine named verbs.
 
 Sections are Features, In progress, Unapproved, Re-approval, Tasks, and Closed.
 `Unapproved` is the absence of the approval label; `Re-approval` is the explicit
@@ -64,7 +70,7 @@ Keys on a selected issue:
 | `V` | `sdlc approve` (prompts) |
 | `D` | `sdlc complete` (confirms; refuses open tasks) |
 | `x` | `sdlc cancel` (confirms) |
-| `t` | `sdlc task start` |
+| `T` | `sdlc task start` |
 | `d` | `sdlc task done` (confirms) |
 | `ctrl+x` | `sdlc task cancel` (confirms) |
 
@@ -72,9 +78,10 @@ The wrapper pins `SDLC_REPO=smores56/sdlc` and `SDLC_TRANSPORT=gh`; a second
 registry needs its own config and wrapper. Every key passes the row's repo, so a
 row from another repo is refused. `--config` makes gh-dash read only this file;
 the global gh-dash config does not apply. The custom `x` replaces gh-dash's
-close; `t` is free in this view. `s` switches to an intentionally empty PR view,
-since the registry is issues-only. The Closed section is browse-only: the verbs
-refuse closed issues. Press `R` to refresh every section after an action.
+close; `t` remains smart filtering. `s` cycles gh-dash's views; only the
+Issues view has the sdlc verbs, and the PR view is intentionally empty. The
+Closed section is browse-only: the verbs refuse closed issues. Press `R` to
+refresh every section after an action.
 
 [gh-dash]: https://github.com/dlvhdr/gh-dash
 

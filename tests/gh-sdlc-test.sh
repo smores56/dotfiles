@@ -22,9 +22,9 @@ case $1 in
         if [ "${2:-}" = --version ]; then
             [ -e "$state/no-gh-dash" ] && exit 1
             if [ -e "$state/wrong-version" ]; then
-                printf 'module version: v4.26.3\n'
+                printf 'gh-dash version dev\nmodule version: v4.26.3\n'
             else
-                printf 'module version: v4.11.0\n'
+                printf 'gh-dash version v4.26.3-sdlc\n'
             fi
             exit 0
         fi
@@ -83,13 +83,12 @@ expect "the override reaches gh-dash" "dash --config $alt" "$(cat "$state/dash-a
 
 : >"$state/no-gh-dash"
 assert_not "a missing gh-dash fails" run
-contains "the install command is named" \
-    "gh extension install dlvhdr/gh-dash --pin v4.11.0" "$out"
+contains "the fork build is named" "smores56 fork" "$out"
 rm -f "$state/no-gh-dash"
 
 : >"$state/wrong-version"
 assert_not "a newer gh-dash is refused" run
-contains "the pin is enforced" "v4.11.0 is required" "$out"
+contains "the fork build is enforced" "fork build is required" "$out"
 rm -f "$state/wrong-version"
 
 if command -v yq >/dev/null 2>&1; then
@@ -258,14 +257,16 @@ PY
 if command -v yq >/dev/null 2>&1; then
     expect "the keymap has nine verbs" 9 "$(yq '.keybindings.issues | length' "$config" 2>/dev/null)"
     expect "the verbs are the expected keys" \
-        "$(printf '%s\n' S N v V x D t d ctrl+x | sort | tr '\n' ' ')" \
+        "$(printf '%s\n' S N v V x D T d ctrl+x | sort | tr '\n' ' ')" \
         "$(yq -r '.keybindings.issues[].key' "$config" | sort | tr '\n' ' ')"
     expect "every verb calls gh sdlc act" 9 \
         "$(yq '[.keybindings.issues[] | select(.command | contains("gh sdlc act"))] | length' "$config" 2>/dev/null)"
+    expect "every verb has a help name" 9 \
+        "$(yq '[.keybindings.issues[] | select(.name != "")] | length' "$config" 2>/dev/null)"
     expect "templates are IssueNumber and RepoName" "{{.IssueNumber}} {{.RepoName}} " \
         "$(yq -r '.keybindings.issues[].command' "$config" | grep -oE '\{\{[^}]+\}\}' | sort -u | tr '\n' ' ')"
 
-    defaults="up down k j g G home end p o r R ctrl+d ctrl+u h l left right / y Y ? q esc ctrl+c a A c x X s"
+    defaults="up down k j g G home end p P o r R ctrl+s / y Y ctrl+d ctrl+u h l left right ? q esc ctrl+c L a A c C x X t s"
     collisions=$(for key in $(yq -r '.keybindings.issues[].key' "$config"); do
         case " $defaults " in *" $key "*) printf '%s ' "$key" ;; esac
     done | tr -s ' ')
