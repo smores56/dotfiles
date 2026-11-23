@@ -66,9 +66,12 @@ spawn-at-startup "noctalia"
 
 screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
 
+// Chromium names extension windows `brave-<extension-id>-<profile>`, and the
+// title only arrives after niri fixes the opening properties, so match
+// Bitwarden's extension ID; the prefix covers every profile.
 window-rule {
-    match app-id=r#"^kitty$"#
-    default-column-width {}
+    match app-id=r#"^brave-nngceckbapebfimnlniiiahkandclblb-"#
+    open-floating true
 }
 
 window-rule {
