@@ -23,7 +23,25 @@ mise -C ~/.dotfiles bootstrap --only user   # sets the login shell; asks for you
 ```
 
 On the work Mac, clone this repository to `~/.dotfiles` and run
-`~/.dotfiles/scripts/install-mise.sh`.
+`~/.dotfiles/scripts/install-mise.sh`. Four things there are the operator's,
+because they need a hand, a password or a token that no repository may hold:
+
+- copy the SOPS identity from another machine or the offline kit to
+  `~/.config/sops/fido2-identity.txt` (or `keys.age`) **before** the bootstrap.
+  Without it `scripts/secrets.sh` says `no usable SOPS identity`, writes no
+  `~/.config/gh/token` and no `~/.ssh/id_smortress`, and the bootstrap still
+  succeeds -- `gh` and `ssh smortress` would simply have nothing to use
+- `scripts/install-homebrew.sh` is the one step that asks for an admin password
+  (it writes `/opt/homebrew`); everything else runs as the user
+- the tailnet login is
+  `tailscale --socket=$HOME/.local/state/tailscale/tailscaled.sock up`, a
+  browser auth against the tailnet; the daemon must be up before any
+  `ssh smortress`
+- plug each YubiKey and fetch its resident sudo handle with
+  `cd ~/.ssh && ssh-keygen -K`, rename `id_ed25519_sk*` to
+  `id_smortress_sudo_<n>` (and its `.pub`), then re-run the bootstrap so the
+  agent loads them; without them every `sudo` on smortress costs the account
+  password
 
 The environments are picked from the machine (see the table above); set
 `DOTFILES_ENVS` to override them.

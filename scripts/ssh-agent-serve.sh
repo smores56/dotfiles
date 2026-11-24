@@ -22,6 +22,16 @@ mkdir -p "$(dirname "$sock")"
 # restart it into the same failure forever.
 rm -f "$sock"
 
+# The agent signs the sk handle for pam_rssh, so Apple's FIDO middleware has to be
+# in its environment: launchd starts this script with none, and the shell export in
+# work.sh reaches only processes a shell starts. Without it the agent cannot sign,
+# and every sudo falls back to the password with nothing but pam_rssh's bare
+# "None of these keys passed authentication" to show for it.
+if [ "$(uname -s)" = Darwin ]; then
+    SSH_SK_PROVIDER=${SSH_SK_PROVIDER:-/usr/lib/ssh-keychain.dylib}
+    export SSH_SK_PROVIDER
+fi
+
 /usr/bin/ssh-agent -D -a "$sock" &
 agent=$!
 trap 'kill "$agent" 2>/dev/null || true' EXIT TERM INT

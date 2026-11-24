@@ -372,6 +372,11 @@ assert "the fish work hook names Apple's security-key provider" \
     grep -qF 'SSH_SK_PROVIDER /usr/lib/ssh-keychain.dylib' "$h/.config/fish/conf.d/90-work.fish"
 assert "the bootstrap adds the sudo credentials through the provider" \
     grep -qF 'SSH_SK_PROVIDER=/usr/lib/ssh-keychain.dylib' "$root/scripts/add-sudo-credential.sh"
+# The agent is what signs the handle; launchd gives it no environment, so the
+# provider has to be set in the launcher or the tap silently costs a password.
+assert "the Mac's agent signs through Apple's security-key provider" \
+    grep -qF 'SSH_SK_PROVIDER=${SSH_SK_PROVIDER:-/usr/lib/ssh-keychain.dylib}' \
+    "$root/scripts/ssh-agent-serve.sh"
 assert "the bootstrap loads the agent and adds the sudo credentials" \
     grep -qF 'add-sudo-credential.sh' "$root/scripts/bootstrap-task.sh"
 # The image pins the sk keys that may sudo; without the comparison a spare
