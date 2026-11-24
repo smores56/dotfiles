@@ -34,9 +34,10 @@ DIGEST = hashlib.sha256(("\n".join(RECIPIENTS) + "\n").encode()).hexdigest()[:16
 
 PROFILES = {
     "platform": {
-        "rule": r"^secrets/.*\.yaml$",
+        "rule": r"^secrets/.*\.(yaml|json)$",
         "config": ".sops.yaml",
-        "must": r"^secrets/.*\.yaml$",
+        "must": r"^secrets/.*\.(yaml|json)$",
+        "exclude": r"^secrets/index(\.bundles)?\.json$",
     },
     "apps": {
         "rule": r"secrets\.sops\.json$",
@@ -164,10 +165,11 @@ def check(repo: Path, config: Path | None) -> int:
             problems += 1
 
     must = PROFILES[profile]["must"] if profile else None
+    exclude = PROFILES[profile].get("exclude") if profile else None
     for rel in files:
         if rel in encrypted:
             continue
-        if must and re.search(must, rel):
+        if must and re.search(must, rel) and not (exclude and re.search(exclude, rel)):
             err(f"{rel} must be encrypted but has no SOPS metadata")
             problems += 1
 
