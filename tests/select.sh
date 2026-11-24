@@ -32,6 +32,7 @@ while IFS= read -r path || [ -n "$path" ]; do
         home/.config/maki/*|home/.local/bin/maki|scripts/install-maki.sh) add maki-test.sh ;;
 
         scripts/add-sudo-credential.sh) add add-sudo-credential-test.sh ;;
+        scripts/check-sudo-pins.sh) add check-sudo-pins-test.sh ;;
         scripts/detect-envs.sh) add detect-envs-test.sh ;;
         scripts/bootstrap.sh) add bootstrap-script-test.sh ;;
         scripts/link-dotfiles-checkout.sh) add dotfiles-layout-test.sh ;;

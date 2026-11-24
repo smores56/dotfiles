@@ -62,7 +62,7 @@ Everything builds on the base; each environment only adds.
 | base | fish, helix, zellij, yazi, lazygit, gh, `sdlc`, the shared env, global mise config |
 | `identity` | personal git identity and `git get`, the tailnet `smortress` SSH route, the `r` and `gc` abbreviations |
 | `desktop` | kitty, fonts, clipboard and trash helpers, Flatpaks or casks, wallpapers |
-| `work` | work env and git identity, the github.com SSH entry, the userspace `tailscale`, Claude work rules, macOS defaults and casks |
+| `work` | work env and git identity, work remotes over https, the userspace `tailscale`, Claude work rules, macOS defaults and casks |
 
 fish is the interactive shell. Login shells stay the system's own (bash on
 Fedora, zsh on macOS) and only load `~/.config/shell/env.sh`, which fish
@@ -171,6 +171,15 @@ A few things are set once per host, outside the repository:
   since a handle was minted (the `_*` glob would also match the `.pub` halves
   and warn on each); loading asks for no touch, and the touch happens at the
   next `sudo`
+- smortress authorizes root only for the keys pinned in homelab-platform's
+  `image/rootfs/etc/ssh/sudo_authorized_keys`, and the bootstrap's
+  `scripts/check-sudo-pins.sh` compares them with this machine's handles and
+  with what its agent holds. A handle the image does not pin authenticates
+  nothing, and a pin no handle answers leaves a retired key authorized, so
+  drift is a bootstrap line naming the key: fetch a resident handle with
+  `ssh-keygen -K` and rename it `id_smortress_sudo_<n>`, or pin or retire it in
+  that file (fetch that checkout first). The work Mac has no homelab-platform
+  checkout, so it says it cannot check and continues
 
 ## Maintenance
 

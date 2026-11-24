@@ -82,6 +82,14 @@ handle "$h" id_smortress_sudo_1
 assert "the loader exits 0 without an agent" run_loader "$h"
 expect "no socket means no ssh-add" 0 "$(wc -l <"$log")"
 
+# Editor backups and temp files share the prefix; the loader must not hand one
+# to the agent, because the pin check will not recognize it either.
+h=$(new_home stray)
+handle "$h" id_smortress_sudo_1~
+assert "the loader exits 0 with only a stray file" run_loader "$h"
+expect "no stray file is added" 0 "$(grep -c 'id_smortress_sudo_1~' "$log")"
+contains "a stray-only home reports no handle" 'no ~/.ssh/id_smortress_sudo' "$out"
+
 # The pre-suffixed single name stays valid: a host enrolled before the per-key
 # naming must keep working.
 h=$(new_home legacy)

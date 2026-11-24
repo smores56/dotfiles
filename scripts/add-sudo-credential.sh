@@ -50,6 +50,19 @@ for key in "$HOME"/.ssh/id_smortress_sudo*; do
     case $key in
         *.pub) continue ;;
     esac
+    # Editor backups and temp files share the prefix; only enrolled names count,
+    # the same rule the pin check applies, so the agent never serves a key the
+    # image does not know about.
+    suffix=${key##*/id_smortress_sudo}
+    case $suffix in
+        '') ;;
+        _[0-9]*)
+            case ${suffix#_} in
+                *[!0-9]*) continue ;;
+            esac
+            ;;
+        *) continue ;;
+    esac
     found=1
     if [ -f "$key.pub" ] && printf '%s\n' "$loaded" | cut -d' ' -f1,2 |
         grep -qxF "$(cut -d' ' -f1,2 <"$key.pub")"; then

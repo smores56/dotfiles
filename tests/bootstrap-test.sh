@@ -374,6 +374,10 @@ assert "the bootstrap adds the sudo credentials through the provider" \
     grep -qF 'SSH_SK_PROVIDER=/usr/lib/ssh-keychain.dylib' "$root/scripts/add-sudo-credential.sh"
 assert "the bootstrap loads the agent and adds the sudo credentials" \
     grep -qF 'add-sudo-credential.sh' "$root/scripts/bootstrap-task.sh"
+# The image pins the sk keys that may sudo; without the comparison a spare
+# key's tap silently costs a password and a retired key stays authorized.
+assert "the bootstrap checks the sudo pins against the image" \
+    grep -qF 'check-sudo-pins.sh' "$root/scripts/bootstrap-task.sh"
 expect "the work smortress route goes through the userspace tailscaled" \
     '$HOME/.local/bin/tailscale --socket=$HOME/.local/state/tailscale/tailscaled.sock nc %h %p' \
     "$(proxy_of smortress)"

@@ -184,3 +184,7 @@ install_noto_color_emoji \
 # After the agent, never before: the loader is a no-op until the socket is bound.
 # The loader is its own file so the test drives it with stubs.
 sh "$(dirname "$0")/add-sudo-credential.sh"
+# The image pins what may sudo; a handle it does not pin is a touch that falls
+# through to the password, and a pin no handle here answers stays authorized.
+sh "$(dirname "$0")/check-sudo-pins.sh" \
+    || log "the sudo pin check needs attention; see the lines above"
