@@ -94,8 +94,13 @@ tag_of() {
 }
 
 @test "a row naming a shell suite selects that file" {
-    run sh "$tags_sh" scripts/bootstrap.sh
-    assert_output "tests/bootstrap-script-test.sh"
+    repo=$BATS_TEST_TMPDIR/repo
+    mkdir -p "$repo/tests"
+    cp "$tags_sh" "$repo/tests/tags.sh"
+    touch "$repo/tests/aaa-test.sh"
+    printf 'aaa\tREADME.md\n' >"$repo/tests/tags.tsv"
+    run sh "$repo/tests/tags.sh" README.md
+    assert_output "tests/aaa-test.sh"
 }
 
 @test "a path several rows claim selects all of them" {
