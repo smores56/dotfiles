@@ -10,6 +10,11 @@ time_format = "{:%-I:%M %p}"
 font_family = "Google Sans Code"
 avatar_path = "~/.config/noctalia/avatar.png"
 
+# The Tailnet plugin's management actions need Tailscale operator access;
+# smorespro's image grants it at boot, and the README has the one-off command.
+[plugins]
+enabled = ["rylos/tailnet"]
+
 [theme]
 mode = "dark"
 source = "community"
@@ -23,7 +28,10 @@ position = "top"
 margin_ends = 0
 start = ["launcher", "clock", "sysmon", "active_window", "media"]
 center = ["workspaces"]
-end = ["tray", "notifications", "battery", "volume", "brightness", "control-center"]
+end = ["tray", "tailnet", "notifications", "battery", "volume", "brightness", "control-center"]
+
+[widget.tailnet]
+type = "rylos/tailnet:bar"
 
 [widget.workspaces]
 hide_when_empty = true

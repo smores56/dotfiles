@@ -162,6 +162,8 @@ sops -d sops.yaml >/dev/null && echo yubikey-ok   # touch the one key
 A few things are set once per host, outside the repository:
 
 - every Linux host: `sudo tailscale up`, with MagicDNS and HTTPS certificates on
+- smorespro: `sudo tailscale set --operator=$USER` so the bar's Tailnet widget
+  can manage the tailnet; the image also re-applies this at boot
 - smortress: `sudo tailscale serve --bg --set-path /wallpapers /srv/wallpapers`
 - smorespro: `noctalia msg color-scheme-set community "Rose Pine Moon"`, since
   Noctalia's GUI state overrides its config file

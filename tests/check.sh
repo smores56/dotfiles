@@ -98,7 +98,8 @@ assert "python scripts/sops-policy.py parses" \
 if python3 -c 'import tomllib' >/dev/null 2>&1; then
     has_tomllib=true
     for cfg in "$root"/mise.toml "$root"/mise.*.toml "$root"/mise.*.lock "$root"/global/*.toml "$root"/global/*.lock \
-            "$root"/desktop/.config/aerospace/aerospace.toml "$root"/home/.config/maki/*.toml \
+            "$root"/desktop/.config/aerospace/aerospace.toml "$root"/desktop/.config/noctalia/config.toml \
+            "$root"/home/.config/maki/*.toml \
             "$root"/home/.config/helix/*.toml; do
         [ -f "$cfg" ] && assert "toml $(rel "$cfg")" \
             python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$cfg"
@@ -106,6 +107,34 @@ if python3 -c 'import tomllib' >/dev/null 2>&1; then
 else
     has_tomllib=false
     skip "toml and lockfile coverage (python3 tomllib missing)"
+fi
+
+# Noctalia's offline validator cannot load plugin manifests, so the plugin
+# widget type is the one warning this config may produce. Any other warning or
+# error is a real schema problem.
+noctalia_config_ok() {
+    output=$(noctalia config validate "$1" 2>&1) || { printf '%s\n' "$output"; return 1; }
+    ! printf '%s\n' "$output" \
+        | grep -vF 'widget.tailnet: unrecognized widget type "rylos/tailnet:bar"' \
+        | grep -qE '^(ERROR|WARN)'
+}
+if has noctalia && noctalia config validate --help >/dev/null 2>&1; then
+    assert "the Noctalia config validates" \
+        noctalia_config_ok "$root/desktop/.config/noctalia/config.toml"
+else
+    skip "Noctalia config validation (noctalia with config validate not installed)"
+fi
+
+if $has_tomllib; then
+    assert "the Noctalia bar carries the Tailnet widget" python3 -c '
+import sys, tomllib
+cfg = tomllib.load(open(sys.argv[1], "rb"))
+assert cfg["plugins"]["enabled"] == ["rylos/tailnet"]
+assert cfg["widget"]["tailnet"]["type"] == "rylos/tailnet:bar"
+assert "tailnet" in cfg["bar"]["main"]["end"]
+' "$root/desktop/.config/noctalia/config.toml"
+else
+    skip "the Noctalia bar carries the Tailnet widget (python3 tomllib missing)"
 fi
 
 # --- vendored screensaver
