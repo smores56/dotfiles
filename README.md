@@ -223,4 +223,5 @@ no checksum; the toolchain it builds with is the tool that does.
 
 Maki is pinned in `maki/pin.env`; bump it and re-run `scripts/install-maki.sh`.
 
-Run the checks with `tests/check.sh` (add `--shellcheck` to lint every script).
+Run the gate with `mise run check` (every suite in parallel); `mise run check:changed`
+narrows it to the suites the changed paths select, and `mise run test <suite>` runs one.

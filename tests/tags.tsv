@@ -1,11 +1,10 @@
-# One row per suite: the tag names tests/<tag>.bats, or tests/<tag>-test.sh
-# while that suite is still a shell one, and the patterns are the changed paths
-# that select it. Every row a path matches counts, in any order, so one path can
+# One row per suite: the tag names tests/<tag>.bats, and the patterns are the
+# changed paths that select it. Every row a path matches counts, in any order, so one path can
 # select several suites; a changed suite claims itself without a pattern.
 # `all` runs every suite and `none` runs none; a path no row claims is `all`.
 #
 # The harness decides what runs, so a change to it changes any result: `all`.
-all	tests/tags.sh tests/tags.tsv tests/tags.bats tests/helpers.bash tests/lib.sh tests/check.sh tests/run-one.sh .githooks/*
+all	tests/tags.sh tests/tags.tsv tests/tags.bats tests/helpers.bash tests/lib.sh .githooks/*
 none	*.md .github/* .gitignore
 hook-env	tests/lib.sh
 tags	tests/tags.bats

@@ -35,7 +35,7 @@ jobs:
           mise install "aqua:bats-core/bats-core" "conda:parallel"
           sh scripts/install-bats-libs.sh
       - name: Run the checks
-        run: tests/check.sh --shellcheck
+        run: bats --jobs "$(nproc)" tests/ tests/statics/
 
   # Every pinned tool must install from the lockfiles on each platform a machine runs.
   locked:
@@ -48,8 +48,8 @@ jobs:
             disable_tools: ""
           - os: ubuntu-24.04-arm
             sha256: b8dd05af6447cee933928664982a8cb2fa646e6951cfc8539db23ce2554a7b04
-            # Upstream publishes no linux-arm64 asset; check.sh holds its
-            # `platforms` list to what upstream publishes.
+            # Upstream publishes no linux-arm64 asset; the lock coverage check
+            # holds its `platforms` list to what upstream publishes.
             disable_tools: github:olastor/age-plugin-fido2-hmac
     runs-on: ${{ matrix.os }}
     steps:

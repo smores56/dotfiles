@@ -8,17 +8,15 @@ tags_file=$dotfiles_root/tests/tags.tsv
 tags_sh=$dotfiles_root/tests/tags.sh
 tab=$(printf '\t')
 
-# Every suite: the converted .bats files and the shell ones still to convert.
+# Every suite: the top-level .bats files. tests/statics/ always runs and is not
+# tag-selected.
 suites() {
-    find "$dotfiles_root/tests" -maxdepth 1 -type f \( -name '*.bats' -o -name '*-test.sh' \) |
+    find "$dotfiles_root/tests" -maxdepth 1 -type f -name '*.bats' |
         sed "s|$dotfiles_root/||" | sort
 }
 
 tag_of() {
-    case $1 in
-        tests/*.bats) printf '%s\n' "${1#tests/}" | sed 's/\.bats$//' ;;
-        tests/*-test.sh) printf '%s\n' "${1#tests/}" | sed 's/-test\.sh$//' ;;
-    esac
+    printf '%s\n' "${1#tests/}" | sed 's/\.bats$//'
 }
 
 @test "every suite has a row in tags.tsv" {
@@ -47,8 +45,7 @@ tag_of() {
     bad=''
     while IFS=$tab read -r tag patterns || [ -n "$tag" ]; do
         case $tag in ''|'#'*|all|none) continue ;; esac
-        [ -f "$dotfiles_root/tests/$tag.bats" ] || [ -f "$dotfiles_root/tests/$tag-test.sh" ] ||
-            bad="$bad $tag"
+        [ -f "$dotfiles_root/tests/$tag.bats" ] || bad="$bad $tag"
     done <"$tags_file"
     assert_equal "$bad" ""
 }
@@ -91,16 +88,6 @@ tag_of() {
 @test "a path a row claims selects that row's suite" {
     run sh "$tags_sh" scripts/detect-envs.sh
     assert_output "tests/detect-envs.bats"
-}
-
-@test "a row naming a shell suite selects that file" {
-    repo=$BATS_TEST_TMPDIR/repo
-    mkdir -p "$repo/tests"
-    cp "$tags_sh" "$repo/tests/tags.sh"
-    touch "$repo/tests/aaa-test.sh"
-    printf 'aaa\tREADME.md\n' >"$repo/tests/tags.tsv"
-    run sh "$repo/tests/tags.sh" README.md
-    assert_output "tests/aaa-test.sh"
 }
 
 @test "a path several rows claim selects all of them" {

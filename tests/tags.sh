@@ -7,8 +7,7 @@
 #        tests/tags.sh --changed [--base <ref>]
 #        ... | tests/tags.sh
 #
-# Rows live in tests/tags.tsv: a tag names tests/<tag>.bats, or the shell suite
-# tests/<tag>-test.sh while that suite is still being converted, and `all` runs
+# Rows live in tests/tags.tsv: a tag names tests/<tag>.bats, and `all` runs
 # every suite while `none` runs none. Every row a path matches counts, in any
 # order, so one path can select several suites.
 set -uf
@@ -69,11 +68,10 @@ work=$(mktemp) || exit 1
 trap 'rm -f "$work"' EXIT HUP INT TERM
 printf '%s\n' "$paths" >"$work"
 
-# A changed suite claims itself: tests/<tag>.bats or tests/<tag>-test.sh.
+# A changed suite claims itself: tests/<tag>.bats.
 self_tag() {
     case $1 in
         tests/*.bats) printf '%s\n' "${1#tests/}" | sed 's/\.bats$//' ;;
-        tests/*-test.sh) printf '%s\n' "${1#tests/}" | sed 's/-test\.sh$//' ;;
         *) return 1 ;;
     esac
 }
@@ -106,9 +104,6 @@ if $all; then
     exit 0
 fi
 for tag in $tags; do
-    if [ -f "$root/tests/$tag.bats" ]; then
-        printf 'tests/%s.bats\n' "$tag"
-    elif [ -f "$root/tests/$tag-test.sh" ]; then
-        printf 'tests/%s-test.sh\n' "$tag"
-    fi
+    [ -f "$root/tests/$tag.bats" ] || continue
+    printf 'tests/%s.bats\n' "$tag"
 done
