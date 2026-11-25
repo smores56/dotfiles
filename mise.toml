@@ -56,16 +56,22 @@ description = "drop dotfile state from another checkout path"
 run = '''sh scripts/prune-dotfile-state.sh'''
 
 [tasks.check]
-description = "Run the local gate: syntax, consistency, and behavioural tests"
-run = "sh tests/check.sh"
+description = "Run the gate: every suite and static check, in parallel"
+run = 'bats --jobs "$(nproc)" tests/ tests/statics/'
 
 [tasks."check:changed"]
-description = "Run the gate narrowed to what changed against origin/main"
-run = "sh tests/check.sh --changed"
+description = "Run the suites the changed paths select against origin/main"
+run = '''selected=$(sh tests/tags.sh --changed --base origin/main) || exit 1
+if [ "$selected" = all ]; then selected=$(ls tests/*.bats); fi
+exec bats --jobs "$(nproc)" $selected tests/statics/*.bats'''
 
+# mise appends the arguments to the script as words, so the selection has to run
+# in a shell whose positional parameters are the appended ones.
 [tasks.test]
-description = "Run one behavioural test by name: mise run test fish"
-run = 'sh tests/run-one.sh "$@"'
+description = "Run one suite by name: mise run test fish"
+run = '''sh -c 'f=$(ls tests/"$1".bats tests/statics/"$1".bats 2>/dev/null | head -1)
+[ -n "$f" ] || { printf "no suite named %s\\n" "$1" >&2; exit 2; }
+exec bats "$f"' sh "$@"'''
 
 [tasks."check:linux"]
 description = "Reproduce CI's Fedora apply lane locally with podman"

@@ -1,5 +1,6 @@
 #!/bin/sh
-# The local gate before any push: the same command CI runs, on the same tree.
+# The gate before any push: the suites the changed paths select, plus the static
+# checks, which always run. CI runs every suite with --jobs.
 # `git config core.hooksPath .githooks` (mise run hooks) enables it.
 set -eu
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
@@ -7,4 +8,13 @@ root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY \
     GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_NAMESPACE \
     GIT_PREFIX GIT_QUARANTINE_PATH
-exec sh "$root/tests/check.sh"
+
+selected=$(sh "$root/tests/tags.sh" --changed --base origin/main) || exit 1
+if [ "$selected" = all ]; then
+    set -- "$root"/tests/*.bats
+else
+    # One path per line, and bats needs each as its own argument.
+    # shellcheck disable=SC2086
+    set -- $selected
+fi
+exec bats --jobs "$(nproc)" "$@" "$root"/tests/statics/*.bats
