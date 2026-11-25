@@ -5,57 +5,92 @@
 load helpers
 
 tags_file=$dotfiles_root/tests/tags.tsv
+tags_sh=$dotfiles_root/tests/tags.sh
+tab=$(printf '\t')
 
 @test "every suite has a row in tags.tsv" {
     missing=''
     for suite in "$dotfiles_root"/tests/*.bats; do
         name=$(basename -- "$suite" .bats)
-        grep -qE "^$name	" "$tags_file" || missing="$missing $name"
+        grep -qF "$name$tab" "$tags_file" || missing="$missing $name"
     done
     assert_equal "$missing" ""
 }
 
+@test "every suite selects itself" {
+    bad=''
+    for suite in "$dotfiles_root"/tests/*.bats; do
+        name=$(basename -- "$suite" .bats)
+        selected=$(sh "$tags_sh" "tests/$name.bats")
+        case " $selected " in
+            *" tests/$name.bats "*) ;;
+            *) bad="$bad $name" ;;
+        esac
+    done
+    assert_equal "$bad" ""
+}
+
 @test "every tags.tsv row names a suite that exists" {
     bad=''
-    while IFS="$(printf '\t')" read -r tag patterns || [ -n "$tag" ]; do
+    while IFS=$tab read -r tag patterns || [ -n "$tag" ]; do
         case $tag in ''|'#'*|all|none) continue ;; esac
         [ -f "$dotfiles_root/tests/$tag.bats" ] || bad="$bad $tag"
     done <"$tags_file"
     assert_equal "$bad" ""
 }
 
-@test "every tags.tsv pattern names a tracked path" {
+@test "every tags.tsv pattern names a path in the tree" {
     stale=''
-    while IFS="$(printf '\t')" read -r tag patterns || [ -n "$tag" ]; do
+    while IFS=$tab read -r tag patterns || [ -n "$tag" ]; do
         case $tag in ''|'#'*) continue ;; esac
         for pattern in $patterns; do
-            (cd "$dotfiles_root" && compgen -G "$pattern" >/dev/null) || stale="$stale $pattern"
+            found=$(git -C "$dotfiles_root" ls-files --cached --others --exclude-standard -- "$pattern")
+            [ -n "$found" ] || stale="$stale $pattern"
         done
     done <"$tags_file"
     assert_equal "$stale" ""
 }
 
-@test "a changed suite claims itself" {
-    run sh "$dotfiles_root/tests/tags.sh" --changed tests/prune-dotfile-state.bats
+@test "a path a row claims selects that row's suite" {
+    run sh "$tags_sh" scripts/prune-dotfile-state.sh
     assert_output "tests/prune-dotfile-state.bats"
 }
 
-@test "a path a row claims selects that row's suite" {
-    run sh "$dotfiles_root/tests/tags.sh" --changed scripts/prune-dotfile-state.sh
-    assert_output "tests/prune-dotfile-state.bats"
+@test "a path several rows claim selects all of them" {
+    repo=$BATS_TEST_TMPDIR/repo
+    mkdir -p "$repo/tests"
+    cp "$tags_sh" "$repo/tests/tags.sh"
+    printf 'aaa\tREADME.md\nprune-dotfile-state\tREADME.md\n' >"$repo/tests/tags.tsv"
+    run sh "$repo/tests/tags.sh" README.md
+    assert_output "tests/aaa.bats
+tests/prune-dotfile-state.bats"
 }
 
 @test "a path no row claims selects every suite" {
-    run sh "$dotfiles_root/tests/tags.sh" --changed brand/new/thing
+    run sh "$tags_sh" brand/new/thing
     assert_output "all"
 }
 
 @test "a harness change selects every suite" {
-    run sh "$dotfiles_root/tests/tags.sh" --changed tests/helpers.bash
+    run sh "$tags_sh" tests/helpers.bash
     assert_output "all"
 }
 
 @test "a documentation change selects nothing" {
-    run sh "$dotfiles_root/tests/tags.sh" --changed README.md
+    run sh "$tags_sh" README.md
     assert_output ""
+}
+
+@test "--changed reads the diff against the base" {
+    repo=$BATS_TEST_TMPDIR/repo
+    mkdir -p "$repo/tests"
+    cp "$tags_sh" "$repo/tests/tags.sh"
+    cp "$tags_file" "$repo/tests/tags.tsv"
+    git -C "$repo" init -q
+    git -C "$repo" add tests
+    git -C "$repo" -c user.name=t -c user.email=t@t commit -qm base
+    mkdir -p "$repo/scripts"
+    cp "$dotfiles_root/scripts/prune-dotfile-state.sh" "$repo/scripts/"
+    run sh -c "cd '$repo' && sh tests/tags.sh --changed --base HEAD"
+    assert_output "tests/prune-dotfile-state.bats"
 }

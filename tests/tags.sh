@@ -8,8 +8,9 @@
 #        ... | tests/tags.sh
 #
 # Rows live in tests/tags.tsv: a tag names tests/<tag>.bats, `all` runs every
-# suite, `none` runs none, and a suite's row names its own file.
-set -u
+# suite, `none` runs none, and a suite's row names its own file. Every row a
+# path matches counts, in any order, so one path can select several suites.
+set -uf
 
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 tab=$(printf '\t')
@@ -35,9 +36,9 @@ if [ -z "$paths" ]; then
             exit 2
         }
         paths=$(
-            git -C "$root" diff --name-only "$compare" || exit 2
-            git -C "$root" ls-files --others --exclude-standard || exit 2
-        )
+            git -C "$root" diff --name-only "$compare" || exit 1
+            git -C "$root" ls-files --others --exclude-standard || exit 1
+        ) || exit 1
     else
         paths=$(cat)
     fi
@@ -52,26 +53,37 @@ add() {
     esac
 }
 
-for path in $paths; do
+# matches <path> <patterns...>: any pattern a row lists.
+matches() {
+    m_path=$1
+    shift
+    for pattern in "$@"; do
+        # shellcheck disable=SC2254 # the pattern is data from tags.tsv
+        case $m_path in $pattern) return 0 ;; esac
+    done
+    return 1
+}
+
+work=$(mktemp) || exit 1
+trap 'rm -f "$work"' EXIT HUP INT TERM
+printf '%s\n' "$paths" >"$work"
+
+while IFS= read -r path; do
+    [ -n "$path" ] || continue
     claimed=false
-    claim=''
     while IFS=$tab read -r tag patterns || [ -n "$tag" ]; do
         case $tag in ''|'#'*) continue ;; esac
-        for pattern in $patterns; do
-            # shellcheck disable=SC2254 # the pattern is data from tags.tsv
-            case $path in $pattern) claimed=true; claim=$tag ;; esac
-        done
+        # shellcheck disable=SC2086 # a row lists its patterns space-separated
+        matches "$path" $patterns || continue
+        claimed=true
+        case $tag in
+            all) all=true ;;
+            none) ;;
+            *) add "$tag" ;;
+        esac
     done <"$root/tests/tags.tsv"
-    if ! $claimed; then
-        all=true
-        continue
-    fi
-    case $claim in
-        all) all=true ;;
-        none) ;;
-        *) add "$claim" ;;
-    esac
-done
+    $claimed || all=true
+done <"$work"
 
 if $all; then
     printf 'all\n'

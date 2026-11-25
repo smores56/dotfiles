@@ -757,13 +757,13 @@ url_api = "https://api.github.com/repos/opentofu/opentofu/releases/assets/714325
 version = "1.40.2"
 backend = "pipx:basedpyright"
 specifiers = ["1.40.2"]
-uv = { path = ".mise/locks/pipx-basedpyright/1.40.2", digest = "sha256:ddc556e7146b3960e6f34b8a12f929a20b976baf07f83860efae2f7b8c621fc8" }
+uv = { path = "locks/pipx-basedpyright/1.40.2", digest = "sha256:ddc556e7146b3960e6f34b8a12f929a20b976baf07f83860efae2f7b8c621fc8" }
 
 [[tools."pipx:yamllint"]]
 version = "1.38.0"
 backend = "pipx:yamllint"
 specifiers = ["1.38.0"]
-uv = { path = ".mise/locks/pipx-yamllint/1.38.0", digest = "sha256:50be55612933e658fd33b6094b7676b45acd28e9611c138080b41ec571debf71" }
+uv = { path = "locks/pipx-yamllint/1.38.0", digest = "sha256:50be55612933e658fd33b6094b7676b45acd28e9611c138080b41ec571debf71" }
 
 [[tools.python]]
 version = "3.14.10"

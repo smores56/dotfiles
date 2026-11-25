@@ -51,10 +51,9 @@ if $changed; then
     selected_tests=$(sh "$root/tests/tags.sh" <"$changed_list")
     printf 'changed against %s: %s\n' "$base" "${selected_tests:-none}"
 fi
-selected() {  # selected <suite name>
+selected() {  # selected <suite name>: one path per line from tests/tags.sh
     [ "$selected_tests" = all ] && return 0
-    case " $selected_tests " in *" tests/$1.bats "*) return 0 ;; esac
-    return 1
+    printf '%s\n' "$selected_tests" | grep -qxF "tests/$1.bats"
 }
 
 # --- syntax
@@ -62,7 +61,7 @@ selected() {  # selected <suite name>
 shell_scripts() {
     for script in "$root"/home/.config/shell/env.sh "$root"/work/.config/shell/env.d/*.sh \
             "$root"/home/.local/bin/* "$root"/desktop/.local/bin/* \
-            "$root"/scripts/*.sh "$root"/tests/*.sh "$root"/.githooks/*; do
+            "$root"/scripts/*.sh "$root"/tests/*.sh "$root"/tests/*.bash "$root"/.githooks/*; do
         [ -f "$script" ] || continue
         case $(head -n 1 "$script") in
             *python*) ;;
@@ -368,20 +367,29 @@ else
     skip "behavioral tests (git or bash not installed)"
 fi
 
-if has bats; then
+# bats is a pinned tool: a missing or dangling shim fails rather than skips,
+# because a skip here would report a migrated suite as green with no coverage.
+if ! has bats; then
+    no "bats suites (bats not installed; run mise install)"
+elif ! bats --version >/dev/null 2>&1; then
+    no "bats suites (bats is on PATH but does not run; run mise install)"
+else
     for suite in "$root"/tests/*.bats; do
         [ -f "$suite" ] || continue
         name=$(rel "$suite")
         selected "$(basename -- "$suite" .bats)" || continue
-        if bats "$suite" >"$tmp/suite.log" 2>&1; then
-            ok "bats suites ($name)"
-        else
+        if ! bats "$suite" >"$tmp/suite.log" 2>&1; then
             no "bats suites ($name)"
             indent <"$tmp/suite.log"
+        elif ! grep -q '^ok' "$tmp/suite.log"; then
+            no "bats suites ($name: no tests ran)"
+            indent <"$tmp/suite.log"
+        elif [ "$(grep -c '^ok' "$tmp/suite.log")" = "$(grep -c '^ok.*# skip' "$tmp/suite.log")" ]; then
+            skip "bats suites ($name: every test skipped)"
+        else
+            ok "bats suites ($name)"
         fi
     done
-else
-    skip "bats suites (bats not installed)"
 fi
 
 if has python3 && selected sdlc; then
