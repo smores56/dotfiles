@@ -54,6 +54,7 @@ tag_of() {
 }
 
 @test "every tags.tsv pattern names a path in the tree" {
+    set -f  # the patterns are git pathspecs, not file names to expand
     stale=''
     while IFS=$tab read -r tag patterns || [ -n "$tag" ]; do
         case $tag in ''|'#'*) continue ;; esac
@@ -66,6 +67,7 @@ tag_of() {
 }
 
 @test "only documentation paths are claimed by none" {
+    set -f  # the patterns are git pathspecs, not file names to expand
     bad=''
     while IFS=$tab read -r tag patterns || [ -n "$tag" ]; do
         [ "$tag" = none ] || continue
