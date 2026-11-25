@@ -392,12 +392,6 @@ else
     done
 fi
 
-if has python3 && selected sdlc; then
-    assert "sdlc unit tests" python3 -m unittest discover -s "$root/sdlc/tests"
-elif ! has python3; then
-    skip "sdlc unit tests (python3 not installed)"
-fi
-
 # --- Stremio quadlet
 
 # A hard Requires on the build would keep the server down whenever a rebuild

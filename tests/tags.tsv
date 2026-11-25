@@ -25,4 +25,5 @@ bootstrap-script	scripts/bootstrap.sh
 secrets	scripts/secrets.sh
 wallpapers	desktop/.local/bin/wallpapers
 gh-sdlc	home/.local/bin/gh-sdlc home/.config/sdlc/*
+sdlc	sdlc/*
 bootstrap	mise.toml mise.*.toml mise.*.lock global/* desktop/* identity/* work/* scripts/bootstrap-task.sh scripts/ssh-agent-serve.sh scripts/install-*.sh home/.claude* home/.local/bin/*
