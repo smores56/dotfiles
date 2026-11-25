@@ -1,10 +1,10 @@
 #!/bin/sh
-# Name the zellij tab that holds this pane. Zellij borrows the lone pane's OSC
-# title as the tab name, then drops back to "Tab #N" as soon as the tab holds a
-# second pane, so splitting a tab loses the folder it was showing.
+# Name the zellij tab that holds this pane. Zellij borrows a lone pane's OSC
+# title as the tab name while the tab holds exactly one selectable tiled pane,
+# then drops back to "Tab #N", so splitting a tab loses the folder it showed.
 #
-# Only a tab still carrying that default name is renamed: a name the person
-# chose stays, and a single-pane tab keeps following its pane title.
+# Only a tab zellij still calls default is renamed: a name the person chose
+# stays, and a tab with one tiled pane keeps following that pane's title.
 #
 # usage: zellij-tab-name <name>
 set -u
@@ -13,36 +13,39 @@ name=${1-}
 [ -n "$name" ] || exit 0
 [ -n "${ZELLIJ_PANE_ID-}" ] || exit 0
 
-panes=$(zellij action list-panes -t -j 2>/dev/null) || exit 0
-[ -n "$panes" ] || exit 0
-
+# The reader keys on zellij's pretty-printer: a pane's own fields sit at four
+# spaces and anything deeper (a program's status report carries an "id" of its
+# own) is not a pane. Compact JSON matches nothing, which renames nothing.
 tab=$(
-    printf '%s\n' "$panes" | awk -v pane="$ZELLIJ_PANE_ID" '
-        # One field per line and flat objects, so a line reader is enough. The
-        # keys this needs appear once per pane, and the next "id" closes the
-        # object before it.
+    zellij action list-panes -t -j 2>/dev/null | awk -v pane="$ZELLIJ_PANE_ID" '
         function flush() {
             if (id == "") return
             n++
-            ids[n] = id; tabs[n] = tab_id; plugins[n] = is_plugin; names[n] = tab_name
-            id = ""; tab_id = ""; is_plugin = 0; tab_name = ""
+            ids[n] = id; tabs[n] = tab_id; names[n] = tab_name
+            tiled[n] = (!plugin && !floating && !suppressed)
+            id = ""; tab_id = ""; tab_name = ""
+            plugin = floating = suppressed = 0
         }
-        /"id":/        { flush(); id = $0; sub(/.*"id": */, "", id); sub(/,.*/, "", id) }
-        /"is_plugin":/ { is_plugin = ($0 ~ /true/) }
-        /"tab_id":/    { tab_id = $0; sub(/.*"tab_id": */, "", tab_id); sub(/,.*/, "", tab_id) }
-        /"tab_name":/  { tab_name = $0; sub(/.*"tab_name": *"/, "", tab_name); sub(/".*/, "", tab_name) }
+        /^    "id": /          { flush(); id = $0; sub(/.*: */, "", id); sub(/,.*/, "", id) }
+        /^    "is_plugin": /   { plugin = ($0 ~ /true/) }
+        /^    "is_floating": / { floating = ($0 ~ /true/) }
+        /^    "is_suppressed":/ { suppressed = ($0 ~ /true/) }
+        /^    "tab_id": /      { tab_id = $0; sub(/.*: */, "", tab_id); sub(/,.*/, "", tab_id) }
+        /^    "tab_name": /    { tab_name = $0; sub(/.*: *"/, "", tab_name); sub(/".*/, "", tab_name) }
         END {
             flush()
             for (i = 1; i <= n; i++) if (ids[i] == pane) mine = tabs[i]
             if (mine == "") exit
             for (i = 1; i <= n; i++) {
                 if (tabs[i] != mine) continue
-                if (!plugins[i]) terminals++
-                if (names[i] != "") title = names[i]
+                if (tiled[i]) panes++
+                if (title == "" && names[i] != "") title = names[i]
             }
-            if (terminals > 1 && title ~ /^Tab #[0-9]+$/) print mine
+            # Zellij names an unrenamed tab after its id, and borrows the pane
+            # title only while one tiled pane is left to borrow it from.
+            if (panes > 1 && title == "Tab #" (mine + 1)) print mine
         }'
 )
 [ -n "$tab" ] || exit 0
 
-zellij action rename-tab --tab-id "$tab" "$name"
+zellij action rename-tab --tab-id "$tab" -- "$name" >/dev/null 2>&1

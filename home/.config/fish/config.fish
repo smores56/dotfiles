@@ -32,16 +32,16 @@ function fish_title
     fish_prompt_pwd_dir_length=$pure_shorten_window_title_current_directory_length prompt_pwd
 end
 
-# Zellij borrows a tab's name from the title of its lone pane, then falls back to
-# "Tab #2" as soon as the tab holds a second pane. Name the tab after this pane's
-# folder at its first prompt, so splitting a tab keeps a name worth reading.
+# Zellij borrows a tab's name from the title of its lone tiled pane, then falls
+# back to "Tab #2" as soon as the tab holds a second one. Name the tab after this
+# pane's folder at its first prompt, so splitting a tab keeps a name worth
+# reading.
 function __zellij_name_tab --on-event fish_prompt
     set -q ZELLIJ; or return
     set -q __zellij_tab_named; and return
-    set -g __zellij_tab_named
     command -q zellij-tab-name; or return
-    set -l fish_prompt_pwd_dir_length $pure_shorten_window_title_current_directory_length
-    zellij-tab-name (prompt_pwd)
+    set -g __zellij_tab_named 1
+    zellij-tab-name (fish_title)
 end
 
 command -q zoxide; and zoxide init fish --cmd c | source
