@@ -53,7 +53,7 @@ if $changed; then
 fi
 selected() {  # selected <suite name>: one path per line from tests/tags.sh
     [ "$selected_tests" = all ] && return 0
-    printf '%s\n' "$selected_tests" | grep -qxF "tests/$1.bats"
+    printf '%s\n' "$selected_tests" | grep -qxF -e "tests/$1.bats" -e "tests/$1-test.sh"
 }
 
 # --- syntax

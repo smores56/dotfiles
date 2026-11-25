@@ -1,9 +1,27 @@
-# One row per suite: the tag names tests/<tag>.bats and the patterns are the
-# changed paths that select it, its own file included. `all` runs every suite
-# and `none` runs none; a path no row claims is `all`.
+# One row per suite: the tag names tests/<tag>.bats, or tests/<tag>-test.sh
+# while that suite is still a shell one, and the patterns are the changed paths
+# that select it. Every row a path matches counts, in any order, so one path can
+# select several suites; a changed suite claims itself without a pattern.
+# `all` runs every suite and `none` runs none; a path no row claims is `all`.
 #
 # The harness decides what runs, so a change to it changes any result: `all`.
-all	tests/tags.sh tests/tags.tsv tests/helpers.bash .githooks/*
+all	tests/tags.sh tests/tags.tsv tests/tags.bats tests/helpers.bash tests/lib.sh tests/check.sh tests/run-one.sh .githooks/*
 none	*.md .github/* .gitignore
-prune-dotfile-state	tests/prune-dotfile-state.bats scripts/prune-dotfile-state.sh home/.config/gh/*
+hook-env	tests/lib.sh
 tags	tests/tags.bats
+prune-dotfile-state	scripts/prune-dotfile-state.sh home/.config/gh/*
+detect-envs	scripts/detect-envs.sh
+maki	home/.config/maki/* home/.local/bin/maki scripts/install-maki.sh
+git-get	identity/.config/git/* home/.config/git/*
+dotfiles-layout	scripts/link-dotfiles-checkout.sh
+sops-policy	scripts/sops-policy.py home/.config/sops/sops.yaml
+sops-age-key-contract	home/.local/bin/sops-age-key home/.config/sops/* sops.yaml scripts/check-sops-recipients.sh
+sops-age-key	home/.local/bin/sops-age-key home/.config/sops/*
+fish	home/.zshenv home/.config/shell/* home/.config/fish/* work/.config/shell/* work/.config/fish/*
+add-sudo-credential	scripts/add-sudo-credential.sh
+check-sudo-pins	scripts/check-sudo-pins.sh
+bootstrap-script	scripts/bootstrap.sh
+secrets	scripts/secrets.sh
+wallpapers	desktop/.local/bin/wallpapers
+gh-sdlc	home/.local/bin/gh-sdlc home/.config/sdlc/*
+bootstrap	mise.toml mise.*.toml mise.*.lock global/* desktop/* identity/* work/* scripts/bootstrap-task.sh scripts/ssh-agent-serve.sh scripts/install-*.sh home/.claude* home/.local/bin/*
