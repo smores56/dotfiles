@@ -40,6 +40,13 @@ fixture() {
     repo=$repos/github.com/o/r
 }
 
+# fails <args...>: true when git get exits non-zero. The exit code itself is the
+# shell's (dash reports ${1:?} as 2, bash as 1), so the tests assert failure.
+fails() {
+    get "$@"
+    [ "$?" -ne 0 ]
+}
+
 # clone: git get o/r, failing the test with the clone's own output.
 clone() {
     run get o/r
@@ -137,21 +144,21 @@ main"
 
 @test "git get with no repository fails" {
     fixture
-    run -127 get
-    assert_equal "$status" 127
+    run fails
+    assert_success
 }
 
 @test "the failure names the usage" {
     fixture
-    run get
+    run fails
     assert_output --partial 'usage: git get owner/repo'
 }
 
 @test "a failed git get creates nothing" {
     fixture
     clone
-    run -127 get
-    assert_equal "$status" 127
+    run fails
+    assert_success
     run ls "$repos/github.com"
     assert_output "o"
 }
