@@ -18,6 +18,7 @@ sops-policy	scripts/sops-policy.py home/.config/sops/sops.yaml
 sops-age-key-contract	home/.local/bin/sops-age-key home/.config/sops/* sops.yaml scripts/check-sops-recipients.sh
 sops-age-key	home/.local/bin/sops-age-key home/.config/sops/*
 fish	home/.zshenv home/.config/shell/* home/.config/fish/* work/.config/shell/* work/.config/fish/*
+zellij-tab	home/.local/bin/zellij-tab-name
 add-sudo-credential	scripts/add-sudo-credential.sh
 check-sudo-pins	scripts/check-sudo-pins.sh
 bootstrap-script	scripts/bootstrap.sh

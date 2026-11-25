@@ -1,0 +1,48 @@
+#!/bin/sh
+# Name the zellij tab that holds this pane. Zellij borrows the lone pane's OSC
+# title as the tab name, then drops back to "Tab #N" as soon as the tab holds a
+# second pane, so splitting a tab loses the folder it was showing.
+#
+# Only a tab still carrying that default name is renamed: a name the person
+# chose stays, and a single-pane tab keeps following its pane title.
+#
+# usage: zellij-tab-name <name>
+set -u
+
+name=${1-}
+[ -n "$name" ] || exit 0
+[ -n "${ZELLIJ_PANE_ID-}" ] || exit 0
+
+panes=$(zellij action list-panes -t -j 2>/dev/null) || exit 0
+[ -n "$panes" ] || exit 0
+
+tab=$(
+    printf '%s\n' "$panes" | awk -v pane="$ZELLIJ_PANE_ID" '
+        # One field per line and flat objects, so a line reader is enough. The
+        # keys this needs appear once per pane, and the next "id" closes the
+        # object before it.
+        function flush() {
+            if (id == "") return
+            n++
+            ids[n] = id; tabs[n] = tab_id; plugins[n] = is_plugin; names[n] = tab_name
+            id = ""; tab_id = ""; is_plugin = 0; tab_name = ""
+        }
+        /"id":/        { flush(); id = $0; sub(/.*"id": */, "", id); sub(/,.*/, "", id) }
+        /"is_plugin":/ { is_plugin = ($0 ~ /true/) }
+        /"tab_id":/    { tab_id = $0; sub(/.*"tab_id": */, "", tab_id); sub(/,.*/, "", tab_id) }
+        /"tab_name":/  { tab_name = $0; sub(/.*"tab_name": *"/, "", tab_name); sub(/".*/, "", tab_name) }
+        END {
+            flush()
+            for (i = 1; i <= n; i++) if (ids[i] == pane) mine = tabs[i]
+            if (mine == "") exit
+            for (i = 1; i <= n; i++) {
+                if (tabs[i] != mine) continue
+                if (!plugins[i]) terminals++
+                if (names[i] != "") title = names[i]
+            }
+            if (terminals > 1 && title ~ /^Tab #[0-9]+$/) print mine
+        }'
+)
+[ -n "$tab" ] || exit 0
+
+zellij action rename-tab --tab-id "$tab" "$name"

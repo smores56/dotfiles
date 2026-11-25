@@ -73,6 +73,25 @@ if [ -e "$h/.local/bin/zoxide" ]; then
 fi
 expect "interactive startup writes nothing to stderr" "" "$(cat "$tmp/fish.err")"
 
+# --- zellij tab naming
+
+# A function shadows any installed helper, and $h/.local/bin is a symlink farm
+# into the checkout: writing a stand-in there would edit the repository.
+zj_fn="function zellij-tab-name; echo \$argv[1] >>$tmp/tab-name; end"
+zj_() {  # zj_ <fish code>: interactive fish in a zellij pane
+    (cd "$h" && env -i HOME="$h" PATH="$base_path" TERM=xterm-256color ZELLIJ=0 \
+        "$h/.local/bin/fish" -i -c "$zj_fn; $1" </dev/null) 2>"$tmp/zj.err"
+}
+rm -f "$tmp/tab-name"
+zj_ 'emit fish_prompt; emit fish_prompt'
+expect "a zellij pane names its tab once, after its folder" "~" \
+    "$(cat "$tmp/tab-name" 2>/dev/null)"
+expect "naming the tab says nothing" "" "$(cat "$tmp/zj.err")"
+rm -f "$tmp/tab-name"
+(cd "$h" && env -i HOME="$h" PATH="$base_path" TERM=xterm-256color \
+    "$h/.local/bin/fish" -i -c "$zj_fn; emit fish_prompt" </dev/null) 2>/dev/null
+expect "no tab is named outside zellij" "" "$(cat "$tmp/tab-name" 2>/dev/null)"
+
 # --- abbreviations
 
 exp_() {  # exp_ <name> [home]: an abbreviation's expansion, or nothing
