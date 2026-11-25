@@ -26,6 +26,10 @@ shellcheck = "0.11.0"
 # The homelab-platform gate runs both; yamllint is pipx like basedpyright.
 "aqua:rhysd/actionlint" = "1.7.12"
 "aqua:fish-shell/fish-shell" = "4.9.3"
+# The gate's test runner; `bats --jobs` shells out to GNU parallel, which has no
+# aqua entry and no GitHub release, so conda-forge's noarch build.
+"aqua:bats-core/bats-core" = "1.14.0"
+"conda:parallel" = "20260922"
 "github:Gobidev/pfetch-rs" = "3.1.1"
 "aqua:junegunn/fzf" = "0.75.0"
 "aqua:helix-editor/helix" = "25.07.1"

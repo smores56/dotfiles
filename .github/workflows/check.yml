@@ -26,6 +26,14 @@ jobs:
           version: 2026.11.9
           sha256: f13f3e5ec88807e0161669b3aa07a91d84478cdf1e95b5b92b63f85a25d42395
           install: false
+      - name: Install the test runner and its assertion libraries
+        env:
+          MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
+        run: |
+          mkdir -p "$HOME/.config/mise"
+          cp -a global/. "$HOME/.config/mise/"
+          mise install "aqua:bats-core/bats-core" "conda:parallel"
+          sh scripts/install-bats-libs.sh
       - name: Run the checks
         run: tests/check.sh --shellcheck
 

@@ -213,7 +213,7 @@ handle "$h" 1
 repo=$tmp/repo
 mkdir -p "$repo/image/rootfs/etc/ssh"
 pins "$repo/image/rootfs/etc/ssh/sudo_authorized_keys" 1 >/dev/null
-HOMELAB_REPO=$repo SUDO_PINS_FILE= assert "HOMELAB_REPO locates the pinned file" route "$h"
+HOMELAB_REPO=$repo SUDO_PINS_FILE='' assert "HOMELAB_REPO locates the pinned file" route "$h"
 expect "the located set is silent" '' "$out"
 
 finish

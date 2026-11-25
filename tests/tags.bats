@@ -1,0 +1,96 @@
+#!/usr/bin/env bats
+# tests/tags.tsv decides which suites a change selects; these hold it to the
+# tree, so a new suite without a row, a stale pattern, or a row naming nothing
+# fails here instead of going unnoticed.
+load helpers
+
+tags_file=$dotfiles_root/tests/tags.tsv
+tags_sh=$dotfiles_root/tests/tags.sh
+tab=$(printf '\t')
+
+@test "every suite has a row in tags.tsv" {
+    missing=''
+    for suite in "$dotfiles_root"/tests/*.bats; do
+        name=$(basename -- "$suite" .bats)
+        grep -qF "$name$tab" "$tags_file" || missing="$missing $name"
+    done
+    assert_equal "$missing" ""
+}
+
+@test "every suite selects itself" {
+    bad=''
+    for suite in "$dotfiles_root"/tests/*.bats; do
+        name=$(basename -- "$suite" .bats)
+        selected=$(sh "$tags_sh" "tests/$name.bats")
+        case " $selected " in
+            *" tests/$name.bats "*) ;;
+            *) bad="$bad $name" ;;
+        esac
+    done
+    assert_equal "$bad" ""
+}
+
+@test "every tags.tsv row names a suite that exists" {
+    bad=''
+    while IFS=$tab read -r tag patterns || [ -n "$tag" ]; do
+        case $tag in ''|'#'*|all|none) continue ;; esac
+        [ -f "$dotfiles_root/tests/$tag.bats" ] || bad="$bad $tag"
+    done <"$tags_file"
+    assert_equal "$bad" ""
+}
+
+@test "every tags.tsv pattern names a path in the tree" {
+    stale=''
+    while IFS=$tab read -r tag patterns || [ -n "$tag" ]; do
+        case $tag in ''|'#'*) continue ;; esac
+        for pattern in $patterns; do
+            found=$(git -C "$dotfiles_root" ls-files --cached --others --exclude-standard -- "$pattern")
+            [ -n "$found" ] || stale="$stale $pattern"
+        done
+    done <"$tags_file"
+    assert_equal "$stale" ""
+}
+
+@test "a path a row claims selects that row's suite" {
+    run sh "$tags_sh" scripts/prune-dotfile-state.sh
+    assert_output "tests/prune-dotfile-state.bats"
+}
+
+@test "a path several rows claim selects all of them" {
+    repo=$BATS_TEST_TMPDIR/repo
+    mkdir -p "$repo/tests"
+    cp "$tags_sh" "$repo/tests/tags.sh"
+    printf 'aaa\tREADME.md\nprune-dotfile-state\tREADME.md\n' >"$repo/tests/tags.tsv"
+    run sh "$repo/tests/tags.sh" README.md
+    assert_output "tests/aaa.bats
+tests/prune-dotfile-state.bats"
+}
+
+@test "a path no row claims selects every suite" {
+    run sh "$tags_sh" brand/new/thing
+    assert_output "all"
+}
+
+@test "a harness change selects every suite" {
+    run sh "$tags_sh" tests/helpers.bash
+    assert_output "all"
+}
+
+@test "a documentation change selects nothing" {
+    run sh "$tags_sh" README.md
+    assert_output ""
+}
+
+@test "--changed reads the diff against the base" {
+    repo=$BATS_TEST_TMPDIR/repo
+    mkdir -p "$repo/tests"
+    cp "$tags_sh" "$repo/tests/tags.sh"
+    cp "$tags_file" "$repo/tests/tags.tsv"
+    git -C "$repo" init -q
+    git -C "$repo" add tests
+    git -C "$repo" -c user.name=t -c user.email=t@t commit -qm base
+    mkdir -p "$repo/scripts"
+    cp "$dotfiles_root/scripts/prune-dotfile-state.sh" "$repo/scripts/"
+    run sh -c "cd '$repo' && sh tests/tags.sh --changed --base HEAD"
+    assert_output "tests/prune-dotfile-state.bats"
+}

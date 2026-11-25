@@ -1,0 +1,9 @@
+# One row per suite: the tag names tests/<tag>.bats and the patterns are the
+# changed paths that select it, its own file included. `all` runs every suite
+# and `none` runs none; a path no row claims is `all`.
+#
+# The harness decides what runs, so a change to it changes any result: `all`.
+all	tests/tags.sh tests/tags.tsv tests/helpers.bash .githooks/*
+none	*.md .github/* .gitignore
+prune-dotfile-state	tests/prune-dotfile-state.bats scripts/prune-dotfile-state.sh home/.config/gh/*
+tags	tests/tags.bats
