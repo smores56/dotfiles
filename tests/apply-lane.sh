@@ -86,10 +86,19 @@ case $(uname -s) in
         ;;
 esac
 
-# kitty and zellij start fish through its shim, from the lockfile.
+# kitty and zellij start fish through its shim, from the lockfile. This lane
+# clones the plugins for real, so it is also where the plugins' own behaviour is
+# checked: tests/fish.bats runs on staged fixtures and never loads them.
 fish=$HOME/.local/share/mise/shims/fish
-TERM=xterm-256color "$fish" -i -c \
-    'string match -q "*/fish-plugins/pure/*" (functions --details fish_prompt)
-     and functions -q __async_prompt_fire; and abbr -q e; and set -q __done_version' </dev/null \
-    || fail "the interactive fish does not load pure, async-prompt, done, and the abbreviations"
+in_fish() { TERM=xterm-256color "$fish" -i -c "$1" </dev/null; }
+
+in_fish 'string match -q "*/fish-plugins/pure/*" (functions --details fish_prompt)' \
+    || fail "pure is not the prompt"
+in_fish 'functions -q __async_prompt_fire; and contains -- _pure_prompt_git $async_prompt_functions' \
+    || fail "async-prompt does not render pure's git segment"
+# The version mise.toml pins.
+done_version=$(in_fish 'echo $__done_version' || true)
+[ "$done_version" = 1.21.1 ] \
+    || fail "done is not 1.21.1 (got ${done_version:-nothing})"
+in_fish 'abbr -q e' || fail "the abbreviations do not load"
 printf 'apply-lane: %s passed\n' "$env_set"
