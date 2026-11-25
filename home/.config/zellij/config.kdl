@@ -1,5 +1,9 @@
 default_shell "fish"
 session_serialization false
+// The web client is refused unless the session was created with sharing on,
+// and it is read once at creation: SSH-started sessions need this line, while
+// browser-started ones force it on themselves.
+web_sharing "on"
 show_startup_tips false
 
 theme "ansi"
