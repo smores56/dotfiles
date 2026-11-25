@@ -56,7 +56,8 @@ selected() {  # selected <suite name>: one path per line from tests/tags.sh
     printf '%s\n' "$selected_tests" | grep -qxF -e "tests/$1.bats" -e "tests/$1-test.sh"
 }
 
-# --- syntax
+# The syntax assertions live in tests/statics/syntax.bats; this list only feeds
+# --shellcheck below.
 
 shell_scripts() {
     for script in "$root"/home/.config/shell/env.sh "$root"/work/.config/shell/env.d/*.sh \
@@ -72,278 +73,6 @@ shell_scripts() {
 }
 
 shell_scripts >"$tmp/scripts"
-while read -r dialect script; do
-    assert "syntax $(rel "$script") ($dialect)" "$dialect" -n "$script"
-done <"$tmp/scripts"
-
-if zsh_bin=$(usable_shell zsh); then
-    assert "syntax home/.zshenv (zsh)" "$zsh_bin" -n "$root/home/.zshenv"
-else
-    skip "syntax home/.zshenv (zsh not installed)"
-fi
-
-if fish_bin=$(usable_shell fish); then
-    for fish_file in "$root"/home/.config/fish/*.fish \
-            "$root"/*/.config/fish/conf.d/*.fish "$root"/*/.config/fish/conf.d/*.fish.tera; do
-        [ -f "$fish_file" ] && assert "syntax $(rel "$fish_file") (fish)" "$fish_bin" --no-config -n "$fish_file"
-    done
-else
-    skip "syntax fish (fish not installed)"
-fi
-
-assert "python scripts/sops-policy.py parses" \
-    python3 -c 'import sys; compile(open(sys.argv[1]).read(), sys.argv[1], "exec")' "$root/scripts/sops-policy.py"
-
-if python3 -c 'import tomllib' >/dev/null 2>&1; then
-    has_tomllib=true
-    for cfg in "$root"/mise.toml "$root"/mise.*.toml "$root"/mise.*.lock "$root"/global/*.toml "$root"/global/*.lock \
-            "$root"/desktop/.config/aerospace/aerospace.toml "$root"/desktop/.config/noctalia/config.toml \
-            "$root"/home/.config/maki/*.toml \
-            "$root"/home/.config/helix/*.toml; do
-        [ -f "$cfg" ] && assert "toml $(rel "$cfg")" \
-            python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$cfg"
-    done
-else
-    has_tomllib=false
-    skip "toml and lockfile coverage (python3 tomllib missing)"
-fi
-
-# Noctalia's offline validator cannot load plugin manifests, so the plugin
-# widget type is the one warning this config may produce. Any other warning or
-# error is a real schema problem.
-noctalia_config_ok() {
-    output=$(noctalia config validate "$1" 2>&1) || { printf '%s\n' "$output"; return 1; }
-    ! printf '%s\n' "$output" \
-        | grep -vF 'widget.tailnet: unrecognized widget type "rylos/tailnet:bar"' \
-        | grep -qE '^(ERROR|WARN)'
-}
-if has noctalia && noctalia config validate --help >/dev/null 2>&1; then
-    assert "the Noctalia config validates" \
-        noctalia_config_ok "$root/desktop/.config/noctalia/config.toml"
-else
-    skip "Noctalia config validation (noctalia with config validate not installed)"
-fi
-
-if $has_tomllib; then
-    assert "the Noctalia bar carries the Tailnet widget" python3 -c '
-import sys, tomllib
-cfg = tomllib.load(open(sys.argv[1], "rb"))
-assert cfg["plugins"]["enabled"] == ["rylos/tailnet"]
-assert cfg["widget"]["tailnet"]["type"] == "rylos/tailnet:bar"
-assert "tailnet" in cfg["bar"]["main"]["end"]
-' "$root/desktop/.config/noctalia/config.toml"
-else
-    skip "the Noctalia bar carries the Tailnet widget (python3 tomllib missing)"
-fi
-
-# --- vendored screensaver
-
-assert "the vendored cbonsai source matches its recorded checksum" sh -c \
-    "if command -v sha256sum >/dev/null 2>&1; then sum=\$(sha256sum '$root/vendor/cbonsai/cbonsai.c'); \
-        else sum=\$(shasum -a 256 '$root/vendor/cbonsai/cbonsai.c'); fi; \
-        printf '%s\\n' \"\$sum\" | grep -q '^3d74a154447a14b93e3c7d868eea51c5ccb770d8454de8f3541d887e89eb2622 '"
-
-$has_tomllib && assert "the cbonsai build lockfile pins both tools on every desktop platform" \
-    python3 -c '
-import sys, tomllib
-tools = tomllib.load(open(sys.argv[1], "rb"))["tools"]
-for name in ("zig", "conda:ncurses"):
-    entries = tools[name]
-    for platform in ("linux-x64", "linux-arm64", "macos-arm64"):
-        assert any("platforms." + platform in entry for entry in entries), (name, platform)
-' "$root/mise.build.lock"
-
-assert "the screensaver life stays inside cbonsai's range" sh -c \
-    "for size in '24 80' '40 120' '50 200' '8 20'; do set -- \$size; \
-        life=\$('$root/home/.local/bin/screensavers' --life \$1 \$2); \
-        [ \$life -ge 10 ] && [ \$life -le 200 ] || exit 1; \
-    done"
-
-if has cbonsai; then
-    assert "the screensaver tree fits its pane and re-renders on resize" \
-        python3 "$root/tests/cbonsai-fit.py"
-else
-    skip "the screensaver tree fits its pane and re-renders on resize"
-fi
-
-# --- desktop and shells
-
-assert_not "every flatpak id looks like a reverse-DNS app id" sh -c \
-    "sed -n 's/^\"flatpak-user:\([^\"]*\)\".*/\1/p' '$root/mise.desktop.toml' \
-        | grep -vE '^[A-Za-z0-9_]+(\.[A-Za-z0-9_-]+)+\$'"
-
-for kitty_conf in "$root"/desktop/.config/kitty/linux.conf "$root"/desktop/.config/kitty/macos.conf; do
-    assert "kitty starts fish through its mise shim ($(rel "$kitty_conf"))" \
-        grep -qxF 'shell ${HOME}/.local/share/mise/shims/fish' "$kitty_conf"
-done
-assert "zellij starts fish" grep -qx 'default_shell "fish"' "$root/home/.config/zellij/config.kdl"
-
-assert "kitty terminfo is installed where ncurses looks" \
-    test -f "$root/home/.terminfo/x/xterm-kitty"
-
-assert "the focus layout centers a 120-column pane" \
-    grep -qE '^[[:space:]]*pane size=120 focus=true$' "$root/home/.config/zellij/layouts/focus.kdl"
-assert "the focus layout runs the screensaver in both gutters" \
-    sh -c "[ \$(grep -c 'command \"screensavers\"' '$root/home/.config/zellij/layouts/focus.kdl') -eq 2 ]"
-assert "the screensaver abbreviation is added" grep -qx 'abbr -a sv screensavers' "$root/home/.config/fish/conf.d/20-abbreviations.fish"
-
-assert_not "zsh has no interactive config: no ZDOTDIR, zim, plugins, or conda zsh" sh -c \
-    "[ -e '$root/home/.config/zsh' ] || grep -rnE 'zim|zsh-plugins|conda:zsh|ZDOTDIR' \
-        '$root/mise.toml' '$root'/mise.*.toml '$root/global/config.toml' '$root/scripts'"
-
-assert "maki/pin.env pins version, target, and checksum" sh -c \
-    "grep -qE '^MAKI_VERSION=v[0-9]+\.[0-9]+\.[0-9]+\$' '$root/maki/pin.env' \
-        && grep -qE '^MAKI_SHA256=[0-9a-f]{64}\$' '$root/maki/pin.env' \
-        && grep -qE '^MAKI_TARGET=[A-Za-z0-9_-]+\$' '$root/maki/pin.env'"
-
-# `mise dot status` renders templates and hooks, so an exec() there would run.
-assert_not "no template or hook calls exec()" \
-    grep -rnE 'exec\(' "$root"/identity "$root"/desktop "$root"/home "$root"/mise.toml "$root"/mise.*.toml
-
-# `--config-dir global` links ~/.config/mise to global/; a copy under home/ would drift.
-assert_not "the global mise config lives only in global/" test -e "$root/home/.config/mise"
-
-# --- lockfiles cover every pinned tool on every platform it runs on
-
-lock_coverage() {
-    python3 - "$root/global" <<'PY'
-import pathlib, sys, tomllib
-root = pathlib.Path(sys.argv[1])
-all_platforms = {"linux-x64", "linux-arm64", "macos-arm64"}
-os_platforms = {"linux": {"linux-x64", "linux-arm64"}, "macos": {"macos-arm64"}}
-missing = []
-for config in sorted(root.glob("config*.toml")):
-    env = config.stem.removeprefix("config").lstrip(".")
-    lock_path = root / (f"mise.{env}.lock" if env else "mise.lock")
-    tools = tomllib.loads(config.read_text()).get("tools", {})
-    locked = tomllib.loads(lock_path.read_text()).get("tools", {}) if lock_path.exists() else {}
-    for name, spec in tools.items():
-        # `platforms` is this check's key, not mise's: a tool upstream does not
-        # build for every architecture in its os list names what it publishes.
-        if isinstance(spec, dict) and "platforms" in spec:
-            want = set(spec["platforms"])
-        elif isinstance(spec, dict) and "os" in spec:
-            want = set().union(*(os_platforms[o] for o in spec["os"]))
-        else:
-            want = all_platforms
-        pin = spec["version"] if isinstance(spec, dict) else spec
-        entries = [e for e in locked.get(name, []) if e.get("version") == pin]
-        if not entries:
-            missing.append(f"{config.name}: {name} = {pin} is not in {lock_path.name} (stale lock?)")
-            continue
-        have = {p.removeprefix("platforms.") for e in entries for p, v in e.items()
-                if p.startswith("platforms.") and isinstance(v, dict) and v.get("checksum")}
-        # mise records only the version for pipx tools; a uv lock pins them by hash.
-        if name.startswith("pipx:"):
-            uv_lock = root / "locks" / name.replace(":", "-") / pin / "uv.lock"
-            text = uv_lock.read_text() if uv_lock.exists() else ""
-            if f'version = "{pin}"' not in text or "sha256:" not in text:
-                missing.append(f"{config.name}: {name} = {pin} has no hashed uv lock at {uv_lock.relative_to(root)}")
-            continue
-        for platform in sorted(want - have):
-            missing.append(f"{config.name}: {name} has no checksummed {platform} entry in {lock_path.name}")
-print("\n".join(missing))
-sys.exit(1 if missing else 0)
-PY
-}
-$has_tomllib && assert "the global lockfiles cover every pinned tool on its platforms" lock_coverage
-
-# --- secrets and downloads
-
-# Nothing here is a private key, stub or otherwise: the smortress key arrives
-# from sops at mode 600 per machine, so a PEM or a PAT in the tree is a leak.
-secret_pattern='BEGIN [A-Z ]*PRIVATE KEY|AGE-SECRET-KEY-[A-Z0-9]|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}'
-# The whole checkout, tracked or not: a key dropped at the root by an ad-hoc
-# command is exactly what a managed-directories list misses.
-offenders=''
-for hit in $(grep -rIlE --exclude-dir=.git "$secret_pattern" "$root" 2>/dev/null); do
-    offenders="$offenders $hit"
-done
-expect "no secret material in the checkout" "" "$offenders"
-
-# Every tracked ciphertext carries exactly the canonical readers, and the
-# canonical file names all five; a stale updatekeys or a missing key fails.
-assert "sops ciphertexts match the canonical readers" \
-    bash "$root/scripts/check-sops-recipients.sh" "$root"
-
-# The key is one file per machine, out of sops; nothing may ship a copy.
-assert_not "the tree carries no smortress key" \
-    sh -c "test -e '$root/identity/.ssh/id_smortress' || test -e '$root/home/.ssh/id_smortress'"
-
-assert_not "every fish plugin repo is pinned to a full commit" sh -c \
-    "grep -E '^\"~/.local/share/fish-plugins/' '$root/mise.toml' | grep -vE 'ref = \"[0-9a-f]{40}\"( |,)'"
-assert_not "no downloader in fish startup or the shared env" \
-    grep -rnE 'curl|wget' "$root/home/.config/fish" "$root/home/.config/shell"
-
-# --- cross-file consistency
-
-var_root=$(sed -n 's|^repos_root = "\(/[^"]*\)"$|\1|p' "$root/mise.identity.toml" | head -1)
-boot_root=$(sed -n 's|^ROOT=${BOOTSTRAP_ROOT:-\(/[^}]*\)}$|\1|p' "$root/scripts/bootstrap.sh" | head -1)
-link_root=$(sed -n 's|^checkout=${DOTFILES_CHECKOUT:-\(/srv/git\)/.*|\1|p' \
-    "$root/scripts/link-dotfiles-checkout.sh" | head -1)
-assert "the checkout root matches in repos_root, bootstrap, and the link script" \
-    test -n "$var_root" -a "$var_root" = "$boot_root" -a "$var_root" = "$link_root"
-
-assert "bootstrap and git get make the same clean-bare clone, on personal machines only" sh -c \
-    "grep -qF 'git clone --bare -c remote.origin.fetch=' '$root/scripts/bootstrap.sh' \
-        && grep -qF 'git clone --bare -c remote.origin.fetch=' '$root/identity/.config/git/machine.inc.tera' \
-        && ! grep -q '{{ vars.repos_root }}' '$root/work/.config/git/machine.inc.tera'"
-
-for doc in "$root/home/.claude/CLAUDE.md" "$root/home/.config/maki/AGENTS.md"; do
-    assert "$(rel "$doc") tells agents to clone with git get" grep -qF '`git get <owner/repo>`' "$doc"
-done
-
-assert "the personal SDLC registry is hardcoded" \
-    grep -q 'SDLC_REPO=smores56/sdlc' "$root/home/.config/shell/env.sh"
-assert "the work SDLC registry is hardcoded" \
-    grep -q 'SDLC_REPO=smohr-blitzy/sdlc' "$root/work/.config/shell/env.d/work.sh"
-
-# sudo's touch factor is a signature from the client's agent, so the agent has to
-# travel with the session (design #767). Scoped to the smortress host and never a
-# global default: the forwarded socket is a signature oracle that any process
-# running as the login user on the far end can drive.
-assert "ForwardAgent is scoped to the smortress route" sh -c \
-    "[ \"\$(grep -cx '    ForwardAgent yes' '$root/home/.ssh/smortress.conf')\" = 1 ] \
-     && ! grep -qi forwardagent '$root/work/.ssh/config'"
-# A session that joins an existing ControlMaster cannot add agent forwarding, and
-# the forwarded socket is what pam_rssh authenticates against, so multiplexing
-# here fails as a silent password prompt.
-assert "smortress never multiplexes, so the agent is really forwarded" sh -c \
-    "[ \"\$(grep -cx '    ControlMaster no' '$root/home/.ssh/smortress.conf')\" = 1 ]"
-
-# --- Maki guards
-
-assert "the TinyFish guard runs on every tool call" \
-    grep -qF 'set_slot("tool.*.input"' "$root/home/.config/maki/init.lua"
-assert "the TinyFish guard allows only search" \
-    grep -qF 'ctx.tool ~= "tinyfish__search"' "$root/home/.config/maki/init.lua"
-assert "the maki wrapper hands the keys to the maki process" \
-    grep -qF 'TINYFISH_API_KEY=$tinyfish exec "$bin"' "$root/home/.local/bin/maki"
-assert_not "no file exports a provider key" \
-    grep -rnE '^\s*export (NEURALWATT|TINYFISH)_API_KEY' "$root/home"
-
-# --- helix: every configured language server is a pinned tool
-
-helix_languages=$root/home/.config/helix/languages.toml
-helix_servers=$(grep -oE '^\[language-server\.[a-z-]+' "$helix_languages" \
-    | sed 's/.*\.//' | LC_ALL=C sort -u)
-helix_missing=""
-for server in $helix_servers; do
-    case $server in
-        ruff) pkg='aqua:astral-sh/ruff' ;;
-        taplo) pkg='aqua:tamasfe/taplo' ;;
-        marksman) pkg='aqua:artempyanykh/marksman' ;;
-        markdown-oxide) pkg='github:Feel-ix-343/markdown-oxide' ;;
-        basedpyright) pkg='pipx:basedpyright' ;;
-        *) helix_missing="$helix_missing $server(no pin)"; continue ;;
-    esac
-    grep -qF "\"$pkg\" = " "$root/global/config.toml" || helix_missing="$helix_missing $server($pkg)"
-done
-for server in $(grep -E '^language-servers' "$helix_languages" \
-        | sed -E 's/.*\[//; s/\].*//; s/[" ]//g' | tr ',' '\n'); do
-    printf '%s\n' "$helix_servers" | grep -qx "$server" || helix_missing="$helix_missing $server(undefined)"
-done
-expect "every Helix language server is defined and pinned in global/config.toml" "" "$helix_missing"
 
 # --- behavioural tests
 
@@ -390,22 +119,24 @@ else
             ok "bats suites ($name)"
         fi
     done
+    # The static checks are one file per section under tests/statics/ and run on
+    # every gate, --changed included: they are cheap greps over the checkout.
+    for suite in "$root"/tests/statics/*.bats; do
+        [ -f "$suite" ] || continue
+        name=$(rel "$suite")
+        if ! bats "$suite" >"$tmp/suite.log" 2>&1; then
+            no "static checks ($name)"
+            indent <"$tmp/suite.log"
+        elif ! grep -q '^ok' "$tmp/suite.log"; then
+            no "static checks ($name: no tests ran)"
+            indent <"$tmp/suite.log"
+        elif [ "$(grep -c '^ok' "$tmp/suite.log")" = "$(grep -c '^ok.*# skip' "$tmp/suite.log")" ]; then
+            skip "static checks ($name: every test skipped)"
+        else
+            ok "static checks ($name)"
+        fi
+    done
 fi
-
-# --- Stremio quadlet
-
-# A hard Requires on the build would keep the server down whenever a rebuild
-# fails, even with a usable image still tagged locally.
-assert "the Stremio container wants, not requires, its image build" \
-    grep -qE '^Wants=.* stremio-server-build\.service' "$root/desktop/.config/containers/systemd/stremio-server.container"
-assert_not "the Stremio container has no hard build dependency" \
-    grep -q '^Requires=' "$root/desktop/.config/containers/systemd/stremio-server.container"
-assert "the Stremio image copies server.js from a pinned vendor digest" \
-    grep -q 'docker.io/stremio/server@sha256:' "$root/desktop/.config/containers/systemd/Containerfile"
-assert "the Stremio image asserts the ffmpeg argument rewrites" \
-    sh -c 'grep -qF "\"-fps_mode\"," "$1" && grep -qF "\"-bsf:v\"," "$1"' sh "$root/desktop/.config/containers/systemd/Containerfile"
-assert "the Stremio unit keeps its state in a volume" \
-    grep -qx 'Volume=stremio-state.volume:/root/.stremio-server' "$root/desktop/.config/containers/systemd/stremio-server.container"
 
 # --- optional shellcheck
 
