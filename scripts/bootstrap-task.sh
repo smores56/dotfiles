@@ -181,6 +181,8 @@ load_ssh_agent_linux
 load_wallpapers_linux
 install_noto_color_emoji \
     || log "terminal emoji will not render; run scripts/bootstrap-task.sh by hand to see why"
+sh "$(dirname "$0")/install-bats-libs.sh" \
+    || log "the gate's bats libraries are missing; run scripts/install-bats-libs.sh"
 # After the agent, never before: the loader is a no-op until the socket is bound.
 # The loader is its own file so the test drives it with stubs.
 sh "$(dirname "$0")/add-sudo-credential.sh"

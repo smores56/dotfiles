@@ -32,7 +32,7 @@ rel() { printf '%s' "${1#"$root"/}"; }
 has() { command -v "$1" >/dev/null 2>&1; }
 
 # --changed narrows the behavioural tests; the static checks are cheap and
-# always run. An unclaimed path selects everything (tests/select.sh).
+# always run. An unclaimed path selects everything (tests/tags.sh).
 selected_tests=all
 if $changed; then
     git -C "$root" rev-parse --verify -q "$base^{commit}" >/dev/null || {
@@ -48,12 +48,12 @@ if $changed; then
     changed_list=$tmp/changed
     { git -C "$root" diff --name-only "$compare" || exit 2
       git -C "$root" ls-files --others --exclude-standard || exit 2; } >"$changed_list"
-    selected_tests=$(sh "$root/tests/select.sh" <"$changed_list")
+    selected_tests=$(sh "$root/tests/tags.sh" <"$changed_list")
     printf 'changed against %s: %s\n' "$base" "${selected_tests:-none}"
 fi
-selected() {  # selected <test name>
+selected() {  # selected <suite name>
     [ "$selected_tests" = all ] && return 0
-    case " $selected_tests " in *" $1 "*) return 0 ;; esac
+    case " $selected_tests " in *" tests/$1.bats "*) return 0 ;; esac
     return 1
 }
 
@@ -350,8 +350,9 @@ expect "every Helix language server is defined and pinned in global/config.toml"
 
 if has git && has bash; then
     for test_script in "$root"/tests/*-test.sh; do
+        [ -f "$test_script" ] || continue
         name=$(rel "$test_script")
-        selected "$(basename -- "$test_script")" || continue
+        selected "$(basename -- "$test_script" -test.sh)" || continue
         if bash "$test_script" >"$tmp/test.log" 2>&1; then
             if grep -q '^skip all' "$tmp/test.log"; then
                 skip "behavioral tests ($name: $(sed -n 's/^skip all (\(.*\))$/\1/p' "$tmp/test.log"))"
@@ -365,6 +366,22 @@ if has git && has bash; then
     done
 else
     skip "behavioral tests (git or bash not installed)"
+fi
+
+if has bats; then
+    for suite in "$root"/tests/*.bats; do
+        [ -f "$suite" ] || continue
+        name=$(rel "$suite")
+        selected "$(basename -- "$suite" .bats)" || continue
+        if bats "$suite" >"$tmp/suite.log" 2>&1; then
+            ok "bats suites ($name)"
+        else
+            no "bats suites ($name)"
+            indent <"$tmp/suite.log"
+        fi
+    done
+else
+    skip "bats suites (bats not installed)"
 fi
 
 if has python3 && selected sdlc; then
