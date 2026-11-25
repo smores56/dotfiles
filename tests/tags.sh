@@ -80,11 +80,13 @@ self_tag() {
 
 while IFS= read -r path; do
     [ -n "$path" ] || continue
+    claimed=false
+    # A suite claims itself, but a row still decides: the `all` row must stay
+    # sticky for a change to the harness's own test.
     if tag=$(self_tag "$path"); then
         add "$tag"
-        continue
+        claimed=true
     fi
-    claimed=false
     while IFS=$tab read -r tag patterns || [ -n "$tag" ]; do
         case $tag in ''|'#'*) continue ;; esac
         # shellcheck disable=SC2086 # a row lists its patterns space-separated

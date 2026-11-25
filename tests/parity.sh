@@ -40,6 +40,7 @@ trap 'rm -rf "$work"; git worktree remove --force "$work/tree" 2>/dev/null' EXIT
 # at sibling files, so it runs in a checkout of the base rather than in the tree
 # the conversion already changed.
 git worktree add -q --detach "$work/tree" "$base"
+git show "$base:$old" >"$work/old.sh"
 old_rc=0 new_rc=0
 (cd "$work/tree" && bash "$old") >"$work/old.log" 2>&1 || old_rc=$?
 bats "$new" >"$work/new.log" 2>&1 || new_rc=$?
@@ -50,16 +51,18 @@ old_ok=$(names "$work/old.log" | wc -l)
 new_ok=$(names "$work/new.log" | wc -l)
 diff -u <(names "$work/old.log") <(names "$work/new.log") >"$work/names.diff" || true
 
-printf 'parity: %s shell %s ok (exit %s), bats %s ok (exit %s)\n' \
-  "$name" "$old_ok" "$old_rc" "$new_ok" "$new_rc"
-
-# A suite that only exits non-zero on failure prints no assertion of its own;
-# there is nothing to compare beyond the exit code.
-if [[ $old_ok -eq 0 ]]; then
+# A suite that only exits non-zero on failure prints no assertion of its own,
+# and a suite that does not source tests/lib.sh has no assertion format this
+# script can count (its tool may print `ok` lines of its own).
+if ! grep -q 'tests/lib.sh' "$work/old.sh" || [[ $old_ok -eq 0 ]]; then
+  printf 'parity: %s shell prints no count these can compare; exit codes: %s/%s\n' \
+    "$name" "$old_rc" "$new_rc"
   [[ $old_rc -eq 0 && $new_rc -eq 0 ]] || exit 1
-  printf 'parity: %s shell prints no assertions; exit codes match\n' "$name"
   exit 0
 fi
+
+printf 'parity: %s shell %s ok (exit %s), bats %s ok (exit %s)\n' \
+  "$name" "$old_ok" "$old_rc" "$new_ok" "$new_rc"
 
 # Names may legitimately differ: a helper-generated name in the shell suite
 # ("exit status for link=...") becomes a real description. They are shown, not

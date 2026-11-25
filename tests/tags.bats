@@ -35,7 +35,8 @@ tag_of() {
     while IFS= read -r suite; do
         selected=$(cd "$dotfiles_root" && sh "$tags_sh" "$suite")
         case " $selected " in
-            *" $suite "*) ;;
+            # `all` selects the suite too; a row may claim it either way.
+            *" $suite "*|*" all "*) ;;
             *) bad="$bad $suite" ;;
         esac
     done < <(suites)
@@ -62,6 +63,27 @@ tag_of() {
         done
     done <"$tags_file"
     assert_equal "$stale" ""
+}
+
+@test "only documentation paths are claimed by none" {
+    bad=''
+    while IFS=$tab read -r tag patterns || [ -n "$tag" ]; do
+        [ "$tag" = none ] || continue
+        for pattern in $patterns; do
+            for path in $(git -C "$dotfiles_root" ls-files --cached --others --exclude-standard -- "$pattern"); do
+                case $path in
+                    *.md | .github/* | .gitignore) ;;
+                    *) bad="$bad $path" ;;
+                esac
+            done
+        done
+    done <"$tags_file"
+    assert_equal "$bad" ""
+}
+
+@test "a change to the table's own test selects every suite" {
+    run sh "$tags_sh" tests/tags.bats
+    assert_output "all"
 }
 
 @test "a path a row claims selects that row's suite" {

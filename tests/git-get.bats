@@ -12,11 +12,10 @@ setup_file() {
     export mise_bin
     h=$BATS_FILE_TMPDIR/home
     mkdir -p "$h/.ssh"
-    if ! env -i HOME="$h" PATH=/usr/bin:/bin TERM=dumb MISE_ENV=identity \
-        MISE_TRUSTED_CONFIG_PATHS="$dotfiles_root" MISE_YES=1 "$mise_bin" -C "$dotfiles_root" dot apply; then
-        export git_get_skip="identity dotfiles did not apply"
-        return 0
-    fi
+    # A failed apply is a real failure of the identity environment, not a
+    # reason to skip: a skip here would report the suite green with no coverage.
+    env -i HOME="$h" PATH=/usr/bin:/bin TERM=dumb MISE_ENV=identity \
+        MISE_TRUSTED_CONFIG_PATHS="$dotfiles_root" MISE_YES=1 "$mise_bin" -C "$dotfiles_root" dot apply
     export h
     export alias_text
     alias_text=$(git config -f "$h/.config/git/machine.inc" alias.get)
@@ -39,6 +38,12 @@ fixture() {
     git clone -q --bare "$up" "$BATS_TEST_TMPDIR/fake/o/r"
     git -C "$up" worktree add -q "$BATS_TEST_TMPDIR/caller" feat
     repo=$repos/github.com/o/r
+}
+
+# clone: git get o/r, failing the test with the clone's own output.
+clone() {
+    run get o/r
+    assert_success
 }
 
 # get <args...>: the rendered alias, root and GitHub redirected.
@@ -68,14 +73,14 @@ get() {
 
 @test "the gitdir is bare" {
     fixture
-    get o/r >/dev/null 2>&1
+    clone
     run git -C "$repo" rev-parse --is-bare-repository
     assert_output true
 }
 
 @test "every remote branch is a remote-tracking ref" {
     fixture
-    get o/r >/dev/null 2>&1
+    clone
     run git -C "$repo" for-each-ref --format='%(refname:short)' refs/remotes
     assert_output "origin/feat
 origin/main"
@@ -83,21 +88,21 @@ origin/main"
 
 @test "the default branch is checked out beside the gitdir" {
     fixture
-    get o/r >/dev/null 2>&1
+    clone
     run git -C "$repo/main" branch --show-current
     assert_output main
 }
 
 @test "the default branch tracks origin" {
     fixture
-    get o/r >/dev/null 2>&1
+    clone
     run git -C "$repo/main" rev-parse --abbrev-ref '@{u}'
     assert_output origin/main
 }
 
 @test "a later pull fast-forwards" {
     fixture
-    get o/r >/dev/null 2>&1
+    clone
     git -C "$up" -c user.name=t -c user.email=t@t commit -q --allow-empty -m two
     git -C "$up" push -q "$BATS_TEST_TMPDIR/fake/o/r" main
     env GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="url.file://$BATS_TEST_TMPDIR/fake/.insteadOf" \
@@ -108,7 +113,7 @@ origin/main"
 
 @test "the clone holds only the gitdir and the default worktree" {
     fixture
-    get o/r >/dev/null 2>&1
+    clone
     run ls -A "$repo"
     assert_output ".git
 main"
@@ -116,14 +121,14 @@ main"
 
 @test "a second git get refuses the existing clone" {
     fixture
-    get o/r >/dev/null 2>&1
+    clone
     run get o/r
     assert_failure
 }
 
 @test "the refusal leaves the checkout alone" {
     fixture
-    get o/r >/dev/null 2>&1
+    clone
     run get o/r
     assert_failure
     run git -C "$repo/main" branch --show-current
@@ -132,8 +137,8 @@ main"
 
 @test "git get with no repository fails" {
     fixture
-    run get
-    assert_failure
+    run -127 get
+    assert_equal "$status" 127
 }
 
 @test "the failure names the usage" {
@@ -144,9 +149,9 @@ main"
 
 @test "a failed git get creates nothing" {
     fixture
-    get o/r >/dev/null 2>&1
-    run get
-    assert_failure
+    clone
+    run -127 get
+    assert_equal "$status" 127
     run ls "$repos/github.com"
     assert_output "o"
 }

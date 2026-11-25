@@ -23,6 +23,22 @@ link_twice() {
     link "$home/.dotfiles"
 }
 
+# A link the script did not create, and a directory where the link belongs.
+foreign_link() {
+    mkdir -p "$BATS_TEST_TMPDIR/other"
+    ln -s "$BATS_TEST_TMPDIR/other" "$home/foreign"
+}
+
+directory_in_the_way() {
+    mkdir -p "$home/real/inner"
+}
+
+unwritable_parent() {
+    ro=$BATS_TEST_TMPDIR/ro
+    mkdir -p "$ro"
+    chmod 555 "$ro"
+}
+
 @test "creating the link exits 0" {
     link "$home/.dotfiles"
     assert_success
@@ -51,42 +67,39 @@ link_twice() {
 }
 
 @test "a foreign link exits 1" {
-    mkdir -p "$BATS_TEST_TMPDIR/other"
-    ln -s "$BATS_TEST_TMPDIR/other" "$home/foreign"
+    foreign_link
     link "$home/foreign"
     assert_failure
 }
 
 @test "a foreign link is not replaced" {
-    mkdir -p "$BATS_TEST_TMPDIR/other"
-    ln -s "$BATS_TEST_TMPDIR/other" "$home/foreign"
+    foreign_link
     link "$home/foreign"
     run readlink "$home/foreign"
     assert_output "$BATS_TEST_TMPDIR/other"
 }
 
 @test "a foreign link is reported" {
-    mkdir -p "$BATS_TEST_TMPDIR/other"
-    ln -s "$BATS_TEST_TMPDIR/other" "$home/foreign"
+    foreign_link
     link "$home/foreign"
     assert_output --partial 'points at'
 }
 
 @test "a directory in the way exits 1" {
-    mkdir -p "$home/real/inner"
+    directory_in_the_way
     link "$home/real"
     assert_failure
 }
 
 @test "a directory in the way is untouched" {
-    mkdir -p "$home/real/inner"
+    directory_in_the_way
     link "$home/real"
     assert [ -d "$home/real" ]
     refute [ -L "$home/real" ]
 }
 
 @test "a directory in the way is reported" {
-    mkdir -p "$home/real/inner"
+    directory_in_the_way
     link "$home/real"
     assert_output --partial 'not a symlink'
 }
@@ -131,27 +144,21 @@ link_twice() {
 }
 
 @test "an unwritable parent exits 1" {
-    ro=$BATS_TEST_TMPDIR/ro
-    mkdir -p "$ro"
-    chmod 555 "$ro"
+    unwritable_parent
     link "$ro/.dotfiles"
     chmod 755 "$ro"
     assert_failure
 }
 
 @test "nothing is created under an unwritable parent" {
-    ro=$BATS_TEST_TMPDIR/ro
-    mkdir -p "$ro"
-    chmod 555 "$ro"
+    unwritable_parent
     link "$ro/.dotfiles"
     chmod 755 "$ro"
     refute [ -e "$ro/.dotfiles" ]
 }
 
 @test "an unwritable parent is reported" {
-    ro=$BATS_TEST_TMPDIR/ro
-    mkdir -p "$ro"
-    chmod 555 "$ro"
+    unwritable_parent
     link "$ro/.dotfiles"
     chmod 755 "$ro"
     assert_output --partial 'not writable'
