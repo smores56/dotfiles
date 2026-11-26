@@ -1,0 +1,41 @@
+[Unit]
+# The web terminal (#954): zellij's own web server on loopback, which Serve
+# fronts as svc:terminal (homelab-platform, scripts/tailscale-serve.sh).
+#
+# It is a user unit because of what it has to start. The server execs the mise
+# binary and every pane execs the owner's shells and tools, and SELinux refuses a
+# system service an exec into a home file: the host's AVC names init_t ->
+# user_tmp_t, and even unconfined_service_t is denied execute on user_home_t and
+# gconf_home_t. This manager runs in the login domain, so the server and its
+# panes get the environment an SSH session has.
+#
+# The socket directory needs no wiring: this manager and an SSH login both use
+# $XDG_RUNTIME_DIR/zellij, which is per-user, so they share one session list.
+# Linger (homelab-platform, image/rootfs/etc/tmpfiles.d/smortress.conf) is what
+# starts this manager at boot with no login, which `main` depends on.
+Description=zellij web terminal
+# Bounded rather than endless: the default window cannot trip at one start per
+# 5s, so a port already held or a mise install that is not there yet would
+# restart in silence and never read as `failed`.
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+[Service]
+Type=simple
+# Panes inherit this environment, and fish and zellij are both mise tools:
+# without the shims first, each program a pane starts is missing, beginning with
+# the default shell.
+Environment=PATH=%h/.local/share/mise/shims:%h/.local/bin:/usr/local/bin:/usr/bin
+Environment=TERM=xterm-256color
+ExecStart=%h/.local/share/mise/shims/zellij web --ip 127.0.0.1 --port 8082
+# The `-` prefix is load-bearing: `attach --create-background` exits 1 when the
+# session already exists, which is the healthy case on every start after the first.
+ExecStartPost=-%h/.local/share/mise/shims/zellij attach main --create-background
+Restart=always
+RestartSec=5
+# A restart of the server must not end the work it was attached to: the session
+# daemons outlive it exactly as they outlive a terminal client disconnecting.
+KillMode=process
+
+[Install]
+WantedBy=default.target

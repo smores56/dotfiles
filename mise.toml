@@ -32,6 +32,10 @@ min_version = "2026.11.9"
   { default = true },
 ] }
 "~/.config/yazi" = { source = "home/.config/yazi", mode = "symlink-each" }
+# The zellij web terminal (#954) is a user unit: SELinux refuses a system
+# service an exec into a home binary, while this manager runs in the login
+# domain. `systemctl --user enable zellij-web.service` is the one-time step.
+"~/.config/systemd/user" = { source = "home/.config/systemd/user", mode = "symlink-each" }
 "~/.config/sops/sops.yaml" = { source = "home/.config/sops/sops.yaml" }
 "~/.config/zellij" = { source = "home/.config/zellij", mode = "symlink-each" }
 # Servers lack kitty's terminfo for SSH sessions from kitty.
