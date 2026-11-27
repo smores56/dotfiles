@@ -57,6 +57,7 @@ The environments are picked from the machine (see the table above); set
 
 ```sh
 d                    # pull the dotfiles and re-bootstrap
+td                   # edit the shared todo list in tuxedo
 mise dot diff        # preview what an apply would change
 git get owner/repo   # clone a repository (also `gc`)
 ```

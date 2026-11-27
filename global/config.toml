@@ -52,5 +52,7 @@ shellcheck = "0.11.0"
 "pipx:basedpyright" = "1.40.2"
 "github:umputun/revdiff" = "1.15.0"
 "github:agynio/gh-pr-review" = { version = "1.6.2", bin = "gh-pr-review" }
+# todo.txt TUI; the list is the Syncthing file plane at /srv/files/todos.
+"github:webstonehq/tuxedo" = "2026.8.1"
 "aqua:tamasfe/taplo" = "0.10.0"
 "aqua:artempyanykh/marksman" = "2026-02-08"

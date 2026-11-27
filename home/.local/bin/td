@@ -1,0 +1,10 @@
+#!/bin/sh
+# Open the shared todo list in tuxedo. TODO_FILE wins so a machine whose
+# Syncthing root is not /srv/files can point elsewhere.
+set -eu
+file=${TODO_FILE:-/srv/files/todos/todo.txt}
+if [ ! -f "$file" ]; then
+    printf 'td: no todo list at %s\n' "$file" >&2
+    exit 1
+fi
+exec tuxedo "$file"
