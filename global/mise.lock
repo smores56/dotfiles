@@ -684,6 +684,29 @@ checksum_source = "mise-versions"
 url = "https://github.com/umputun/revdiff/releases/download/v1.15.0/revdiff_1.15.0_darwin_arm64.tar.gz"
 url_api = "https://api.github.com/repos/umputun/revdiff/releases/assets/726365096"
 
+[[tools."github:webstonehq/tuxedo"]]
+version = "2026.8.1"
+backend = "github:webstonehq/tuxedo"
+specifiers = ["2026.8.1"]
+
+[tools."github:webstonehq/tuxedo"."platforms.linux-arm64"]
+checksum = "sha256:ecf8ed1afaed31e09f9c7207f61579f26137f5a7f7db5667fbf86f40b9e21ce0"
+checksum_source = "mise-versions"
+url = "https://github.com/webstonehq/tuxedo/releases/download/v2026.8.1/tuxedo-v2026.8.1-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/webstonehq/tuxedo/releases/assets/536260820"
+
+[tools."github:webstonehq/tuxedo"."platforms.linux-x64"]
+checksum = "sha256:b1ebbbc858b9bfda64631164e8fd5eeacda759e5a87165d1296ddc9d6b701d59"
+checksum_source = "mise-versions"
+url = "https://github.com/webstonehq/tuxedo/releases/download/v2026.8.1/tuxedo-v2026.8.1-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/webstonehq/tuxedo/releases/assets/536260825"
+
+[tools."github:webstonehq/tuxedo"."platforms.macos-arm64"]
+checksum = "sha256:7197da3242e59e50d4e2f45fca46aff8b36e209be0e40f86f6a82a7bdcb5831e"
+checksum_source = "mise-versions"
+url = "https://github.com/webstonehq/tuxedo/releases/download/v2026.8.1/tuxedo-v2026.8.1-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/webstonehq/tuxedo/releases/assets/536260822"
+
 [[tools.jq]]
 version = "1.8.2"
 backend = "aqua:jqlang/jq"
